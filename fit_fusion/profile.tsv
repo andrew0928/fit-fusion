@@ -1,0 +1,1723 @@
+# Garmin FIT profile 21.221.0. Columns: message number, message name, field number, field name, units.
+
+0	file_id			
+0		0	type	
+0		1	manufacturer	
+0		2	product	
+0		3	serial_number	
+0		4	time_created	
+0		5	number	
+0		8	product_name	
+49	file_creator			
+49		0	software_version	
+49		1	hardware_version	
+162	timestamp_correlation			
+162		253	timestamp	s
+162		0	fractional_timestamp	s
+162		1	system_timestamp	s
+162		2	fractional_system_timestamp	s
+162		3	local_timestamp	s
+162		4	timestamp_ms	ms
+162		5	system_timestamp_ms	ms
+35	software			
+35		254	message_index	
+35		3	version	
+35		5	part_number	
+106	slave_device			
+106		0	manufacturer	
+106		1	product	
+1	capabilities			
+1		0	languages	
+1		1	sports	
+1		21	workouts_supported	
+1		23	connectivity_supported	
+37	file_capabilities			
+37		254	message_index	
+37		0	type	
+37		1	flags	
+37		2	directory	
+37		3	max_count	
+37		4	max_size	bytes
+38	mesg_capabilities			
+38		254	message_index	
+38		0	file	
+38		1	mesg_num	
+38		2	count_type	
+38		3	count	
+39	field_capabilities			
+39		254	message_index	
+39		0	file	
+39		1	mesg_num	
+39		2	field_num	
+39		3	count	
+2	device_settings			
+2		0	active_time_zone	
+2		1	utc_offset	
+2		2	time_offset	s
+2		4	time_mode	
+2		5	time_zone_offset	hr
+2		12	backlight_mode	
+2		36	activity_tracker_enabled	
+2		39	clock_time	
+2		40	pages_enabled	
+2		46	move_alert_enabled	
+2		47	date_mode	
+2		55	display_orientation	
+2		56	mounting_side	
+2		57	default_page	
+2		58	autosync_min_steps	steps
+2		59	autosync_min_time	minutes
+2		80	lactate_threshold_autodetect_enabled	
+2		86	ble_auto_upload_enabled	
+2		89	auto_sync_frequency	
+2		90	auto_activity_detect	
+2		94	number_of_screens	
+2		95	smart_notification_display_orientation	
+2		134	tap_interface	
+2		174	tap_sensitivity	
+3	user_profile			
+3		254	message_index	
+3		0	friendly_name	
+3		1	gender	
+3		2	age	years
+3		3	height	m
+3		4	weight	kg
+3		5	language	
+3		6	elev_setting	
+3		7	weight_setting	
+3		8	resting_heart_rate	bpm
+3		9	default_max_running_heart_rate	bpm
+3		10	default_max_biking_heart_rate	bpm
+3		11	default_max_heart_rate	bpm
+3		12	hr_setting	
+3		13	speed_setting	
+3		14	dist_setting	
+3		16	power_setting	
+3		17	activity_class	
+3		18	position_setting	
+3		21	temperature_setting	
+3		22	local_id	
+3		23	global_id	
+3		28	wake_time	
+3		29	sleep_time	
+3		30	height_setting	
+3		31	user_running_step_length	m
+3		32	user_walking_step_length	m
+3		47	depth_setting	
+3		49	dive_count	
+4	hrm_profile			
+4		254	message_index	
+4		0	enabled	
+4		1	hrm_ant_id	
+4		2	log_hrv	
+4		3	hrm_ant_id_trans_type	
+5	sdm_profile			
+5		254	message_index	
+5		0	enabled	
+5		1	sdm_ant_id	
+5		2	sdm_cal_factor	%
+5		3	odometer	m
+5		4	speed_source	
+5		5	sdm_ant_id_trans_type	
+5		7	odometer_rollover	
+6	bike_profile			
+6		254	message_index	
+6		0	name	
+6		1	sport	
+6		2	sub_sport	
+6		3	odometer	m
+6		4	bike_spd_ant_id	
+6		5	bike_cad_ant_id	
+6		6	bike_spdcad_ant_id	
+6		7	bike_power_ant_id	
+6		8	custom_wheelsize	m
+6		9	auto_wheelsize	m
+6		10	bike_weight	kg
+6		11	power_cal_factor	%
+6		12	auto_wheel_cal	
+6		13	auto_power_zero	
+6		14	id	
+6		15	spd_enabled	
+6		16	cad_enabled	
+6		17	spdcad_enabled	
+6		18	power_enabled	
+6		19	crank_length	mm
+6		20	enabled	
+6		21	bike_spd_ant_id_trans_type	
+6		22	bike_cad_ant_id_trans_type	
+6		23	bike_spdcad_ant_id_trans_type	
+6		24	bike_power_ant_id_trans_type	
+6		37	odometer_rollover	
+6		38	front_gear_num	
+6		39	front_gear	
+6		40	rear_gear_num	
+6		41	rear_gear	
+6		44	shimano_di2_enabled	
+127	connectivity			
+127		0	bluetooth_enabled	
+127		1	bluetooth_le_enabled	
+127		2	ant_enabled	
+127		3	name	
+127		4	live_tracking_enabled	
+127		5	weather_conditions_enabled	
+127		6	weather_alerts_enabled	
+127		7	auto_activity_upload_enabled	
+127		8	course_download_enabled	
+127		9	workout_download_enabled	
+127		10	gps_ephemeris_download_enabled	
+127		11	incident_detection_enabled	
+127		12	grouptrack_enabled	
+159	watchface_settings			
+159		254	message_index	
+159		0	mode	
+159		1	layout	
+188	ohr_settings			
+188		253	timestamp	s
+188		0	enabled	
+216	time_in_zone			
+216		253	timestamp	s
+216		0	reference_mesg	
+216		1	reference_index	
+216		2	time_in_hr_zone	s
+216		3	time_in_speed_zone	s
+216		4	time_in_cadence_zone	s
+216		5	time_in_power_zone	s
+216		6	hr_zone_high_boundary	bpm
+216		7	speed_zone_high_boundary	m/s
+216		8	cadence_zone_high_bondary	rpm
+216		9	power_zone_high_boundary	watts
+216		10	hr_calc_type	
+216		11	max_heart_rate	
+216		12	resting_heart_rate	
+216		13	threshold_heart_rate	
+216		14	pwr_calc_type	
+216		15	functional_threshold_power	
+7	zones_target			
+7		1	max_heart_rate	
+7		2	threshold_heart_rate	
+7		3	functional_threshold_power	
+7		5	hr_calc_type	
+7		7	pwr_calc_type	
+12	sport			
+12		0	sport	
+12		1	sub_sport	
+12		3	name	
+8	hr_zone			
+8		254	message_index	
+8		1	high_bpm	bpm
+8		2	name	
+53	speed_zone			
+53		254	message_index	
+53		0	high_value	m/s
+53		1	name	
+131	cadence_zone			
+131		254	message_index	
+131		0	high_value	rpm
+131		1	name	
+9	power_zone			
+9		254	message_index	
+9		1	high_value	watts
+9		2	name	
+10	met_zone			
+10		254	message_index	
+10		1	high_bpm	
+10		2	calories	kcal / min
+10		3	fat_calories	kcal / min
+13	training_settings			
+13		31	target_distance	m
+13		32	target_speed	m/s
+13		33	target_time	s
+13		153	precise_target_speed	m/s
+258	dive_settings			
+258		253	timestamp	
+258		254	message_index	
+258		0	name	
+258		1	model	
+258		2	gf_low	percent
+258		3	gf_high	percent
+258		4	water_type	
+258		5	water_density	kg/m^3
+258		6	po2_warn	percent
+258		7	po2_critical	percent
+258		8	po2_deco	percent
+258		9	safety_stop_enabled	
+258		10	bottom_depth	
+258		11	bottom_time	
+258		12	apnea_countdown_enabled	
+258		13	apnea_countdown_time	
+258		14	backlight_mode	
+258		15	backlight_brightness	
+258		16	backlight_timeout	
+258		17	repeat_dive_interval	s
+258		18	safety_stop_time	s
+258		19	heart_rate_source_type	
+258		20	heart_rate_source	
+258		21	travel_gas	
+258		22	ccr_low_setpoint_switch_mode	
+258		23	ccr_low_setpoint	percent
+258		24	ccr_low_setpoint_depth	m
+258		25	ccr_high_setpoint_switch_mode	
+258		26	ccr_high_setpoint	percent
+258		27	ccr_high_setpoint_depth	m
+258		29	gas_consumption_display	
+258		30	up_key_enabled	
+258		35	dive_sounds	
+258		36	last_stop_multiple	
+258		37	no_fly_time_mode	
+262	dive_alarm			
+262		254	message_index	
+262		0	depth	m
+262		1	time	s
+262		2	enabled	
+262		3	alarm_type	
+262		4	sound	
+262		5	dive_types	
+262		6	id	
+262		7	popup_enabled	
+262		8	trigger_on_descent	
+262		9	trigger_on_ascent	
+262		10	repeating	
+262		11	speed	mps
+393	dive_apnea_alarm			
+393		254	message_index	
+393		0	depth	m
+393		1	time	s
+393		2	enabled	
+393		3	alarm_type	
+393		4	sound	
+393		5	dive_types	
+393		6	id	
+393		7	popup_enabled	
+393		8	trigger_on_descent	
+393		9	trigger_on_ascent	
+393		10	repeating	
+393		11	speed	mps
+259	dive_gas			
+259		254	message_index	
+259		0	helium_content	percent
+259		1	oxygen_content	percent
+259		2	status	
+259		3	mode	
+15	goal			
+15		254	message_index	
+15		0	sport	
+15		1	sub_sport	
+15		2	start_date	
+15		3	end_date	
+15		4	type	
+15		5	value	
+15		6	repeat	
+15		7	target_value	
+15		8	recurrence	
+15		9	recurrence_value	
+15		10	enabled	
+15		11	source	
+34	activity			
+34		253	timestamp	
+34		0	total_timer_time	s
+34		1	num_sessions	
+34		2	type	
+34		3	event	
+34		4	event_type	
+34		5	local_timestamp	
+34		6	event_group	
+18	session			
+18		254	message_index	
+18		253	timestamp	s
+18		0	event	
+18		1	event_type	
+18		2	start_time	
+18		3	start_position_lat	semicircles
+18		4	start_position_long	semicircles
+18		5	sport	
+18		6	sub_sport	
+18		7	total_elapsed_time	s
+18		8	total_timer_time	s
+18		9	total_distance	m
+18		10	total_cycles	cycles
+18		11	total_calories	kcal
+18		13	total_fat_calories	kcal
+18		14	avg_speed	m/s
+18		15	max_speed	m/s
+18		16	avg_heart_rate	bpm
+18		17	max_heart_rate	bpm
+18		18	avg_cadence	rpm
+18		19	max_cadence	rpm
+18		20	avg_power	watts
+18		21	max_power	watts
+18		22	total_ascent	m
+18		23	total_descent	m
+18		24	total_training_effect	
+18		25	first_lap_index	
+18		26	num_laps	
+18		27	event_group	
+18		28	trigger	
+18		29	nec_lat	semicircles
+18		30	nec_long	semicircles
+18		31	swc_lat	semicircles
+18		32	swc_long	semicircles
+18		33	num_lengths	lengths
+18		34	normalized_power	watts
+18		35	training_stress_score	tss
+18		36	intensity_factor	if
+18		37	left_right_balance	
+18		38	end_position_lat	semicircles
+18		39	end_position_long	semicircles
+18		41	avg_stroke_count	strokes/lap
+18		42	avg_stroke_distance	m
+18		43	swim_stroke	swim_stroke
+18		44	pool_length	m
+18		45	threshold_power	watts
+18		46	pool_length_unit	
+18		47	num_active_lengths	lengths
+18		48	total_work	J
+18		49	avg_altitude	m
+18		50	max_altitude	m
+18		51	gps_accuracy	m
+18		52	avg_grade	%
+18		53	avg_pos_grade	%
+18		54	avg_neg_grade	%
+18		55	max_pos_grade	%
+18		56	max_neg_grade	%
+18		57	avg_temperature	C
+18		58	max_temperature	C
+18		59	total_moving_time	s
+18		60	avg_pos_vertical_speed	m/s
+18		61	avg_neg_vertical_speed	m/s
+18		62	max_pos_vertical_speed	m/s
+18		63	max_neg_vertical_speed	m/s
+18		64	min_heart_rate	bpm
+18		65	time_in_hr_zone	s
+18		66	time_in_speed_zone	s
+18		67	time_in_cadence_zone	s
+18		68	time_in_power_zone	s
+18		69	avg_lap_time	s
+18		70	best_lap_index	
+18		71	min_altitude	m
+18		78	active_time	s
+18		79	avg_strokes_per_length	strokes/length
+18		80	avg_swolf	
+18		82	player_score	
+18		83	opponent_score	
+18		84	opponent_name	
+18		85	stroke_count	counts
+18		86	zone_count	counts
+18		87	max_ball_speed	m/s
+18		88	avg_ball_speed	m/s
+18		89	avg_vertical_oscillation	mm
+18		90	avg_stance_time_percent	percent
+18		91	avg_stance_time	ms
+18		92	avg_fractional_cadence	rpm
+18		93	max_fractional_cadence	rpm
+18		94	total_fractional_cycles	cycles
+18		95	avg_total_hemoglobin_conc	g/dL
+18		96	min_total_hemoglobin_conc	g/dL
+18		97	max_total_hemoglobin_conc	g/dL
+18		98	avg_saturated_hemoglobin_percent	%
+18		99	min_saturated_hemoglobin_percent	%
+18		100	max_saturated_hemoglobin_percent	%
+18		101	avg_left_torque_effectiveness	percent
+18		102	avg_right_torque_effectiveness	percent
+18		103	avg_left_pedal_smoothness	percent
+18		104	avg_right_pedal_smoothness	percent
+18		105	avg_combined_pedal_smoothness	percent
+18		106	num_segment_laps	
+18		107	front_gear_shift_count	
+18		108	rear_gear_shift_count	
+18		110	sport_profile_name	
+18		111	sport_index	
+18		112	time_standing	s
+18		113	stand_count	
+18		114	avg_left_pco	mm
+18		115	avg_right_pco	mm
+18		116	avg_left_power_phase	degrees
+18		117	avg_left_power_phase_peak	degrees
+18		118	avg_right_power_phase	degrees
+18		119	avg_right_power_phase_peak	degrees
+18		120	avg_power_position	watts
+18		121	max_power_position	watts
+18		122	avg_cadence_position	rpm
+18		123	max_cadence_position	rpm
+18		124	enhanced_avg_speed	m/s
+18		125	enhanced_max_speed	m/s
+18		126	enhanced_avg_altitude	m
+18		127	enhanced_min_altitude	m
+18		128	enhanced_max_altitude	m
+18		129	avg_lev_motor_power	watts
+18		130	max_lev_motor_power	watts
+18		131	lev_battery_consumption	percent
+18		132	avg_vertical_ratio	percent
+18		133	avg_stance_time_balance	percent
+18		134	avg_step_length	mm
+18		137	total_anaerobic_training_effect	
+18		139	avg_vam	m/s
+18		140	avg_depth	m
+18		141	max_depth	m
+18		142	surface_interval	s
+18		143	start_cns	percent
+18		144	end_cns	percent
+18		145	start_n2	percent
+18		146	end_n2	percent
+18		147	avg_respiration_rate	
+18		148	max_respiration_rate	
+18		149	min_respiration_rate	
+18		150	min_temperature	C
+18		155	o2_toxicity	OTUs
+18		156	dive_number	
+18		168	training_load_peak	
+18		169	enhanced_avg_respiration_rate	Breaths/min
+18		170	enhanced_max_respiration_rate	Breaths/min
+18		180	enhanced_min_respiration_rate	
+18		181	total_grit	kGrit
+18		182	total_flow	Flow
+18		183	jump_count	
+18		186	avg_grit	kGrit
+18		187	avg_flow	Flow
+18		192	workout_feel	
+18		193	workout_rpe	
+18		194	avg_spo2	percent
+18		195	avg_stress	percent
+18		196	metabolic_calories	kcal
+18		197	sdrr_hrv	mS
+18		198	rmssd_hrv	mS
+18		199	total_fractional_ascent	m
+18		200	total_fractional_descent	m
+18		208	avg_core_temperature	C
+18		209	min_core_temperature	C
+18		210	max_core_temperature	C
+18		211	avg_grade_adjusted_speed	m/s
+19	lap			
+19		254	message_index	
+19		253	timestamp	s
+19		0	event	
+19		1	event_type	
+19		2	start_time	
+19		3	start_position_lat	semicircles
+19		4	start_position_long	semicircles
+19		5	end_position_lat	semicircles
+19		6	end_position_long	semicircles
+19		7	total_elapsed_time	s
+19		8	total_timer_time	s
+19		9	total_distance	m
+19		10	total_cycles	cycles
+19		11	total_calories	kcal
+19		12	total_fat_calories	kcal
+19		13	avg_speed	m/s
+19		14	max_speed	m/s
+19		15	avg_heart_rate	bpm
+19		16	max_heart_rate	bpm
+19		17	avg_cadence	rpm
+19		18	max_cadence	rpm
+19		19	avg_power	watts
+19		20	max_power	watts
+19		21	total_ascent	m
+19		22	total_descent	m
+19		23	intensity	
+19		24	lap_trigger	
+19		25	sport	
+19		26	event_group	
+19		27	nec_lat	semicircles
+19		28	nec_long	semicircles
+19		29	swc_lat	semicircles
+19		30	swc_long	semicircles
+19		32	num_lengths	lengths
+19		33	normalized_power	watts
+19		34	left_right_balance	
+19		35	first_length_index	
+19		37	avg_stroke_distance	m
+19		38	swim_stroke	
+19		39	sub_sport	
+19		40	num_active_lengths	lengths
+19		41	total_work	J
+19		42	avg_altitude	m
+19		43	max_altitude	m
+19		44	gps_accuracy	m
+19		45	avg_grade	%
+19		46	avg_pos_grade	%
+19		47	avg_neg_grade	%
+19		48	max_pos_grade	%
+19		49	max_neg_grade	%
+19		50	avg_temperature	C
+19		51	max_temperature	C
+19		52	total_moving_time	s
+19		53	avg_pos_vertical_speed	m/s
+19		54	avg_neg_vertical_speed	m/s
+19		55	max_pos_vertical_speed	m/s
+19		56	max_neg_vertical_speed	m/s
+19		57	time_in_hr_zone	s
+19		58	time_in_speed_zone	s
+19		59	time_in_cadence_zone	s
+19		60	time_in_power_zone	s
+19		61	repetition_num	
+19		62	min_altitude	m
+19		63	min_heart_rate	bpm
+19		70	active_time	s
+19		71	wkt_step_index	
+19		73	avg_swolf	
+19		74	opponent_score	
+19		75	stroke_count	counts
+19		76	zone_count	counts
+19		77	avg_vertical_oscillation	mm
+19		78	avg_stance_time_percent	percent
+19		79	avg_stance_time	ms
+19		80	avg_fractional_cadence	rpm
+19		81	max_fractional_cadence	rpm
+19		82	total_fractional_cycles	cycles
+19		83	player_score	
+19		84	avg_total_hemoglobin_conc	g/dL
+19		85	min_total_hemoglobin_conc	g/dL
+19		86	max_total_hemoglobin_conc	g/dL
+19		87	avg_saturated_hemoglobin_percent	%
+19		88	min_saturated_hemoglobin_percent	%
+19		89	max_saturated_hemoglobin_percent	%
+19		90	avg_strokes_per_length	strokes / length
+19		91	avg_left_torque_effectiveness	percent
+19		92	avg_right_torque_effectiveness	percent
+19		93	avg_left_pedal_smoothness	percent
+19		94	avg_right_pedal_smoothness	percent
+19		95	avg_combined_pedal_smoothness	percent
+19		96	front_gear_shift_count	
+19		97	rear_gear_shift_count	
+19		98	time_standing	s
+19		99	stand_count	
+19		100	avg_left_pco	mm
+19		101	avg_right_pco	mm
+19		102	avg_left_power_phase	degrees
+19		103	avg_left_power_phase_peak	degrees
+19		104	avg_right_power_phase	degrees
+19		105	avg_right_power_phase_peak	degrees
+19		106	avg_power_position	watts
+19		107	max_power_position	watts
+19		108	avg_cadence_position	rpm
+19		109	max_cadence_position	rpm
+19		110	enhanced_avg_speed	m/s
+19		111	enhanced_max_speed	m/s
+19		112	enhanced_avg_altitude	m
+19		113	enhanced_min_altitude	m
+19		114	enhanced_max_altitude	m
+19		115	avg_lev_motor_power	watts
+19		116	max_lev_motor_power	watts
+19		117	lev_battery_consumption	percent
+19		118	avg_vertical_ratio	percent
+19		119	avg_stance_time_balance	percent
+19		120	avg_step_length	mm
+19		121	avg_vam	m/s
+19		122	avg_depth	m
+19		123	max_depth	m
+19		124	min_temperature	C
+19		136	enhanced_avg_respiration_rate	Breaths/min
+19		137	enhanced_max_respiration_rate	Breaths/min
+19		147	avg_respiration_rate	
+19		148	max_respiration_rate	
+19		149	total_grit	kGrit
+19		150	total_flow	Flow
+19		151	jump_count	
+19		153	avg_grit	kGrit
+19		154	avg_flow	Flow
+19		155	metabolic_calories	kcal
+19		156	total_fractional_ascent	m
+19		157	total_fractional_descent	m
+19		158	avg_core_temperature	C
+19		159	min_core_temperature	C
+19		160	max_core_temperature	C
+19		161	avg_grade_adjusted_speed	m/s
+101	length			
+101		254	message_index	
+101		253	timestamp	
+101		0	event	
+101		1	event_type	
+101		2	start_time	
+101		3	total_elapsed_time	s
+101		4	total_timer_time	s
+101		5	total_strokes	strokes
+101		6	avg_speed	m/s
+101		7	swim_stroke	swim_stroke
+101		9	avg_swimming_cadence	strokes/min
+101		10	event_group	
+101		11	total_calories	kcal
+101		12	length_type	
+101		18	player_score	
+101		19	opponent_score	
+101		20	stroke_count	counts
+101		21	zone_count	counts
+101		22	enhanced_avg_respiration_rate	Breaths/min
+101		23	enhanced_max_respiration_rate	Breaths/min
+101		24	avg_respiration_rate	
+101		25	max_respiration_rate	
+101		26	metabolic_calories	kcal
+20	record			
+20		253	timestamp	s
+20		0	position_lat	semicircles
+20		1	position_long	semicircles
+20		2	altitude	m
+20		3	heart_rate	bpm
+20		4	cadence	rpm
+20		5	distance	m
+20		6	speed	m/s
+20		7	power	watts
+20		8	compressed_speed_distance	
+20		9	grade	%
+20		10	resistance	
+20		11	time_from_course	s
+20		12	cycle_length	m
+20		13	temperature	C
+20		17	speed1s	m/s
+20		18	cycles	cycles
+20		19	total_cycles	cycles
+20		28	compressed_accumulated_power	watts
+20		29	accumulated_power	watts
+20		30	left_right_balance	
+20		31	gps_accuracy	m
+20		32	vertical_speed	m/s
+20		33	calories	kcal
+20		39	vertical_oscillation	mm
+20		40	stance_time_percent	percent
+20		41	stance_time	ms
+20		42	activity_type	
+20		43	left_torque_effectiveness	percent
+20		44	right_torque_effectiveness	percent
+20		45	left_pedal_smoothness	percent
+20		46	right_pedal_smoothness	percent
+20		47	combined_pedal_smoothness	percent
+20		48	time128	s
+20		49	stroke_type	
+20		50	zone	
+20		51	ball_speed	m/s
+20		52	cadence256	rpm
+20		53	fractional_cadence	rpm
+20		54	total_hemoglobin_conc	g/dL
+20		55	total_hemoglobin_conc_min	g/dL
+20		56	total_hemoglobin_conc_max	g/dL
+20		57	saturated_hemoglobin_percent	%
+20		58	saturated_hemoglobin_percent_min	%
+20		59	saturated_hemoglobin_percent_max	%
+20		62	device_index	
+20		67	left_pco	mm
+20		68	right_pco	mm
+20		69	left_power_phase	degrees
+20		70	left_power_phase_peak	degrees
+20		71	right_power_phase	degrees
+20		72	right_power_phase_peak	degrees
+20		73	enhanced_speed	m/s
+20		78	enhanced_altitude	m
+20		81	battery_soc	percent
+20		82	motor_power	watts
+20		83	vertical_ratio	percent
+20		84	stance_time_balance	percent
+20		85	step_length	mm
+20		87	cycle_length16	m
+20		91	absolute_pressure	Pa
+20		92	depth	m
+20		93	next_stop_depth	m
+20		94	next_stop_time	s
+20		95	time_to_surface	s
+20		96	ndl_time	s
+20		97	cns_load	percent
+20		98	n2_load	percent
+20		99	respiration_rate	s
+20		108	enhanced_respiration_rate	Breaths/min
+20		114	grit	
+20		115	flow	
+20		116	current_stress	
+20		117	ebike_travel_range	km
+20		118	ebike_battery_level	percent
+20		119	ebike_assist_mode	depends on sensor
+20		120	ebike_assist_level_percent	percent
+20		123	air_time_remaining	s
+20		124	pressure_sac	bar/min
+20		125	volume_sac	L/min
+20		126	rmv	L/min
+20		127	ascent_rate	m/s
+20		129	po2	percent
+20		139	core_temperature	C
+21	event			
+21		253	timestamp	s
+21		0	event	
+21		1	event_type	
+21		2	data16	
+21		3	data	
+21		4	event_group	
+21		7	score	
+21		8	opponent_score	
+21		9	front_gear_num	
+21		10	front_gear	
+21		11	rear_gear_num	
+21		12	rear_gear	
+21		13	device_index	
+21		14	activity_type	
+21		15	start_timestamp	s
+21		21	radar_threat_level_max	
+21		22	radar_threat_count	
+21		23	radar_threat_avg_approach_speed	m/s
+21		24	radar_threat_max_approach_speed	m/s
+23	device_info			
+23		253	timestamp	s
+23		0	device_index	
+23		1	device_type	
+23		2	manufacturer	
+23		3	serial_number	
+23		4	product	
+23		5	software_version	
+23		6	hardware_version	
+23		7	cum_operating_time	s
+23		10	battery_voltage	V
+23		11	battery_status	
+23		18	sensor_position	
+23		19	descriptor	
+23		20	ant_transmission_type	
+23		21	ant_device_number	
+23		22	ant_network	
+23		25	source_type	
+23		27	product_name	
+23		32	battery_level	%
+375	device_aux_battery_info			
+375		253	timestamp	
+375		0	device_index	
+375		1	battery_voltage	V
+375		2	battery_status	
+375		3	battery_identifier	
+72	training_file			
+72		253	timestamp	
+72		0	type	
+72		1	manufacturer	
+72		2	product	
+72		3	serial_number	
+72		4	time_created	
+104	battery			
+104		253	timestamp	
+104		2	capacity	%
+128	weather_conditions			
+128		253	timestamp	
+128		0	weather_report	
+128		1	temperature	C
+128		2	condition	
+128		3	wind_direction	degrees
+128		4	wind_speed	m/s
+128		5	precipitation_probability	
+128		6	temperature_feels_like	C
+128		7	relative_humidity	
+128		8	location	
+128		9	observed_at_time	
+128		10	observed_location_lat	semicircles
+128		11	observed_location_long	semicircles
+128		12	day_of_week	
+128		13	high_temperature	C
+128		14	low_temperature	C
+129	weather_alert			
+129		253	timestamp	
+129		0	report_id	
+129		1	issue_time	
+129		2	expire_time	
+129		3	severity	
+129		4	type	
+160	gps_metadata			
+160		253	timestamp	s
+160		0	timestamp_ms	ms
+160		1	position_lat	semicircles
+160		2	position_long	semicircles
+160		3	enhanced_altitude	m
+160		4	enhanced_speed	m/s
+160		5	heading	degrees
+160		6	utc_timestamp	s
+160		7	velocity	m/s
+161	camera_event			
+161		253	timestamp	s
+161		0	timestamp_ms	ms
+161		1	camera_event_type	
+161		2	camera_file_uuid	
+161		3	camera_orientation	
+164	gyroscope_data			
+164		253	timestamp	s
+164		0	timestamp_ms	ms
+164		1	sample_time_offset	ms
+164		2	gyro_x	counts
+164		3	gyro_y	counts
+164		4	gyro_z	counts
+164		5	calibrated_gyro_x	deg/s
+164		6	calibrated_gyro_y	deg/s
+164		7	calibrated_gyro_z	deg/s
+165	accelerometer_data			
+165		253	timestamp	s
+165		0	timestamp_ms	ms
+165		1	sample_time_offset	ms
+165		2	accel_x	counts
+165		3	accel_y	counts
+165		4	accel_z	counts
+165		5	calibrated_accel_x	g
+165		6	calibrated_accel_y	g
+165		7	calibrated_accel_z	g
+165		8	compressed_calibrated_accel_x	mG
+165		9	compressed_calibrated_accel_y	mG
+165		10	compressed_calibrated_accel_z	mG
+208	magnetometer_data			
+208		253	timestamp	s
+208		0	timestamp_ms	ms
+208		1	sample_time_offset	ms
+208		2	mag_x	counts
+208		3	mag_y	counts
+208		4	mag_z	counts
+208		5	calibrated_mag_x	G
+208		6	calibrated_mag_y	G
+208		7	calibrated_mag_z	G
+209	barometer_data			
+209		253	timestamp	s
+209		0	timestamp_ms	ms
+209		1	sample_time_offset	ms
+209		2	baro_pres	Pa
+209		3	enhanced_altitude	m
+167	three_d_sensor_calibration			
+167		253	timestamp	s
+167		0	sensor_type	
+167		1	calibration_factor	
+167		2	calibration_divisor	counts
+167		3	level_shift	
+167		4	offset_cal	
+167		5	orientation_matrix	
+210	one_d_sensor_calibration			
+210		253	timestamp	s
+210		0	sensor_type	
+210		1	calibration_factor	
+210		2	calibration_divisor	counts
+210		3	level_shift	
+210		4	offset_cal	
+169	video_frame			
+169		253	timestamp	s
+169		0	timestamp_ms	ms
+169		1	frame_number	
+174	obdii_data			
+174		253	timestamp	s
+174		0	timestamp_ms	ms
+174		1	time_offset	ms
+174		2	pid	
+174		3	raw_data	
+174		4	pid_data_size	
+174		5	system_time	
+174		6	start_timestamp	
+174		7	start_timestamp_ms	ms
+177	nmea_sentence			
+177		253	timestamp	s
+177		0	timestamp_ms	ms
+177		1	sentence	
+178	aviation_attitude			
+178		253	timestamp	s
+178		0	timestamp_ms	ms
+178		1	system_time	ms
+178		2	pitch	radians
+178		3	roll	radians
+178		4	accel_lateral	m/s^2
+178		5	accel_normal	m/s^2
+178		6	turn_rate	radians/second
+178		7	stage	
+178		8	attitude_stage_complete	%
+178		9	track	radians
+178		10	validity	
+184	video			
+184		0	url	
+184		1	hosting_provider	
+184		2	duration	ms
+185	video_title			
+185		254	message_index	
+185		0	message_count	
+185		1	text	
+186	video_description			
+186		254	message_index	
+186		0	message_count	
+186		1	text	
+187	video_clip			
+187		0	clip_number	
+187		1	start_timestamp	
+187		2	start_timestamp_ms	
+187		3	end_timestamp	
+187		4	end_timestamp_ms	
+187		6	clip_start	ms
+187		7	clip_end	ms
+225	set			
+225		254	timestamp	
+225		0	duration	s
+225		3	repetitions	
+225		4	weight	kg
+225		5	set_type	
+225		6	start_time	
+225		7	category	
+225		8	category_subtype	
+225		9	weight_display_unit	
+225		10	message_index	
+225		11	wkt_step_index	
+285	jump			
+285		253	timestamp	s
+285		0	distance	m
+285		1	height	m
+285		2	rotations	
+285		3	hang_time	s
+285		4	score	
+285		5	position_lat	semicircles
+285		6	position_long	semicircles
+285		7	speed	m/s
+285		8	enhanced_speed	m/s
+312	split			
+312		254	message_index	
+312		253	timestamp	s
+312		0	split_type	
+312		1	total_elapsed_time	s
+312		2	total_timer_time	s
+312		3	total_distance	m
+312		4	avg_speed	m/s
+312		9	start_time	
+312		11	sport	
+312		12	sub_sport	
+312		13	total_ascent	m
+312		14	total_descent	m
+312		15	avg_heart_rate	bpm
+312		16	max_heart_rate	bpm
+312		17	nec_lat	semicircles
+312		18	nec_long	semicircles
+312		19	swc_lat	semicircles
+312		20	swc_long	semicircles
+312		21	start_position_lat	semicircles
+312		22	start_position_long	semicircles
+312		23	end_position_lat	semicircles
+312		24	end_position_long	semicircles
+312		25	max_speed	m/s
+312		26	avg_vert_speed	m/s
+312		27	end_time	
+312		28	total_calories	kcal
+312		29	avg_cadence	rpm
+312		30	max_cadence	rpm
+312		31	total_cycles	cycles
+312		32	avg_temperature	C
+312		33	max_temperature	C
+312		34	min_temperature	C
+312		35	avg_vertical_oscillation	mm
+312		36	avg_vertical_ratio	percent
+312		37	avg_stance_time	ms
+312		38	avg_stance_time_balance	percent
+312		39	avg_step_length	mm
+312		40	avg_power	watts
+312		41	max_power	watts
+312		42	normalized_power	watts
+312		43	left_right_balance	
+312		44	time_standing	s
+312		45	avg_left_pco	mm
+312		46	avg_right_pco	mm
+312		47	avg_left_power_phase	degrees
+312		48	avg_left_power_phase_peak	degrees
+312		49	avg_right_power_phase	degrees
+312		50	avg_right_power_phase_peak	degrees
+312		51	avg_power_position	watts
+312		52	max_power_position	watts
+312		53	avg_left_torque_effectiveness	percent
+312		54	avg_right_torque_effectiveness	percent
+312		55	avg_left_pedal_smoothness	percent
+312		56	avg_right_pedal_smoothness	percent
+312		57	avg_combined_pedal_smoothness	percent
+312		58	avg_flow	Flow
+312		59	total_grit	kGrit
+312		62	swim_stroke	
+312		63	num_active_lengths	lengths
+312		64	avg_swolf	
+312		65	avg_stroke_distance	m
+312		66	avg_strokes_per_length	strokes / length
+312		67	first_lap_index	
+312		68	num_laps	
+312		69	climb_grading_scale	
+312		70	climb_grade_value	
+312		71	status	
+312		72	num_falls	
+312		73	climb_send	
+312		74	start_elevation	m
+312		78	active_time	s
+312		79	metabolic_calories	kcal
+312		80	total_fractional_ascent	m
+312		81	total_fractional_descent	m
+312		88	avg_grade	%
+312		89	max_grade	%
+312		90	min_cadence	rpm
+312		93	avg_grade_adjusted_speed	m/s
+312		94	avg_stress	
+312		99	avg_vam	m/s
+312		104	jump_count	
+312		110	total_moving_time	s
+312		112	dive_section_type	
+312		113	avg_ascent_rate	m/s
+312		114	max_ascent_rate	m/s
+312		115	avg_descent_rate	m/s
+312		116	max_descent_rate	m/s
+312		117	total_ascent_time	s
+312		118	total_descent_time	s
+312		119	total_hang_time	s
+312		120	apnea_discipline	
+312		121	avg_depth	m
+312		122	max_depth	m
+312		124	min_heart_rate	bpm
+312		127	surface_interval	s
+312		142	total_fractional_cycles	cycles
+312		144	avg_stance_time_percent	percent
+312		168	total_anaerobic_training_effect	
+312		169	front_gear_shift_count	
+312		170	rear_gear_shift_count	
+313	split_summary			
+313		254	message_index	
+313		253	timestamp	s
+313		0	split_type	
+313		1	sport	
+313		2	sub_sport	
+313		3	num_splits	
+313		4	total_timer_time	s
+313		5	total_distance	m
+313		6	avg_speed	m/s
+313		7	max_speed	m/s
+313		8	total_ascent	m
+313		9	total_descent	m
+313		10	avg_heart_rate	bpm
+313		11	max_heart_rate	bpm
+313		12	avg_vert_speed	m/s
+313		13	total_calories	kcal
+313		14	avg_cadence	rpm
+313		15	max_cadence	rpm
+313		16	total_cycles	cycles
+313		17	avg_temperature	C
+313		18	max_temperature	C
+313		19	min_temperature	C
+313		20	avg_vertical_oscillation	mm
+313		21	avg_vertical_ratio	percent
+313		22	avg_stance_time	ms
+313		23	avg_stance_time_balance	percent
+313		24	avg_step_length	mm
+313		25	avg_power	watts
+313		26	max_power	watts
+313		27	normalized_power	watts
+313		28	left_right_balance	
+313		29	time_standing	s
+313		30	avg_left_pco	mm
+313		31	avg_right_pco	mm
+313		32	avg_left_power_phase	degrees
+313		33	avg_left_power_phase_peak	degrees
+313		34	avg_right_power_phase	degrees
+313		35	avg_right_power_phase_peak	degrees
+313		36	avg_power_position	watts
+313		37	max_power_position	watts
+313		38	avg_left_torque_effectiveness	percent
+313		39	avg_right_torque_effectiveness	percent
+313		40	avg_left_pedal_smoothness	percent
+313		41	avg_right_pedal_smoothness	percent
+313		42	avg_combined_pedal_smoothness	percent
+313		43	avg_flow	Flow
+313		44	total_grit	kGrit
+313		47	swim_stroke	
+313		48	num_active_lengths	lengths
+313		49	avg_swolf	
+313		50	avg_stroke_distance	m
+313		51	avg_strokes_per_length	strokes / length
+313		52	avg_ascent	m
+313		53	max_ascent	m
+313		54	climb_grading_scale	
+313		55	climb_max_grade_value	
+313		56	num_falls	
+313		58	num_climbs_attempted	
+313		59	num_climbs_completed	
+313		60	max_distance	m
+313		64	metabolic_calories	kcal
+313		65	active_time	s
+313		66	total_fractional_ascent	m
+313		67	total_fractional_descent	m
+313		68	avg_fractional_ascent	m
+313		69	max_fractional_ascent	m
+313		71	avg_grade_adjusted_speed	m/s
+313		72	avg_stress	
+313		77	total_moving_time	s
+313		79	start_time	
+313		87	min_heart_rate	bpm
+313		91	avg_stance_time_percent	percent
+313		101	max_total_timer_time	s
+317	climb_pro			
+317		253	timestamp	s
+317		0	position_lat	semicircles
+317		1	position_long	semicircles
+317		2	climb_pro_event	
+317		3	climb_number	
+317		4	climb_category	
+317		5	current_dist	m
+206	field_description			
+206		0	developer_data_index	
+206		1	field_definition_number	
+206		2	fit_base_type_id	
+206		3	field_name	
+206		4	array	
+206		5	components	
+206		6	scale	
+206		7	offset	
+206		8	units	
+206		9	bits	
+206		10	accumulate	
+206		13	fit_base_unit_id	
+206		14	native_mesg_num	
+206		15	native_field_num	
+207	developer_data_id			
+207		0	developer_id	
+207		1	application_id	
+207		2	manufacturer_id	
+207		3	developer_data_index	
+207		4	application_version	
+31	course			
+31		4	sport	
+31		5	name	
+31		6	capabilities	
+31		7	sub_sport	
+32	course_point			
+32		254	message_index	
+32		1	timestamp	
+32		2	position_lat	semicircles
+32		3	position_long	semicircles
+32		4	distance	m
+32		5	type	
+32		6	name	
+32		8	favorite	
+148	segment_id			
+148		0	name	
+148		1	uuid	
+148		2	sport	
+148		3	enabled	
+148		4	user_profile_primary_key	
+148		5	device_id	
+148		6	default_race_leader	
+148		7	delete_status	
+148		8	selection_type	
+149	segment_leaderboard_entry			
+149		254	message_index	
+149		0	name	
+149		1	type	
+149		2	group_primary_key	
+149		3	activity_id	
+149		4	segment_time	s
+149		5	activity_id_string	
+150	segment_point			
+150		254	message_index	
+150		1	position_lat	semicircles
+150		2	position_long	semicircles
+150		3	distance	m
+150		4	altitude	m
+150		5	leader_time	s
+150		6	enhanced_altitude	m
+142	segment_lap			
+142		254	message_index	
+142		253	timestamp	s
+142		0	event	
+142		1	event_type	
+142		2	start_time	
+142		3	start_position_lat	semicircles
+142		4	start_position_long	semicircles
+142		5	end_position_lat	semicircles
+142		6	end_position_long	semicircles
+142		7	total_elapsed_time	s
+142		8	total_timer_time	s
+142		9	total_distance	m
+142		10	total_cycles	cycles
+142		11	total_calories	kcal
+142		12	total_fat_calories	kcal
+142		13	avg_speed	m/s
+142		14	max_speed	m/s
+142		15	avg_heart_rate	bpm
+142		16	max_heart_rate	bpm
+142		17	avg_cadence	rpm
+142		18	max_cadence	rpm
+142		19	avg_power	watts
+142		20	max_power	watts
+142		21	total_ascent	m
+142		22	total_descent	m
+142		23	sport	
+142		24	event_group	
+142		25	nec_lat	semicircles
+142		26	nec_long	semicircles
+142		27	swc_lat	semicircles
+142		28	swc_long	semicircles
+142		29	name	
+142		30	normalized_power	watts
+142		31	left_right_balance	
+142		32	sub_sport	
+142		33	total_work	J
+142		34	avg_altitude	m
+142		35	max_altitude	m
+142		36	gps_accuracy	m
+142		37	avg_grade	%
+142		38	avg_pos_grade	%
+142		39	avg_neg_grade	%
+142		40	max_pos_grade	%
+142		41	max_neg_grade	%
+142		42	avg_temperature	C
+142		43	max_temperature	C
+142		44	total_moving_time	s
+142		45	avg_pos_vertical_speed	m/s
+142		46	avg_neg_vertical_speed	m/s
+142		47	max_pos_vertical_speed	m/s
+142		48	max_neg_vertical_speed	m/s
+142		49	time_in_hr_zone	s
+142		50	time_in_speed_zone	s
+142		51	time_in_cadence_zone	s
+142		52	time_in_power_zone	s
+142		53	repetition_num	
+142		54	min_altitude	m
+142		55	min_heart_rate	bpm
+142		56	active_time	s
+142		57	wkt_step_index	
+142		58	sport_event	
+142		59	avg_left_torque_effectiveness	percent
+142		60	avg_right_torque_effectiveness	percent
+142		61	avg_left_pedal_smoothness	percent
+142		62	avg_right_pedal_smoothness	percent
+142		63	avg_combined_pedal_smoothness	percent
+142		64	status	
+142		65	uuid	
+142		66	avg_fractional_cadence	rpm
+142		67	max_fractional_cadence	rpm
+142		68	total_fractional_cycles	cycles
+142		69	front_gear_shift_count	
+142		70	rear_gear_shift_count	
+142		71	time_standing	s
+142		72	stand_count	
+142		73	avg_left_pco	mm
+142		74	avg_right_pco	mm
+142		75	avg_left_power_phase	degrees
+142		76	avg_left_power_phase_peak	degrees
+142		77	avg_right_power_phase	degrees
+142		78	avg_right_power_phase_peak	degrees
+142		79	avg_power_position	watts
+142		80	max_power_position	watts
+142		81	avg_cadence_position	rpm
+142		82	max_cadence_position	rpm
+142		83	manufacturer	
+142		84	total_grit	kGrit
+142		85	total_flow	Flow
+142		86	avg_grit	kGrit
+142		87	avg_flow	Flow
+142		88	metabolic_calories	kcal
+142		89	total_fractional_ascent	m
+142		90	total_fractional_descent	m
+142		91	enhanced_avg_altitude	m
+142		92	enhanced_max_altitude	m
+142		93	enhanced_min_altitude	m
+151	segment_file			
+151		254	message_index	
+151		1	file_uuid	
+151		3	enabled	
+151		4	user_profile_primary_key	
+151		7	leader_type	
+151		8	leader_group_primary_key	
+151		9	leader_activity_id	
+151		10	leader_activity_id_string	
+151		11	default_race_leader	
+26	workout			
+26		254	message_index	
+26		4	sport	
+26		5	capabilities	
+26		6	num_valid_steps	
+26		8	wkt_name	
+26		11	sub_sport	
+26		14	pool_length	m
+26		15	pool_length_unit	
+26		17	wkt_description	
+158	workout_session			
+158		254	message_index	
+158		0	sport	
+158		1	sub_sport	
+158		2	num_valid_steps	
+158		3	first_step_index	
+158		4	pool_length	m
+158		5	pool_length_unit	
+27	workout_step			
+27		254	message_index	
+27		0	wkt_step_name	
+27		1	duration_type	
+27		2	duration_value	
+27		3	target_type	
+27		4	target_value	
+27		5	custom_target_value_low	
+27		6	custom_target_value_high	
+27		7	intensity	
+27		8	notes	
+27		9	equipment	
+27		10	exercise_category	
+27		11	exercise_name	
+27		12	exercise_weight	kg
+27		13	weight_display_unit	
+27		19	secondary_target_type	
+27		20	secondary_target_value	
+27		21	secondary_custom_target_value_low	
+27		22	secondary_custom_target_value_high	
+264	exercise_title			
+264		254	message_index	
+264		0	exercise_category	
+264		1	exercise_name	
+264		2	wkt_step_name	
+28	schedule			
+28		0	manufacturer	
+28		1	product	
+28		2	serial_number	
+28		3	time_created	
+28		4	completed	
+28		5	type	
+28		6	scheduled_time	
+33	totals			
+33		254	message_index	
+33		253	timestamp	s
+33		0	timer_time	s
+33		1	distance	m
+33		2	calories	kcal
+33		3	sport	
+33		4	elapsed_time	s
+33		5	sessions	
+33		6	active_time	s
+33		9	sport_index	
+30	weight_scale			
+30		253	timestamp	s
+30		0	weight	kg
+30		1	percent_fat	%
+30		2	percent_hydration	%
+30		3	visceral_fat_mass	kg
+30		4	bone_mass	kg
+30		5	muscle_mass	kg
+30		7	basal_met	kcal/day
+30		8	physique_rating	
+30		9	active_met	kcal/day
+30		10	metabolic_age	years
+30		11	visceral_fat_rating	
+30		12	user_profile_index	
+30		13	bmi	kg/m^2
+51	blood_pressure			
+51		253	timestamp	s
+51		0	systolic_pressure	mmHg
+51		1	diastolic_pressure	mmHg
+51		2	mean_arterial_pressure	mmHg
+51		3	map3_sample_mean	mmHg
+51		4	map_morning_values	mmHg
+51		5	map_evening_values	mmHg
+51		6	heart_rate	bpm
+51		7	heart_rate_type	
+51		8	status	
+51		9	user_profile_index	
+103	monitoring_info			
+103		253	timestamp	s
+103		0	local_timestamp	s
+103		1	activity_type	
+103		3	cycles_to_distance	m/cycle
+103		4	cycles_to_calories	kcal/cycle
+103		5	resting_metabolic_rate	kcal / day
+55	monitoring			
+55		253	timestamp	s
+55		0	device_index	
+55		1	calories	kcal
+55		2	distance	m
+55		3	cycles	cycles
+55		4	active_time	s
+55		5	activity_type	
+55		6	activity_subtype	
+55		7	activity_level	
+55		8	distance16	100 * m
+55		9	cycles16	2 * cycles (steps)
+55		10	active_time16	s
+55		11	local_timestamp	
+55		12	temperature	C
+55		14	temperature_min	C
+55		15	temperature_max	C
+55		16	activity_time	minutes
+55		19	active_calories	kcal
+55		24	current_activity_type_intensity	
+55		25	timestamp_min8	min
+55		26	timestamp16	s
+55		27	heart_rate	bpm
+55		28	intensity	
+55		29	duration_min	min
+55		30	duration	s
+55		31	ascent	m
+55		32	descent	m
+55		33	moderate_activity_minutes	minutes
+55		34	vigorous_activity_minutes	minutes
+55		41	pushes	
+211	monitoring_hr_data			
+211		253	timestamp	s
+211		0	resting_heart_rate	bpm
+211		1	current_day_resting_heart_rate	bpm
+269	spo2_data			
+269		253	timestamp	s
+269		0	reading_spo2	percent
+269		1	reading_confidence	
+269		2	mode	
+132	hr			
+132		253	timestamp	
+132		0	fractional_timestamp	s
+132		1	time256	s
+132		6	filtered_bpm	bpm
+132		9	event_timestamp	s
+132		10	event_timestamp12	
+227	stress_level			
+227		0	stress_level_value	
+227		1	stress_level_time	s
+229	max_met_data			
+229		0	update_time	
+229		2	vo2_max	mL/kg/min
+229		5	sport	
+229		6	sub_sport	
+229		8	max_met_category	
+229		9	calibrated_data	
+229		12	hr_source	
+229		13	speed_source	
+314	hsa_body_battery_data			
+314		253	timestamp	s
+314		0	processing_interval	s
+314		1	level	percent
+314		2	charged	
+314		3	uncharged	
+315	hsa_event			
+315		253	timestamp	s
+315		0	event_id	
+302	hsa_accelerometer_data			
+302		253	timestamp	s
+302		0	timestamp_ms	ms
+302		1	sampling_interval	ms
+302		2	accel_x	mG
+302		3	accel_y	mG
+302		4	accel_z	mG
+302		5	timestamp32k	
+376	hsa_gyroscope_data			
+376		253	timestamp	s
+376		0	timestamp_ms	ms
+376		1	sampling_interval	1/32768 s
+376		2	gyro_x	deg/s
+376		3	gyro_y	deg/s
+376		4	gyro_z	deg/s
+376		5	timestamp32k	1/32768 s
+304	hsa_step_data			
+304		253	timestamp	s
+304		0	processing_interval	s
+304		1	steps	steps
+305	hsa_spo2_data			
+305		253	timestamp	s
+305		0	processing_interval	s
+305		1	reading_spo2	percent
+305		2	confidence	
+306	hsa_stress_data			
+306		253	timestamp	
+306		0	processing_interval	s
+306		1	stress_level	s
+307	hsa_respiration_data			
+307		253	timestamp	s
+307		0	processing_interval	s
+307		1	respiration_rate	breaths/min
+308	hsa_heart_rate_data			
+308		253	timestamp	s
+308		0	processing_interval	s
+308		1	status	
+308		2	heart_rate	bpm
+389	hsa_configuration_data			
+389		253	timestamp	s
+389		0	data	
+389		1	data_size	
+409	hsa_wrist_temperature_data			
+409		253	timestamp	s
+409		0	processing_interval	s
+409		1	value	C
+145	memo_glob			
+145		250	part_index	
+145		0	memo	
+145		1	mesg_num	
+145		2	parent_index	
+145		3	field_num	
+145		4	data	
+275	sleep_level			
+275		253	timestamp	s
+275		0	sleep_level	
+82	ant_channel_id			
+82		0	channel_number	
+82		1	device_type	
+82		2	device_number	
+82		3	transmission_type	
+82		4	device_index	
+80	ant_rx			
+80		253	timestamp	s
+80		0	fractional_timestamp	s
+80		1	mesg_id	
+80		2	mesg_data	
+80		3	channel_number	
+80		4	data	
+81	ant_tx			
+81		253	timestamp	s
+81		0	fractional_timestamp	s
+81		1	mesg_id	
+81		2	mesg_data	
+81		3	channel_number	
+81		4	data	
+200	exd_screen_configuration			
+200		0	screen_index	
+200		1	field_count	
+200		2	layout	
+200		3	screen_enabled	
+201	exd_data_field_configuration			
+201		0	screen_index	
+201		1	concept_field	
+201		2	field_id	
+201		3	concept_count	
+201		4	display_type	
+201		5	title	
+202	exd_data_concept_configuration			
+202		0	screen_index	
+202		1	concept_field	
+202		2	field_id	
+202		3	concept_index	
+202		4	data_page	
+202		5	concept_key	
+202		6	scaling	
+202		8	data_units	
+202		9	qualifier	
+202		10	descriptor	
+202		11	is_signed	
+268	dive_summary			
+268		253	timestamp	s
+268		0	reference_mesg	
+268		1	reference_index	
+268		2	avg_depth	m
+268		3	max_depth	m
+268		4	surface_interval	s
+268		5	start_cns	percent
+268		6	end_cns	percent
+268		7	start_n2	percent
+268		8	end_n2	percent
+268		9	o2_toxicity	OTUs
+268		10	dive_number	
+268		11	bottom_time	s
+268		12	avg_pressure_sac	bar/min
+268		13	avg_volume_sac	L/min
+268		14	avg_rmv	L/min
+268		15	descent_time	s
+268		16	ascent_time	s
+268		17	avg_ascent_rate	m/s
+268		22	avg_descent_rate	m/s
+268		23	max_ascent_rate	m/s
+268		24	max_descent_rate	m/s
+268		25	hang_time	s
+289	aad_accel_features			
+289		253	timestamp	
+289		0	time	s
+289		1	energy_total	
+289		2	zero_cross_cnt	
+289		3	instance	
+289		4	time_above_threshold	s
+78	hrv			
+78		0	time	s
+290	beat_intervals			
+290		253	timestamp	
+290		0	timestamp_ms	ms
+290		1	time	ms
+370	hrv_status_summary			
+370		253	timestamp	
+370		0	weekly_average	ms
+370		1	last_night_average	ms
+370		2	last_night5_min_high	ms
+370		3	baseline_low_upper	ms
+370		4	baseline_balanced_lower	ms
+370		5	baseline_balanced_upper	ms
+370		6	status	
+371	hrv_value			
+371		253	timestamp	
+371		0	value	ms
+372	raw_bbi			
+372		253	timestamp	
+372		0	timestamp_ms	ms
+372		1	data	
+372		2	time	ms
+372		3	quality	
+372		4	gap	
+297	respiration_rate			
+297		253	timestamp	
+297		0	respiration_rate	breaths/min
+387	chrono_shot_session			
+387		253	timestamp	
+387		0	min_speed	m/s
+387		1	max_speed	m/s
+387		2	avg_speed	m/s
+387		3	shot_count	
+387		4	projectile_type	
+387		5	grain_weight	gr
+387		6	standard_deviation	m/s
+388	chrono_shot_data			
+388		253	timestamp	
+388		0	shot_speed	m/s
+388		1	shot_num	
+319	tank_update			
+319		253	timestamp	s
+319		0	sensor	
+319		1	pressure	bar
+323	tank_summary			
+323		253	timestamp	s
+323		0	sensor	
+323		1	start_pressure	bar
+323		2	end_pressure	bar
+323		3	volume_used	L
+346	sleep_assessment			
+346		0	combined_awake_score	
+346		1	awake_time_score	
+346		2	awakenings_count_score	
+346		3	deep_sleep_score	
+346		4	sleep_duration_score	
+346		5	light_sleep_score	
+346		6	overall_sleep_score	
+346		7	sleep_quality_score	
+346		8	sleep_recovery_score	
+346		9	rem_sleep_score	
+346		10	sleep_restlessness_score	
+346		11	awakenings_count	
+346		14	interruptions_score	
+346		15	average_stress_during_sleep	
+470	sleep_disruption_severity_period			
+470		254	message_index	
+470		253	timestamp	
+470		0	severity	
+471	sleep_disruption_overnight_severity			
+471		253	timestamp	
+471		0	severity	
+412	nap_event			
+412		254	message_index	
+412		253	timestamp	
+412		0	start_time	seconds
+412		1	start_timezone_offset	minutes
+412		2	end_time	seconds
+412		3	end_timezone_offset	minutes
+412		4	feedback	
+412		5	is_deleted	
+412		6	source	
+412		7	update_timestamp	
+364	tsb_sonar_message_event			
+364		0	sonar_packet_id	
+364		21	diver_location_accuracy	degrees
+364		22	message_type	
+364		23	message_source	
+365	tsb_settings			
+365		0	tx_enable	
+365		1	proportional_gain	dB
+365		2	integral_gain	dB
+365		3	fixed_gain	dB
+365		4	rssi_setpoint	
+365		5	plt_thresh_mult	
+365		6	plt_thresh	
+365		7	transducer_spacing	m
+365		8	calib_accel	
+365		9	calib_gyro	
+365		10	calib_mag	
+365		11	calib_mag_soft_x	
+365		12	calib_mag_soft_y	
+365		13	calib_mag_soft_z	
+365		14	max_tx_duty_cycle	
+365		15	tx_chan	
+365		16	search_gain	dB
+366	tsb_diver_config			
+366		0	ant_id	
+366		1	diver_name	
+366		2	t1_tankpod_sw_ver	
+366		3	location_enabled	
+366		4	messaging_enabled	
+366		5	t1_owner_ant_id	
+398	skin_temp_overnight			
+398		253	timestamp	
+398		0	local_timestamp	
+398		1	average_deviation	
+398		2	average7_day_deviation	
+398		4	nightly_value	
+105	pad			
