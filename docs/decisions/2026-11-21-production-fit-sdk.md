@@ -1,8 +1,8 @@
-# 正式版 FIT 處理函式庫選型
+# 正式 CLI 採用 Rust、RustyFIT 與 macOS
 
 ## 狀態
 
-proposed。2026-11-21 使用者提出 C# 與 Rust 兩個候選，並指定以 FIT 處理能力及相容性為優先。當時建議優先考慮 C#。2026-11-22 使用者補充語言偏好為 Rust > C# > JavaScript > Python，最終選型留待開發規格階段。
+accepted。2026-11-23 使用者在上一輪 RustyFIT 讀寫比較後，明確指定開發語言為 Rust、套件為「rustfit」、平台為 macOS。依該輪實測對象，套件在 Cargo 中記為 `rustyfit`，上游專案名為 RustyFIT。[上游專案](https://github.com/muktihari/rustyfit) · [選型比較與實測](../research/2026-11-23-rust-fit-cli.md)
 
 ## 背景
 
@@ -10,20 +10,20 @@ proposed。2026-11-21 使用者提出 C# 與 Rust 兩個候選，並指定以 FI
 
 ## 決策
 
-建議優先評估 Garmin 官方 C# FIT SDK。它提供 activity 編碼及 FIT 2.0 developer fields 的實作範例，能以同一套工具處理輸入與輸出。是否能保存這兩份裝置檔的未知欄位，仍須以實測確認。[官方 C# SDK](https://github.com/garmin/fit-csharp-sdk) · [Developer Data 範例](https://developer.garmin.com/fit/cookbook/developer-data/)
-
-2026-11-22 補充建議：以官方 C# SDK 作相容性對照，優先驗證第三方純 Rust 的 `fit-sdk-rust`。Garmin 官方提供能讀寫 FIT 的 C#、JavaScript 與 C 等 SDK；Python 官方版僅支援解碼，官方語言清單沒有 Rust。Rust 可透過 FFI 呼叫官方 C SDK，需自行維護綁定及驗證實際可保存的欄位。純 Rust 方案若能通過三趟共六份原始 FIT 及一份含 Apple developer fields 的修復檔驗證，便符合語言偏好；否則優先考慮 C#。目前專案的 C# 檢查器是獨立實作。[Garmin 官方語言與能力表](https://developer.garmin.com/fit/get-the-sdk) · [Rust crate 文件](https://docs.rs/fit-sdk-rust/latest/fit/)
+正式 CLI 以 Rust 開發，在 macOS 執行。FIT 的解碼與寫出採用社群維護的 `rustyfit`。已驗證的開發基準為 `rustyfit 0.11.2` 搭配 Rust 1.93.1。該版在合成檔上能寫回未知欄位、單獨替換一筆標準心率，並新增與既有欄位同號、索引不同的 developer field。[讀寫實測與限制](../research/2026-11-23-rust-fit-cli.md)
 
 ## 影響
 
-選型影響正式版的解碼器、FIT 寫出器與相容性測試。第一里程碑使用 Python 檢視真實樣本，其原始匯出可供後續比對。
+正式版可用歷史里程碑的 Python、C# 獨立檢查器逐欄核對輸出。採用 RustyFIT 後，Bryton 和 Garmin 真實檔案的寫回保真、Strava 的匯入結果仍待實測。
 
 ## 替代方案
 
-Rust 的 `fitparser` 支援解碼；若採用 Rust，可評估提供解碼與編碼的 `fit-sdk-rust`，以同一批資料比較未知訊息、陣列、無效值與 developer fields 的保存結果。[fitparser](https://docs.rs/fitparser/latest/fitparser/) · [fit-sdk-rust](https://docs.rs/fit-sdk-rust/latest/fit/)
+- 2026-11-21 初案優先評估 Garmin 官方 C# SDK，因為它同時支援 activity 編碼和 developer fields。官方 C# SDK 可供相容性對照，與 1-1 里程碑的獨立檢查器各自實作。[官方 C# SDK](https://github.com/garmin/fit-csharp-sdk) · [Developer Data 範例](https://developer.garmin.com/fit/cookbook/developer-data/)
+- 2026-11-22 使用者提出 Rust > C# > JavaScript > Python 的偏好，當時優先評估 `fit-sdk-rust`。11 月 23 日實測該套件 0.2.1 的 typed encoder 會漏寫欄位 240，遂提出並採用 RustyFIT。其他考慮過的途徑包括僅支援解碼的 `fitparser` 及透過 FFI 整合 Garmin C SDK。[候選套件比較](../research/2026-11-23-rust-fit-cli.md)
+- 11 月 22 日比較中對 Python 的描述已於 11 月 23 日更正。Garmin 官方 Python SDK 21.222.0 提供 `Encoder`。[官方 Python SDK](https://github.com/garmin/fit-python-sdk#encoder)
 
 ## 後續工作
 
-1. 對兩份真實樣本做讀入、寫回、再讀入試驗，逐筆比對時間、值、欄位編號、型別及來源，列出差異。
+1. 對三趟的六份 Bryton／Garmin 原始 FIT 與一份含 Apple developer fields 的修復檔做讀入、寫回、再讀入試驗，逐筆比對時間、值、欄位編號、型別及來源，列出差異。
 2. 用另含 developer fields 的 fixture 驗證定義、索引及資料值，尤其是與原生欄位編號相同的情形。
-3. 另驗證匯出活動的 Strava 匯入結果，以及分析輸出能否追溯 FIT 未知欄位，再記錄選型結論。
+3. 驗證 Strava 匯入正式輸出的結果，以及分析輸出能否追溯 FIT 未知欄位，將結果記入相容性報告。

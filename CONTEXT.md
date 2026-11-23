@@ -1,8 +1,9 @@
 # FIT Sensor Data Fusion
 
 ## Goal
-Develop a Python CLI to merge simultaneous activity recordings
-from multiple devices into one unified sensor-data timeline.
+Develop a Rust CLI for macOS using RustyFIT (Cargo package `rustyfit`) to merge
+simultaneous activity recordings from multiple devices into one unified sensor-data
+timeline. See the [production CLI decision](docs/decisions/2026-11-21-production-fit-sdk.md).
 
 This is stream merging, NOT concatenating routes or activities.
 
@@ -15,8 +16,12 @@ This is stream merging, NOT concatenating routes or activities.
 
 ## Requirements
 1. Use Bryton FIT as primary activity and timeline.
-2. Preserve chest strap HR as the authoritative heart rate.
-3. Merge additional sensor streams by timestamp.
+2. Prefer heart rate recorded by Bryton (normally from the chest strap). Use
+   Garmin CIRQA's aligned heart rate when Bryton has no valid sample.
+3. Merge the fields listed in the [specification](docs/specification.md).
+   Prefer each field's primary source. Use its designated secondary source
+   for a missing stream or individual gaps, and retain missing values when
+   neither source has a valid observation.
 4. Preserve original sampling rates and data provenance.
 5. Support FIT developer fields where appropriate.
 6. Never silently discard unknown sensor fields.
@@ -24,6 +29,10 @@ This is stream merging, NOT concatenating routes or activities.
 8. Export merged.parquet for full-fidelity analytics.
 9. Include a validation and merge report.
 10. Never modify source files.
+11. Detect discrepancies in ride calories and support correcting the published
+    activity summary, preferring Garmin for comparable ride-level calories.
+    Track active calories and total calories separately. Keep the original
+    value and the reason for the correction in the report.
 
 ## First milestone
 Investigate available Python FIT libraries.
