@@ -22,7 +22,7 @@
 騎士在一次騎乘中同時使用 Bryton Rider 460、Garmin CIRQA 與 Apple Watch Series 9。希望每次運動後一次交付同趟檔案，由 CLI 辨識裝置，按預先定義的對照表為每種數值選取來源，合成同一趟活動。iPhone 16 Pro 是本次 Apple 健康資料的匯出介面。[裝置與選值決策](decisions/2026-11-22-device-and-stream-selection.md)
 
 - **主活動與時間軸。** 採 Bryton 活動及其記錄時間，各設備樣本依時間對齊。整趟與分圈的平均值、最大值、總熱量等摘要另存。整趟熱量依第 2 項需求優先選用同趟 Garmin 資料。[冷水坑熱量差異實測](research/2026-11-23-strava-ride-calories.md)
-- **選值與追溯。** Bryton 有提供的騎乘資訊流以 Bryton 為主。心率優先取車表的有效讀數（正常配對時來自胸帶），缺漏處由 Garmin CIRQA 補上。保留各來源的原值、採樣頻率及裝置與欄位出處。資訊流涵蓋率、時間缺口及同時段差異可供判讀。使用者可裁定無法分出首選的項目，本次距離即由使用者選定。[主來源決策](decisions/2026-11-22-bryton-primary-streams.md) · [距離決策](decisions/2026-11-22-primary-distance-stream.md)
+- **選值與追溯。** Bryton 有提供的騎乘資訊流以 Bryton 為主。心率先評估整趟品質。品質通過時優先取車表的有效讀數（正常配對時來自胸帶），小缺口用 Garmin CIRQA 補齊；品質不佳時選用同趟通過檢查的 Garmin 本機心率。保留各來源的原值、採樣頻率及裝置與欄位出處。資訊流涵蓋率、時間缺口及同時段差異可供判讀。使用者可裁定無法分出首選的項目，本次距離即由使用者選定。[主來源決策](decisions/2026-11-22-bryton-primary-streams.md) · [距離決策](decisions/2026-11-22-primary-distance-stream.md)
 - **原始資料保存。** 來源檔唯讀，產物另存。未知訊息與欄位保留原始編號、定義及資料。FIT 廠商自訂訊息與 FIT 2.0 developer fields 分別辨識，額外資訊流可使用 developer fields。
 - **預期交付。** `merged.fit` 供 Strava 匯入，`merged.parquet` 供完整資料分析，另附選值與驗證報告。這些是正式融合的輸出需求。目前已驗證的產物是檢查報告及本次個案 FIT。[原始需求](../CONTEXT.md)
 
@@ -30,7 +30,7 @@
 
 ## 盤點表一　如何從輸入辨識記錄裝置
 
-FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id.product` 是該製造商編定的產品號。查型號要取兩者的組合。辨識出車表後，外接感測器仍需另外的來源證據。本次胸帶故障及改接廣播都是騎士提供的事實。[裝置辨識決策](decisions/2026-11-22-device-and-stream-selection.md)
+FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id.product` 是該製造商編定的產品號。查型號要取兩者的組合。辨識出車表後，外接感測器仍需另外的來源證據。騎士確認 11 月 21 日未帶胸帶，當天車表使用 Garmin 心率廣播。[裝置辨識決策](decisions/2026-11-22-device-and-stream-selection.md)
 
 | 記錄裝置 | 本次輸入 | 檔內可辨識的依據 | 證據能支持的結論 |
 |---|---|---|---|
@@ -44,7 +44,7 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 
 | 合併後的數據 | 第一順位 | 第二順位 | 選值單位與限制 |
 |---|---|---|---|
-| 心率（bpm） | Bryton `record.heart_rate`，通常為配對的胸帶 | **Garmin CIRQA** `record.heart_rate` | 每個對齊時間點取一筆，Bryton 恢復有效心率即切回。 |
+| 心率（bpm） | Bryton `record.heart_rate`，通常為配對的胸帶 | **Garmin CIRQA** `record.heart_rate` | 先判整趟品質。一般缺口逐點補；長缺、頻繁缺值或持續寫舊值時，整趟心率改用可用的 Garmin。 |
 | GPS 位置（經緯度） | Bryton | 待定 | 每筆經緯度須成對且來自同一裝置；現有提案以 Apple 為缺點時的候選。 |
 | 騎乘速度 | Bryton | 待定 | 三機都有逐點速度。 |
 | 高度 | Bryton（現行順位） | 待定 | 三機都有高度；冷水坑的絕對海拔選源仍在評估。 |
@@ -54,9 +54,11 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 | 整趟總熱量（kcal，含基礎代謝） | Garmin CIRQA | 待定 | 使用 `session.total_calories`。Apple 可對照；Bryton 原值留供追溯。 |
 | 整趟活動熱量（kcal） | Garmin CIRQA | 待定 | 本批取總熱量減 `session.metabolic_calories`，已與 Connect 核對。Apple 運動摘要亦有活動熱量。 |
 
-**取值規則。** 兩台都有有效值時取第一順位。首選整條資訊流缺失，就在主活動時段內逐點使用第二順位的有效樣本；只有局部缺漏，就只補對應時間點。欄位不存在與 FIT 無效值都算缺漏。兩順位都缺、只有單一來源或第二順位尚待決定時，沒有可用樣本的位置保留缺值。有值處記錄來源裝置與原始取樣時間，報告可分別計數首選、替補與缺漏。整趟熱量的選值單位是一趟，可各自追溯總熱量與活動熱量。[定位與高度提案](decisions/2026-11-22-position-and-elevation-sources.md) · [距離決策](decisions/2026-11-22-primary-distance-stream.md) · [熱量決策](decisions/2026-11-23-ride-calorie-source.md)
+**取值規則。** 心率先套用下述品質判定；其他欄位與品質通過的心率，在兩台都有有效值時取第一順位。首選整條資訊流缺失，就在主活動時段內逐點使用第二順位的有效樣本；只有局部缺漏，就只補對應時間點。欄位不存在與 FIT 無效值都算缺漏。兩順位都缺、只有單一來源或第二順位尚待決定時，沒有可用樣本的位置保留缺值。有值處記錄來源裝置與原始取樣時間，報告可分別計數首選、替補與缺漏。整趟熱量的選值單位是一趟，可各自追溯總熱量與活動熱量。[定位與高度提案](decisions/2026-11-22-position-and-elevation-sources.md) · [距離決策](decisions/2026-11-22-primary-distance-stream.md) · [熱量決策](decisions/2026-11-23-ride-calorie-source.md)
 
-**心率驗收。** 以 11 月 8 日原檔的 17,190 個 Bryton 記錄秒為例，應保留 3,906 筆 Bryton 有效心率，另取 13,284 筆 Garmin 同秒原始值。10 月 28 日 Bryton 全趟無有效心率，9,632 個記錄秒均有 Garmin 對應值。11 月 21 日若套用一般規則，應保留 Bryton 14,084 筆、用 Garmin 補 65 筆；歷史修復檔依騎士當天的指定，採用 CIRQA 整段廣播來源。[11 月 8 日實檔](2026-11-08-ride.md) · [11 月 21 日單次處理](decisions/2026-11-22-nov21-heart-rate-repair.md)
+**心率品質與驗收。** 全程無心率、連續缺值達 10 分鐘，或缺值累計達 2 分鐘且占記錄時段至少 5%，均觸發整趟換源。對有值的資料，若 Bryton 連續至少 60 秒寫相同心率，而 Garmin 同段有足夠的變化且與該值持續分歧，也觸發整趟換源。正式選值只使用 Bryton 和 Garmin。Apple Watch 現行需整批匯入，心率留供分析。Garmin 於主活動及異常秒的有效覆蓋都須達 95%，並通過自身品質檢查，否則標示待判讀。[完整判準](decisions/2026-11-23-heart-rate-quality.md)
+
+六趟實檔回放中，10/09、10/14、11/01 保留 Bryton，只補短缺口；10/28、11/08、11/21 改用整趟 Garmin。11/08 預期輸出 17,190 個 Garmin 樣本；11/21 預期輸出 14,149 個 Garmin 樣本，即使當天 Bryton 只有 65 秒明確缺值，另有兩段持續寫舊值已足以觸發。[逐趟數據與平台時間點](research/2026-11-23-heart-rate-quality.md)
 
 ### 清單外的樣本如何保存
 
@@ -84,6 +86,6 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 1. **Milestone 1，已驗證。** Python 提供 `raw` 與 `inspect`。可檢查 FIT 訊息、欄位、時間範圍、取樣間隔、頻率、涵蓋率、未知欄位與 developer fields。原始匯出含 frame 位元組供還原。Python 的 fitdecode 是選用後端，本次雙語比對採離線解碼器。
 2. **Milestone 1-1，已驗證。** .NET 10 的 C# CLI 獨立執行相同兩個命令。兩邊共用 FIT profile 名稱與單位對照。兩份真實 FIT 的逐框與統計比對已完成，驗證數字見[處理紀錄](2026-11-21-ride.md)。[里程碑決策](decisions/2026-11-21-csharp-inspection-control.md)
 3. **正式 CLI 技術選型已確認。** 2026-11-23 使用者選定 Rust、RustyFIT（Cargo 套件 `rustyfit`）與 macOS。合成檔案的讀寫已通過逐欄比對。實騎原檔的未知欄位保存與 Strava 匯入仍待驗證。[技術選型決策](decisions/2026-11-21-production-fit-sdk.md)
-4. **其餘待定的融合規則。** 清單內的欄位先用第一順位，整段或局部缺漏用已指定的第二順位。其餘備援裝置、跨裝置時間偏移與容許時間差、插值政策、機讀對照格式及未知裝置辨識仍待定義。
+4. **其餘待定的融合規則。** 心率先依整趟品質決定選源模式，其他欄位依已指定順位補缺。其餘備援裝置、跨裝置時間偏移與容許時間差、插值政策、機讀對照格式及未知裝置辨識仍待定義。
 5. **未解決：私有欄位與來源歸屬。** Garmin `record` 的 135、136、143 保留原值。136 在本檔每筆等於標準心率欄位 3；先前討論的腕式心率（136）及 Body Battery（143）屬非官方線索，143 在樣本中由 57 降至 30。三者均缺已確認的官方語義，135 的用途未定。Garmin 訊息 233 共 14,604 筆且無獨立時間戳，22、288 只有零星記錄。Bryton 的 65282、65286 亦保留。Apple 的體力消耗強度、運動分鐘與日照只確認同手錶同時段，缺逐筆運動歸屬。
 6. **未解決：正式輸出與平台相容性。** 通用融合 CLI、Parquet 交付與正式 SDK 的未知欄位寫回均待驗證。已討論 Strava 可用具 `activity:write` 權限的 token 上傳 FIT，非同步查詢會回傳活動 ID 或錯誤，既有騎乘可能被判重複。本次僅有本機讀回紀錄，修復檔實際匯入及 Apple 自訂欄位在 Strava 的呈現仍未驗證。自動上傳也尚未列為正式需求。

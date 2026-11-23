@@ -17,7 +17,10 @@ This is stream merging, NOT concatenating routes or activities.
 ## Requirements
 1. Use Bryton FIT as primary activity and timeline.
 2. Prefer heart rate recorded by Bryton (normally from the chest strap). Use
-   Garmin CIRQA's aligned heart rate when Bryton has no valid sample.
+   Garmin CIRQA to fill small gaps. If the ride has prolonged missing or stale
+   Bryton heart rate, select Garmin for the entire heart-rate stream after a
+   quality check. Apple Watch heart rate is for analysis. See the
+   [heart-rate decision](docs/decisions/2026-11-23-heart-rate-quality.md).
 3. Merge the fields listed in the [specification](docs/specification.md).
    Prefer each field's primary source. Use its designated secondary source
    for a missing stream or individual gaps, and retain missing values when
