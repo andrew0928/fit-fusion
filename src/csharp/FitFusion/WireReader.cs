@@ -65,7 +65,7 @@ class WireReader(byte[] bytes)
     static readonly ushort[] CrcTable = [
         0, 0xcc01, 0xd801, 0x1400, 0xf001, 0x3c00, 0x2800, 0xe401,
         0xa001, 0x6c00, 0x7800, 0xb401, 0x5000, 0x9c01, 0x8801, 0x4400];
-    static ushort Crc(ReadOnlySpan<byte> data)
+    public static ushort Crc(ReadOnlySpan<byte> data)
     {
         int crc = 0;
         foreach (var b in data)

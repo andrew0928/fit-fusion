@@ -18,13 +18,19 @@ def main():
                          help="auto uses fitdecode when installed, otherwise the offline wire reader")
     raw = commands.add_parser("raw", help="validate CRCs and dump every FIT frame as JSON Lines")
     raw.add_argument("file", type=Path, help="input FIT recording")
+    export = commands.add_parser("roundtrip", help="parse and serialize a verified new FIT offline")
+    export.add_argument("file", type=Path)
+    export.add_argument("--out", type=Path, required=True, help="new FIT path in an existing directory")
     args = parser.parse_args()
     try:
         if args.command == "raw":
             for frame in wire_frames(args.file.read_bytes()):
                 print(json.dumps(frame, ensure_ascii=False, separators=(",", ":"), allow_nan=False))
             return 0
-        if args.decoder == "wire":
+        if args.command == "roundtrip":
+            from .roundtrip import roundtrip
+            report = roundtrip(args.file, args.out)
+        elif args.decoder == "wire":
             from .offline import inspect_wire
             report = inspect_wire(args.file)
         else:
@@ -39,7 +45,8 @@ def main():
     except ModuleNotFoundError as error:
         if error.name != "fitdecode":
             raise
-        parser.exit(1, "fit-fusion: install the decoder with python -m pip install -r requirements.txt\n")
+        requirements = Path(__file__).resolve().parents[1] / "requirements.txt"
+        parser.exit(1, f'fit-fusion: install the decoder with python -m pip install -r "{requirements}"\n')
     except Exception as error:
         # A failed decode must never produce a successful, partial inventory.
         parser.exit(1, f"fit-fusion: {args.file}: {error or type(error).__name__}\n")

@@ -22,4 +22,4 @@ Apple Watch 有 2,829 個同秒心率樣本。改用 CIRQA 能直接取回廣播
 
 ## 後續工作
 
-本次修復已逐筆核對心率、Apple 樣本及 Bryton 的其餘資料。[產物與驗證紀錄](../2026-11-21-ride.md)
+本次修復已逐筆核對心率、Apple 樣本及 Bryton 的其餘資料。[產物與驗證紀錄](../research/rides/2026-11-21-ride.md)

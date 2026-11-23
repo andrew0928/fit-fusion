@@ -1,64 +1,52 @@
 # FIT Fusion
 
-Inspect a FIT recording before choosing how to align its sensor streams. The inspector reads the source file and writes a JSON report to standard output.
+FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 FIT。合併器把同趟多裝置記錄中的騎乘數據整合成一份 FIT，處理心率停滯與熱量差異。[需求與里程碑](docs/CONTEXT.md)
 
-需求、裝置辨識與資訊流盤點見[處理規格](docs/specification.md)。三台設備的樣本、來源選擇及驗證結果見[11 月 21 日騎乘處理紀錄](docs/2026-11-21-ride.md)。
+| CLI | 交付範圍與進度 | 規格 | 驗收情境與案例 |
+|---|---|---|---|
+| 檢查器 | Python、C#、Rust 已提供盤點、逐框檢查及 FIT 往返匯出。Node.js 待開發。 | [檢查器規格](docs/spec/inspector.md) | [盤點、逐框還原與跨 SDK 比對](docs/spec/testcases/inspector.md) |
+| 合併器 | macOS Rust CLI 已能離線合併兩個本機 FIT，輸出 FIT 與來源報告。日期取檔及 Strava 自動發佈仍在 M2 清單。 | [合併器規格](docs/spec/merger.md) | [選源、保存與發佈](docs/spec/testcases/merger.md) |
 
-## Run the inspector
+## 專案目錄
 
-From this directory, with Python 3.9 or later, run
+| 位置 | 內容 |
+|---|---|
+| [docs/](docs/) | [處理規格](docs/specification.md)、[決策索引](docs/decisions/README.md)、[研究](docs/research/)與[實騎分析](docs/research/rides/)。 |
+| [src/python/](src/python/) | Python FIT 檢查器、FIT Profile 對照表、依賴與測試。 |
+| [src/csharp/](src/csharp/) | 獨立的 .NET FIT 檢查器。 |
+| [src/rust/inspector/](src/rust/inspector/) | Rust 檢查器與 RustyFIT 讀寫驗證。 |
+| [src/rust/merger/](src/rust/merger/) | Rust 雙檔合併 CLI。 |
+| [src/tools/](src/tools/) | 跨語言逐框比對與原檔雜湊驗證工具。 |
+| `data/` | 本機唯讀輸入。原始 FIT、Apple 健康匯出與騎乘索引由 Git 忽略。 |
+| `runtime/` | 本機產物。建置快取在 `build/`，驗證結果在 `reports/`，開發用 Python 虛擬環境可放在 `venv/`。 |
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-python -m pip install -r requirements.txt  # optional, enables the fitdecode backend
-python -m fit_fusion inspect path/to/ride.fit
-```
+## 從專案根目錄執行
 
-To save the report, redirect stdout to a separate file, for example `python -m fit_fusion inspect ride.fit > ride-report.json`. Decode errors go to stderr and produce a nonzero exit status. The reader checks FIT CRCs before the CLI prints the report.
-
-## Read the report
-
-Each entry in `members` describes one FIT member in file order. Most recordings contain one. Within a member, start with the `record` message (global number 20) to see how the activity timeline compares with individual sensors.
-
-- **Inventory.** Each message has its global number, name and count. Fields include their encoded number, byte sizes, base type and units. A non-null `developer_data_index`, including zero, identifies a developer field. Unrecognized fields retain their numbers and carry `unknown: true`. A defined field remains visible even when it has no valid samples.
-- **Coverage.** A field's `coverage_pct` is the percentage of all messages of its type that carry a valid value. Zero is a valid reading when the FIT base type permits it. An array with any valid element counts as one populated message. Coverage includes messages without timestamps.
-- **Timing.** Message and field summaries give the earliest and latest UTC timestamps and their span. Intervals are measured between successive timestamped observations in file order. Minimum, median and maximum use positive intervals. Equal and backward steps have separate counts. A single observation has a zero span and an undetermined rate (`null`).
-- **Sampling.** `typical_hz` is the reciprocal of the median positive interval. For example, a heart-rate value in every other 1 Hz record gives 50% coverage and 0.5 Hz when the timestamps are evenly spaced. Gaps and pauses remain visible in the maximum interval. These figures describe message-level sampling. Arrays can contain several sensor readings per message.
-- **Timestamp scope.** Timing uses the standard FIT timestamp in whole seconds, including timestamps reconstructed from compressed headers. A missing, invalid or device-relative timestamp contributes no UTC observation. The field inventory covers encoded definitions. Derived components and compressed-header timestamps do not add field samples.
-
-## Python FIT libraries considered
-
-| Library | Relevance to inspection |
-| --- | --- |
-| [fitdecode](https://fitdecode.readthedocs.io/en/latest/reference/records.html) | Selected for its frame iterator. Definition frames expose native and developer fields, including numeric identifiers. Header and CRC frames delimit chained members. |
-| [Garmin FIT Python SDK](https://github.com/garmin/fit-python-sdk) | The official SDK provides profile-aware decoding, developer field support and encoding. It is a candidate for the later FIT export milestone. |
-| [fitparse](https://github.com/dtcooper/python-fitparse) | Provides a message and field API for activity data. Its maintainer suggests fitdecode as an alternative. |
-
-Run `python -m unittest discover -s tests -v` in the activated environment. The integration tests construct small FIT members locally so the test suite requires no personal activity data.
-
-## 離線檢查原始內容
-
-`python3 -m fit_fusion raw ride.fit > ride.wire.jsonl` 使用 Python 標準函式庫，可直接驗證 FIT 的 header 與檔尾 CRC 並逐筆輸出。命令成功時回傳 0；若回傳非零，請捨棄該次輸出。
-
-每行代表一個 frame。`definition.fields` 的順序對應同一 `local` 編號後續資料列的 `values`，直到新的定義取代它。資料值保留 FIT 的儲存單位及無效值。未知型別和 developer field 的 payload 使用十六進位。依序串接每行的 `hex` 即可重建來源檔。`inspect` 預設優先使用已安裝的 fitdecode；缺少套件時自動使用離線解碼器。可用 `--decoder fitdecode` 或 `--decoder wire` 指定來源。
-
-## Milestone 1-1：C# 對照組
-
-在專案根目錄使用 .NET 10 SDK。兩個 CLI 都直接讀來源檔，報告輸出至 stdout。第一次使用先建置，再執行指令，以便將輸出重新導向到檔案。
+Python 3.9 以上可用標準函式庫執行離線檢查。C# 檢查器使用 .NET 10 SDK。將下列 `path/to/ride.fit` 換成自己的檔案。
 
 ```sh
-dotnet build csharp/FitFusion
-dotnet run --no-build --project csharp/FitFusion -- inspect data/2026-1121-bryant-460.fit
-dotnet run --no-build --project csharp/FitFusion -- raw data/2026-1121-garmin-cirqa.fit
+PYTHONPATH=src/python python3 -m fit_fusion inspect --decoder wire path/to/ride.fit
+dotnet build src/csharp/FitFusion
+dotnet run --no-build --project src/csharp/FitFusion -- inspect path/to/ride.fit
 ```
 
-以一條命令重跑兩份實檔的 Python／C# 驗證：
+執行測試，或以同趟兩個原檔重跑獨立驗證：
 
 ```sh
-python3 scripts/compare_inspectors.py data/*.fit
+PYTHONPATH=src/python python3 -m unittest discover -s src/python/tests -v
+python3 src/tools/compare_inspectors.py path/to/bryton.fit path/to/garmin.fit
+python3 src/tools/verify_roundtrip.py  # 三種語言各自重編碼合成樣本，印出報告位置
 ```
 
-腳本會重新建置 C#，執行兩種語言的 CLI，依序比較 JSONL 各 frame 的所有欄位、還原檔案的 SHA-256，最後比較完整的 `inspect` JSON。失敗時回傳非零並顯示差異位置。結果包含每個來源的 C# 原始匯出、兩份具名統計與[驗證結果](reports/milestone-1-1/comparison.json)。
+比對工具將結果寫入 `runtime/reports/milestone-1-1/`。舊版文件裡的 `reports/` 指當時執行環境的產物目錄。[檢查器安裝、原始資料與報告格式](docs/inspectors.md)
 
-C# 的 FIT frame 解析、CRC 與統計均由 .NET 實作。Python 對照固定使用 `--decoder wire`，兩邊共用 `fit_fusion/profile.tsv` 的全域訊息編號、欄位名稱和單位，因此名稱對照表本身不在交叉驗證範圍。表內資料來自 Garmin 公開的 FIT Profile 21.221.0，開發者欄位的名稱和型別則從各輸入檔取得。未在對照表定義的欄位用編號保留。[Garmin Profile](https://github.com/garmin/fit-csharp-sdk/blob/main/Dynastream/Fit/Profile.cs) · [Garmin 訊息編號](https://github.com/garmin/fit-csharp-sdk/blob/main/Dynastream/Fit/Profile/Types/MesgNum.cs)
+## 本機雙檔合併
+
+從根目錄建置後可離線執行。兩份原檔可對調，目的指定新的目錄。相同結果再次執行會驗證並重用產物。
+
+```sh
+cargo build --locked --release --manifest-path src/rust/merger/Cargo.toml
+runtime/build/rust/release/fit-fusion --skill merge
+runtime/build/rust/release/fit-fusion merge data/sources/bryton/fit/261121141151.fit \
+  data/sources/garmin/25149578721/25149578721_ACTIVITY.fit --out runtime/acceptance/2026-11-21 --json
+```

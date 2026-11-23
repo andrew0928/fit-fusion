@@ -6,7 +6,7 @@ proposed。2026-11-23 使用者確認需要漸進、自動地取得自己的 App
 
 ## 背景
 
-fit-fusion 需要 Watch Series 9 每趟騎乘的時間、逐點心率及路線。現有全量匯出已足以作為三趟歷史樣本的比對基準。同一個健康資料庫也含 Garmin Connect 寫入的騎乘，驗證時要辨認記錄來源。[三趟樣本與取樣範圍](../2026-11-three-device-comparison.md) · [四平台比較](2026-11-22-cloud-activity-import.md)
+fit-fusion 需要 Watch Series 9 每趟騎乘的時間、逐點心率及路線。現有全量匯出已足以作為三趟歷史樣本的比對基準。同一個健康資料庫也含 Garmin Connect 寫入的騎乘，驗證時要辨認記錄來源。[三趟樣本與取樣範圍](../research/rides/2026-11-three-device-comparison.md) · [四平台比較](2026-11-22-cloud-activity-import.md)
 
 ## 決策提案
 
@@ -22,4 +22,4 @@ Mac 可逐趟接收運動檔，iPhone 鎖定與路線延後同步可能影響到
 
 ## 後續工作
 
-以 11 月 21 日歷史騎乘核對取樣，再用下一趟驗證自動到檔、重複活動與晚到的路線。[驗證基準](../2026-11-three-device-comparison.md)
+以 11 月 21 日歷史騎乘核對取樣，再用下一趟驗證自動到檔、重複活動與晚到的路線。[驗證基準](../research/rides/2026-11-three-device-comparison.md)

@@ -6,6 +6,6 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="../../fit_fusion/profile.tsv" LogicalName="profile.tsv" />
+    <EmbeddedResource Include="../../python/fit_fusion/profile.tsv" LogicalName="profile.tsv" />
   </ItemGroup>
 </Project>

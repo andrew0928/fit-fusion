@@ -8,9 +8,9 @@
 
 ## 同一份 FIT 的讀寫結果
 
-輸入採專案既有 `tests/test_inspect.py` 的 `recording()`。檔案長度 111 bytes，SHA-256 為 `49f6c735f1d2f762da81a1b2423d139edcbd425ab422c6ded385b94d2b744211`。它包含 6 筆資料訊息，3 筆 `record` 都有未知原生欄位 240，另有未知訊息 60000 的欄位 42。標準心率欄位 3 的值依序是 120、255（無效值）、121，並存的 developer field 也是欄位 3，使用 developer index 0，值皆為 80。這是測試 FIT 編碼的合成資料。[測試資料產生器](../../tests/test_inspect.py)
+輸入採專案既有 `src/python/tests/test_inspect.py` 的 `recording()`。檔案長度 111 bytes，SHA-256 為 `49f6c735f1d2f762da81a1b2423d139edcbd425ab422c6ded385b94d2b744211`。它包含 6 筆資料訊息，3 筆 `record` 都有未知原生欄位 240，另有未知訊息 60000 的欄位 42。標準心率欄位 3 的值依序是 120、255（無效值）、121，並存的 developer field 也是欄位 3，使用 developer index 0，值皆為 80。這是測試 FIT 編碼的合成資料。[測試資料產生器](../../src/python/tests/test_inspect.py)
 
-各工具先進行解碼與重新編碼，全程不改值，再用專案獨立的 Python `wire_frames` 驗證 CRC、逐筆比較全域訊息號碼、欄位順序、編號、型別、長度、developer index 與原始值。完整檔案的雜湊另行比較。兩個通過逐欄比對的 SDK 均寫出 113 bytes，輸入為 12-byte header，兩者輸出均為 14-byte header。[獨立讀回器](../../fit_fusion/wire.py)
+各工具先進行解碼與重新編碼，全程不改值，再用專案獨立的 Python `wire_frames` 驗證 CRC、逐筆比較全域訊息號碼、欄位順序、編號、型別、長度、developer index 與原始值。完整檔案的雜湊另行比較。兩個通過逐欄比對的 SDK 均寫出 113 bytes，輸入為 12-byte header，兩者輸出均為 14-byte header。[獨立讀回器](../../src/python/fit_fusion/wire.py)
 
 | 實測工具與讀寫路徑 | 本次結果 | 對 fit-fusion 的意義 |
 |---|---|---|
@@ -34,4 +34,6 @@
 
 ## 實騎檔案的相容性驗收
 
-本次 checkout 沒有個人活動 FIT。驗收時，以 11 月 1、8、21 日的六份 Bryton／Garmin 原始 FIT 及含 Apple developer fields 的修復檔重做讀寫。重點包括 Bryton 私有訊息 65282、65286、Garmin 未知欄位 135、136、143，以及陣列、無效值、壓縮時間戳、取樣順序和來源歸屬。用原有 frame 檢查器比較未改動內容，再讀回替換的心率與新增欄位。輸入檔唯讀，產物另存。Strava 匯入後能查回哪些序列需另行驗證。[實騎欄位與需求](../specification.md) · [三趟騎乘](../2026-11-three-device-comparison.md)
+合成檔選型時尚未取得個人活動 FIT。驗收時，以 11 月 1、8、21 日的六份 Bryton／Garmin 原始 FIT 及含 Apple developer fields 的修復檔重做讀寫。重點包括 Bryton 私有訊息 65282、65286、Garmin 未知欄位 135、136、143，以及陣列、無效值、壓縮時間戳、取樣順序和來源歸屬。用原有 frame 檢查器比較未改動內容，再讀回替換的心率與新增欄位。輸入檔唯讀，產物另存。Strava 匯入後能查回哪些序列需另行驗證。[實騎欄位與需求](../specification.md) · [三趟騎乘](rides/2026-11-three-device-comparison.md)
+
+11 月 21 日兩份原檔取得後，以 Rust 1.93.1 與 RustyFIT 0.11.2 做了一次無修改的解碼再編碼。Python 獨立讀回並核對 CRC。Bryton 的 14,160 筆資料訊息逐筆比對，欄位編號、型別、長度及解碼值皆相同。Garmin 的 29,321 筆資料訊息中，13 筆的固定長度字串被縮短，解碼值相同，包含 session 欄位 110 從 128 bytes 變為 10 bytes。兩份重編碼檔的位元組與各自原檔均有差異。M2 需從來源 frame 保存原始位元組，並以獨立讀取器核對合併 FIT。[資料保存規格](../specification.md)

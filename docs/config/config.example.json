@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "timezone": "Asia/Taipei",
+  "output_dir": "~/Rides/merged",
+  "sources": {
+    "bryton": {
+      "kind": "fit_directory",
+      "device": "bryton_rider_460",
+      "directory": "~/Rides/inbox/bryton"
+    },
+    "garmin": {
+      "kind": "garmin_connect",
+      "device": "garmin_cirqa",
+      "cache_dir": "~/Rides/cache/garmin",
+      "auth": {
+        "personal_api_key": null,
+        "access_token": null,
+        "expires_at": null
+      }
+    },
+    "apple_watch": {
+      "kind": "apple_health_export",
+      "archive": "~/Downloads/apple-health-export.zip"
+    }
+  },
+  "merge": {
+    "primary_source": "bryton",
+    "min_overlap_ratio": 0.90,
+    "streams": {
+      "record.heart_rate": ["bryton", "garmin"],
+      "record.position_lat": ["bryton"],
+      "record.position_long": ["bryton"],
+      "record.speed": ["bryton"],
+      "record.enhanced_speed": ["bryton"],
+      "record.altitude": ["bryton"],
+      "record.enhanced_altitude": ["bryton"],
+      "record.distance": ["bryton"],
+      "record.cadence": ["bryton"],
+      "record.temperature": ["bryton"],
+      "session.total_calories": ["garmin"],
+      "session.metabolic_calories": ["garmin"]
+    }
+  },
+  "destinations": {
+    "strava": {
+      "client_id": null,
+      "client_secret": null,
+      "athlete_id": null,
+      "access_token": null,
+      "refresh_token": null,
+      "expires_at": null
+    }
+  }
+}

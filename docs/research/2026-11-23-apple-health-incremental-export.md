@@ -2,7 +2,7 @@
 
 查核日期為 2026-11-23。目的為每趟騎乘後讓 Mac 自動取得新增的 Apple Watch 資料，避免每次重做超過 100 MB 的全量匯出。以下費用採查核當日的台灣 App Store 標價，尚待以個人裝置驗證到檔時間及取樣完整度。
 
-fit-fusion 需要 Watch Series 9 每趟騎乘的時間、逐點心率及路線。現有全量匯出已足以作為三趟歷史樣本的比對基準。同一個健康資料庫也含 Garmin Connect 寫入的騎乘，驗證時要辨認記錄來源。[三趟樣本與取樣範圍](../2026-11-three-device-comparison.md) · [四平台比較](2026-11-23-activity-platform-automation.md)
+fit-fusion 需要 Watch Series 9 每趟騎乘的時間、逐點心率及路線。現有全量匯出已足以作為三趟歷史樣本的比對基準。同一個健康資料庫也含 Garmin Connect 寫入的騎乘，驗證時要辨認記錄來源。[三趟樣本與取樣範圍](rides/2026-11-three-device-comparison.md) · [四平台比較](2026-11-23-activity-platform-automation.md)
 
 ## HealthFit 逐趟匯出 FIT
 
@@ -24,6 +24,6 @@ fit-fusion 需要 Watch Series 9 每趟騎乘的時間、逐點心率及路線�
 
 ## 如何驗證
 
-先匯出 11 月 21 日已知騎乘，比對 Watch 來源、時間戳、心率和 GPS。在既有 Bryton 時間軸範圍內，Apple 樣本有心率 2,829 個有效秒、GPS 13,562 個有效秒。再用下一趟新騎乘驗證自動到檔時間、同趟重送及是否補齊路線。檢查器以唯讀開啟匯入檔，避免影響同步資料夾及原始紀錄。[基準與比較方式](../2026-11-three-device-comparison.md)
+先匯出 11 月 21 日已知騎乘，比對 Watch 來源、時間戳、心率和 GPS。在既有 Bryton 時間軸範圍內，Apple 樣本有心率 2,829 個有效秒、GPS 13,562 個有效秒。再用下一趟新騎乘驗證自動到檔時間、同趟重送及是否補齊路線。檢查器以唯讀開啟匯入檔，避免影響同步資料夾及原始紀錄。[基準與比較方式](rides/2026-11-three-device-comparison.md)
 
 工具選擇與採用狀態見[Apple Watch 漸進式匯出提案](../decisions/2026-11-23-apple-health-incremental-export.md)。

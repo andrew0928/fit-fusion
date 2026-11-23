@@ -1,23 +1,30 @@
-"""Compare both CLIs on fresh input and retain their results in reports/milestone-1-1."""
+"""Compare both CLIs on fresh input and retain results in runtime/reports/milestone-1-1."""
 
 import argparse
 import hashlib
 import json
 from itertools import zip_longest
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 
 
-ROOT = Path(__file__).resolve().parents[1]
-PROJECT = ROOT / "csharp/FitFusion"
-REPORTS = ROOT / "reports/milestone-1-1"
+SRC = Path(__file__).resolve().parents[1]
+ROOT = SRC.parent
+PROJECT = SRC / "csharp/FitFusion"
+REPORTS = ROOT / "runtime/reports/milestone-1-1"
 
 
 def run_to(command, output):
+    env = os.environ.copy()
+    python_paths = [str(SRC / "python")]
+    if env.get("PYTHONPATH"):
+        python_paths.append(env["PYTHONPATH"])
+    env["PYTHONPATH"] = os.pathsep.join(python_paths)
     with output.open("wb") as stream:
-        subprocess.run(command, cwd=ROOT, stdout=stream, check=True)
+        subprocess.run(command, cwd=ROOT, stdout=stream, env=env, check=True)
 
 
 def difference(left, right, path="$"):

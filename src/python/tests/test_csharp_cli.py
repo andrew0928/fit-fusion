@@ -20,7 +20,7 @@ class CSharpTests(unittest.TestCase):
         cls.directory = tempfile.TemporaryDirectory()
         cls.addClassCleanup(cls.directory.cleanup)
         cls.root = Path(cls.directory.name)
-        project = Path(__file__).resolve().parents[1] / "csharp/FitFusion"
+        project = Path(__file__).resolve().parents[2] / "csharp/FitFusion"
         subprocess.run(["dotnet", "build", str(project), "-o", str(cls.root), "--nologo", "-v:q"],
                        check=True, capture_output=True)
         cls.dll = cls.root / "FitFusion.dll"
