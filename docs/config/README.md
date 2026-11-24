@@ -2,11 +2,11 @@
 
 2026-11-23 已確認此格式作為 M2 的實作依據。[決策紀錄](../decisions/2026-11-23-date-driven-config.md)
 
-設定一次資料來源與串流順位後，日常操作只需給騎乘出發日期。M2-3 可按日期輸出合併 FIT 與報告；下列第二條為 M2-4 的發佈介面。
+設定一次資料來源與串流順位後，日常操作只需給騎乘出發日期。預設輸出合併 FIT 與報告供手動上傳。第二條另存可追溯原值的分析檔。
 
 ```sh
 fit-fusion merge --date 2026-11-21
-fit-fusion merge --date 2026-11-21 --publish strava --json
+fit-fusion merge --date 2026-11-21 --parquet --json
 ```
 
 預設檔案為 `~/.config/fit-fusion/config.json`。執行 `fit-fusion config init` 可建立權限 0600、含完整預設順位的範本；已有設定會保留原檔，再調整來源目錄與憑證。`fit-fusion config check` 可在離線狀態檢查結構與來源引用。`--config <path>` 可指定另一份設定。[完整 JSON 範例](config.example.json) · [JSON Schema](config-v1.schema.json)
@@ -19,21 +19,22 @@ fit-fusion merge --date 2026-11-21 --publish strava --json
 | `timezone` | 解讀命令列日期的 IANA 時區。範例為 `Asia/Taipei`，跨裝置配對一律用 UTC。 |
 | `output_dir` | 每趟合併 FIT 與報告的根目錄。 |
 | `sources.<id>` | 一個以上的具名來源實例。ID 供合併規則引用；`kind` 決定取檔方式，設備來源的 `device` 決定辨識哪種設備。 |
-| `merge.primary_source` | 從哪個來源找出當日騎乘，並以該份活動建立主時間軸。本版的騎乘規格使用 Rider 460。 |
+| `merge.primary_source` | 從哪個來源找出當日騎乘，並以該份活動建立主時間軸。預設使用 Rider 460，可改為其他已設定的騎乘來源。 |
 | `merge.min_overlap_ratio` | 配對時雙方各自須達到的重疊比例。範例為 `0.90`。 |
-| `merge.streams` | 要寫入合併 FIT 的感測串流與熱量摘要。鍵是同名 FIT 欄位，值是由優先到備援的來源 ID 陣列。 |
+| `merge.streams` | 覆寫主檔的感測串流與熱量摘要。空物件表示完整沿用主檔。鍵是同名 FIT 欄位，值是由優先到備援的來源 ID 陣列。 |
+| `merge.field_ids` | 選填。將內附 FIT Profile 尚未收錄的 `record.*` 名稱對應到原生欄號。 |
 | `destinations.<id>` | 零個以上的具名目的地實例。`kind` 指定發佈連線器。僅做本機匯出可省略整段，也可填 `{}`。 |
 
 路徑接受絕對路徑、`~/` 與相對於**設定檔所在目錄**的路徑。來源目錄、下載快取與輸出目錄各自獨立。設定檔為 JSON，重複鍵、未知鍵或未支援的版本都回報設定錯誤。
 
 ## 如何增加設備或目的地
 
-來源與目的地各有獨立的 ID 空間。ID 可自行命名，例如 `old_bike`；同一種 `kind` 可建立多個實例。下列 JSON 是設定片段：在既有來源集合加入一台 Bryton Neo15，並設定三個獨立目的地。Neo15 及兩個額外發佈服務以測試註冊項目示範，平台授權與上傳能力另行驗證。
+來源與目的地各有獨立的 ID 空間。ID 可自行命名，例如 `old_bike`；同一種 `kind` 可建立多個實例。以下以合成車錶示範新型號，另列出三個獨立目的地。實際 Neo15 的產品編號須從該車錶的 FIT 讀取。額外發佈服務的授權與上傳另行驗證。
 
 ```json
 {
   "sources": {
-    "old_bike": {"kind": "fit_directory", "device": "bryton_neo15", "directory": "~/Rides/inbox/neo15"}
+    "old_bike": {"kind": "fit_directory", "device": {"manufacturer": 267, "product": 30001}, "directory": "~/Rides/inbox/neo15"}
   },
   "destinations": {
     "strava": {"kind": "strava", "client_id": null},
@@ -43,7 +44,7 @@ fit-fusion merge --date 2026-11-21 --publish strava --json
 }
 ```
 
-- **新設備。** `fit_directory` 可重用於已註冊的新型號。Schema 檢查 `device` 的識別字格式，loader 依設備註冊資訊檢查取檔方式是否相容。Neo15 的實際 FIT 製造商與產品編號待原檔確認。加入來源供列舉後，只有明確配置到主來源或串流順位才參與合併，並須符合該規則的設備條件。
+- **新設備。** `device` 可用已註冊別名，或填入數字物件 `{"manufacturer": 267, "product": 30001}`。此例為合成型號。從新車錶原檔的 `file_id` 讀取兩個數字後即可套用同一個 CLI。Garmin Connect 只接受 Garmin 製造商識別。
 - **新連線器。** 新來源或目的地共用 `{"kind":"…","options":{…}}` 形式；`options` 可省略，預設為空物件。基礎 Schema 能驗證外層結構。loader 依方向查找已編入的來源或目的地 factory，再由該 factory 離線驗證自己的選項，包括必要鍵、未知鍵與型別。未知種類、未知設備或不相容的設備皆回報含設定位置的 `ConfigError`。例如註冊 Garmin 下載連線器只提供讀取能力，要將 Garmin 列為目的地另須註冊發佈連線器。
 - **既有 v1 相容。** 舊 `destinations.strava` 可省略 `kind`，此時按 Strava 的既有憑證格式解讀。其他目的地 ID 須填 `kind`；自訂 ID 搭配 `kind: strava` 也適用相同的嚴格憑證欄位檢查。發佈以明確選取的目的地 ID 為單位。
 
@@ -80,7 +81,13 @@ fit-fusion merge --date 2026-11-21 --publish strava --json
 - 一般 `record.*` 在主時間軸的每一點依順位選第一個有效同名欄位。只有一個來源就保留其缺口。兩個 GPS 欄位須成對設定、順位相同且從同一筆樣本取值。踏頻 0 rpm 有效。`speed`、`enhanced_speed` 是兩個可獨立選取的欄位。M2 的設定語法只支援同名選值。
 - `record.heart_rate` 使用整趟品質判定。預設用 Bryton，短缺口才補 Garmin。Bryton 品質不佳時，整趟使用經檢查的第二順位，該來源的缺口留空。缺少可用備援時標示待判讀。版本 1 的停滯判準以 Rider 460 對 CIRQA 校驗，適用的設備與順序列在語意檢查中。[心率品質決策](../decisions/2026-11-23-heart-rate-quality.md)
 - `session.*` 以可比較的整趟活動為選值單位。預設選 CIRQA 的 `total_calories` 與 `metabolic_calories`。選用總熱量時照規格另存該趟 Garmin 的原始總量與代謝量。活動熱量計算在報告與分析輸出。若已要求整趟熱量而 Garmin 缺檔或時段不可比，該趟回報待判讀，保留診斷。[熱量欄位決策](../decisions/2026-11-23-ride-calorie-source.md)
-- 清單列出哪些可選欄位，就產生哪些。刪除例如 `record.temperature`，正式溫度串流與相應溫度摘要便不輸出，來源原值仍可追溯。FIT 的 `file_id`、時間軸、事件等結構欄位由主來源提供。其他活動／分圈摘要沿用逐欄規格，受選值影響的摘要須能對上同一批樣本。原始未知欄位及來源副本依保存規格處理。這樣設定檔只需列騎士要挑選的數據。[Strava 逐欄選源表](../specification.md#strava-fit-逐欄選源表)
+- 未列在 `merge.streams` 的串流、摘要與 developer 欄位從主檔沿用。移除 `record.temperature` 的覆寫後，就會保留主檔的溫度與溫度摘要。若跨來源改變某串流，對應且無法成立的既有摘要會移除。
+
+### 新感測器與新欄位
+
+功率計配對到車錶後，只要該車錶是主來源，便會自動保留原生 `record.power` 的瓦數。主時間軸每一秒若要由第二台補缺，在現有 `merge.streams` 加入 `"record.power": ["bryton", "garmin"]`。保留 0 W；所有來源都缺時保留缺值，無插值。用 `--config FILE merge --date YYYY-MM-DD` 可由日期自動配對，手動雙檔若要套用自己的順位也應明確指定 `--config FILE`。
+
+內附 FIT Profile 的原生欄位可直接用名稱，例如 `record.left_right_balance` 或陣列 `record.left_power_phase`。若設備寫入 Profile 尚未收錄的原生欄，可加入 `"field_ids": {"record.extra_sensor": 240}` 到 `merge`，再在 `streams` 指定其順位。欄號應由來源規格或檢查器確認；別名不得覆寫已知欄位或共用同一個號碼。陣列依整筆樣本選源，保留所有元素。跨檔選源使用原生欄位；主檔的 developer 欄位直接保留。全新 API 或新格式的解碼仍需要對應的連線器。[可執行的雙設備範例](stream-fit.example.json) · [v1 行為變更](../decisions/2026-11-24-config-primary-inheritance.md)
 
 ## 只給日期時的處理契約
 
@@ -94,8 +101,8 @@ fit-fusion merge --date 2026-11-21 --publish strava --json
 
 JSON Schema 驗證鍵名、資料型別、來源區段、可選 FIT 欄位與非空且不重複的順位。載入器另須執行以下語意檢查，錯誤要指出設定檔內的位置，例如 `/merge/streams/record.heart_rate/1`。
 
-- 時區須存在。主來源及所有順位項目須指向已宣告的來源。主來源須能列舉 Rider 460 騎乘；Apple 匯出只能用於分析。來源依 FIT 製造商與產品組合確認設備，Rider 460 為 `(267, 2205)`，CIRQA 為 `(1, 5019)`。
-- GPS 兩欄順位須相同。預設心率規則支援 Rider 460 首選與可選的 CIRQA 次選；已選整趟熱量時沿用已確認的 CIRQA 來源，兩個整趟熱量欄若皆啟用須取自同一份 session。來源 ID 改名並同步修改引用仍有效。
+- 時區須存在。主來源及所有順位項目須指向已宣告的來源。主來源須能列舉並開啟單一騎乘 FIT；Apple 匯出只能用於分析。來源依 FIT 製造商與產品組合確認設備，Rider 460 為 `(267, 2205)`，CIRQA 為 `(1, 5019)`。
+- GPS 兩欄順位須相同。心率品質規則接受一個首選及最多一個備援，預設為 Rider 460 與 CIRQA；整趟熱量使用單一設定來源，預設仍為 CIRQA，兩個整趟熱量欄若皆啟用須取自同一份 session。來源 ID 改名並同步修改引用仍有效。
 - 檢查展開後的實際路徑，避免把輸出或快取當成主活動反覆讀入。缺少 token、設備未掛載、API 限流是執行時各自的狀態。靜態 `config check` 不讀取私人健康檔、不發網路請求。
 
 以現有索引的六筆 Bryton 與六筆 Garmin 時段交叉比對，`0.90` 門檻下六趟各有唯一候選。10/14、10/28 兩趟均在次日結束；11/21 的雙方較低重疊比為 96.97%。M2-3 已驗同日兩趟、歧義候選、目錄遺失、跨午夜及重跑；六趟實際 Connect 輸出與本機雙檔逐位元組相同。[六趟驗證資料說明](../research/2026-11-23-heart-rate-quality.md)

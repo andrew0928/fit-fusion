@@ -1,6 +1,6 @@
-# M2 設計　從同趟騎乘產出 FIT 並發佈到 Strava
+# M2 設計　從同趟騎乘產出 FIT 與來源分析
 
-M2 交付一支在 macOS 本機執行的 Rust CLI。騎士指定日期，由 CLI 到已設定的主來源找出當日騎乘、配對 CIRQA，再按逐串流順位合併。可取得驗證過的 FIT 或發佈到 Strava。Agent 能從執行檔取得操作指引，依輸出和結束碼判斷下一步。里程碑範圍、熱量來源與設定檔 v1 已確認。以下列出目標介面及實作計畫。[設定檔 v1](../config/README.md) · [里程碑決策](../decisions/2026-11-23-cli-milestones.md) · [合併規格](../specification.md)
+M2 交付一支在 macOS 本機執行的 Rust CLI。騎士指定日期，由 CLI 到已設定的主來源找出當日騎乘、配對 CIRQA，再按逐串流順位合併。CLI 交付已驗證的 FIT，由騎士手動上傳 Strava。M2-4 自動發佈延後，本版另以 M2-5 交付 Parquet。Agent 能從執行檔取得操作指引，依輸出和結束碼判斷下一步。里程碑範圍、熱量來源與設定檔 v1 已確認。以下列出目標介面及實作計畫。[設定檔 v1](../config/README.md) · [里程碑決策](../decisions/2026-11-23-cli-milestones.md) · [本版發佈方式](../decisions/2026-11-24-manual-strava-export.md) · [合併規格](../specification.md)
 
 ## 騎完一趟如何使用
 
@@ -12,20 +12,19 @@ fit-fusion --skill index
 fit-fusion --skill merge
 
 fit-fusion merge --date 2026-11-21
-fit-fusion merge --date 2026-11-21 --publish strava --json
+fit-fusion merge --date 2026-11-21 --parquet --json
 fit-fusion merge ride-bryton.fit ride-garmin.fit --out ./rides/local --json
-fit-fusion merge ride-bryton.fit --garmin auto --out ./rides/published --publish strava --json
-
-# 先前已完成本機合併，現在才要發佈或接續查詢
-fit-fusion publish strava --from ./rides/local --json
+fit-fusion merge ride-bryton.fit --garmin auto --out ./rides/analysis --parquet --json
 ```
+
+以下保留原設計中的 `auth strava`、`--publish`、`publish`、上傳狀態和恢復流程，均屬已延後的 M2-4。可用命令以 `--help` 為準。
 
 | 入口 | 行為與結果 |
 |---|---|
 | `--help`、`<command> --help` | 人可直接查用途、參數、實例、產物與是否會連網或上傳。 |
 | `--skill <topic>` | 內嵌版本相符的 Markdown。以 `index` 列舉 `config`、`merge`、`publish`。每個主題提供前置條件、可複製命令、結果欄位、常見錯誤、下一步及重試的副作用。未知主題列出可用主題並回傳 2。Help 和 skill 在沒有設定、憑證、網路時都可用。 |
 | `config init`、`config check`、`auth strava` | 初始化寫出含預設順位與空白憑證的設定，已存在時保留原檔。check 離線檢查 Schema 與來源引用。首次 Strava 授權由騎士在瀏覽器同意，CLI 以 loopback callback 取回並驗證結果。 |
-| `merge --date YYYY-MM-DD` | 依設定的時區、主來源、串流順位與輸出位置逐趟處理。可加 `--publish strava` 或 `--json`。日期模式與手動指定輸入互斥。[日期與多趟結果契約](../config/README.md#只給日期時的處理契約) |
+| `merge --date YYYY-MM-DD` | 依設定的時區、主來源、串流順位與輸出位置逐趟處理。可加 `--parquet` 或 `--json`。日期模式與手動指定輸入互斥。[日期與多趟結果契約](../config/README.md#只給日期時的處理契約) |
 | `merge <FIT> [<FIT>] --out <dir>` | 雙檔依內容辨識設備，順序不限。僅有 Bryton 時可指定 `--garmin auto` 或 `--garmin-id <id>` 下載原檔。三種輸入方式擇一。預設只寫本機，加 `--publish strava` 才執行發佈。 |
 | `publish strava --from <dir>` | 讀取合併報告、驗證 FIT 雜湊，沿用既有發佈紀錄。可發佈離線產物、恢復等待中的上傳，或取回已建立的活動 ID。 |
 
@@ -43,7 +42,7 @@ fit-fusion publish strava --from ./rides/local --json
 
 ## 本機設定與資料來源
 
-預設位置為 `~/.config/fit-fusion/config.json`，全域 `--config <path>` 可切換。`sources` 分段定義檔案或 API 與授權，`merge` 明列主來源、配對門檻及各串流的來源 ID 順位。`destinations.<id>` 分別保存各目的地設定，M2 以 Strava 發佈作為驗收。無設定時，手動雙檔入口使用同一份預設選源規則。[完整設定範例](../config/config.example.json) · [格式與檢查](../config/README.md)
+預設位置為 `~/.config/fit-fusion/config.json`，全域 `--config <path>` 可切換。`sources` 分段定義檔案或 API 與授權，`merge` 明列主來源、配對門檻及各串流的來源 ID 順位。`destinations.<id>` 分別保存各目的地設定，本版手動上傳只需本機 FIT。無設定時，手動雙檔入口使用同一份預設選源規則。[完整設定範例](../config/config.example.json) · [格式與檢查](../config/README.md)
 
 - **Garmin。** 區分在 Connect 建立的 Personal API Key 與換得的 bearer access token。有效 bearer 可直接使用。需要換發時用同檔的 key 取得新 token 並更新到期時間。若 key 也到期，指引騎士至 Connect 更新。以本案既有的個人 key 啟用時填入 `personal_api_key`。[Garmin Personal API FAQ](https://developer.garmin.com/gc-developer-program/personal/personal-faq/)
 - **Strava。** 騎士在設定內填自己的 app ID、secret，首次同意 `activity:write` 才能上傳及查詢上傳狀態。可選擇授權讀取以驗證平台顯示值，私密活動需要 `activity:read_all`。換發後在同一把設定檔鎖內更新 access token、最新 refresh token 與到期時間。設定目錄權限 0700，檔案及暫存檔 0600，以同目錄原子取代回存。範例、狀態、合併報告均不含認證資料。[Strava OAuth](https://developers.strava.com/docs/authentication/) · [Uploads API](https://developers.strava.com/docs/reference/#api-Uploads)
@@ -77,10 +76,10 @@ M2 依逐欄表從同名 FIT 欄位擇值。session／lap 心率摘要要與選�
 | 1 | AX 入口與一趟離線合併 | 在乾淨 macOS 環境從原始碼建置 Rust／RustyFIT CLI。清空設定、斷網仍可用 help 與 skill 完成一趟雙檔合併。執行文件內範例，解析 stdout 的 JSON、結束碼與產物。 |
 | 2 | 六趟實檔選值與 FIT 保存 | 10/09、10/14、11/01 只補短缺口；10/28、11/08、11/21 改用整趟 Garmin。11/21 須產出 14,149 個 Garmin 心率樣本。獨立 Python 或 C# 讀回冷水坑的標準熱量與 Garmin 保留值，逐欄比較未修改訊息；另用含同號開發者欄位的樣本驗證沒有碰撞。六趟來源 SHA-256 前後一致。[六趟回放](../research/2026-11-23-heart-rate-quality.md) |
 | 3 | 只給日期完成取檔與配對 | 用六趟已有對照檔的騎乘，核對日期模式、Garmin API 與雙檔離線結果。測同日零／多趟、跨午夜、改檔名、候選不足／歧義、部分成功重跑與權杖到期。已知 ID 能解歧義。 |
-| 4 | Strava 自動發佈 | 模擬處理中、成功、判重、429、送出後斷線及兩個程序同時重跑，核對 POST 次數與恢復結果。另用一趟獲授權且尚未上傳的騎乘實測，記下 upload ID、activity ID，讀回平台熱量並與 FIT 比對。模擬結果與實際匯入分別記錄。[Strava 上傳回應](https://developers.strava.com/docs/reference/#api-Uploads) |
-| 5 | 分析交付 | 加 `--parquet` 後能還原兩份原檔並追查每個選值。驗證主流程不需 Apple 全量匯出。 |
+| 4（跳過） | Strava 自動發佈 | 模擬處理中、成功、判重、429、送出後斷線及兩個程序同時重跑，核對 POST 次數與恢復結果。另用一趟獲授權且尚未上傳的騎乘實測，記下 upload ID、activity ID，讀回平台熱量並與 FIT 比對。模擬結果與實際匯入分別記錄。[Strava 上傳回應](https://developers.strava.com/docs/reference/#api-Uploads) |
+| 5（完成） | Parquet 分析匯出 | 加 `--parquet` 後能還原兩份原檔並追查每個選值。驗證主流程不需 Apple 全量匯出。 |
 
-第 1–3 項已完成。本機實測六個出發日，日期模式從正式 Garmin Personal API 配對及取回 CIRQA FIT，六份輸出均與手動雙檔逐位元組相同。第 4 項接續開發 Strava 授權、上傳及恢復查詢，第 5 項為 Parquet。[模組測試與 76 個決策列](../spec/testcases/module-test-coverage.md) · [日期模式驗收](../spec/testcases/merger.md#目前可重跑的驗收)
+第 1–3 項已完成。本機實測六個出發日，日期模式從正式 Garmin Personal API 配對及取回 CIRQA FIT，六份輸出均與手動雙檔逐位元組相同。第 4 項延後。第 5 項已用 DuckDB 獨立讀回六趟 Parquet 並逐位元組還原 12 份原始 FIT。[分析檔契約與查詢](../spec/merger.md#parquet-分析檔-v2) · [模組測試與 76 個決策列](../spec/testcases/module-test-coverage.md) · [日期模式驗收](../spec/testcases/merger.md#目前可重跑的驗收)
 
 
 ## M3 需求與研究待辦

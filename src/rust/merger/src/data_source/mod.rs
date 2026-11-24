@@ -5,8 +5,10 @@ pub(crate) use garmin::GarminConnect;
 mod recording;
 use crate::{Error, Result};
 pub use directory::FitDirectory;
-pub use recording::{ActivityRecording, Sample, StreamKey, Summary, SummaryKey};
-pub(crate) use recording::{decode, number, scalar};
+#[cfg(test)]
+pub(crate) use recording::scalar;
+pub use recording::{ActivityRecording, NativeSample, Sample, StreamKey, Summary, SummaryKey};
+pub(crate) use recording::{decode, number};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceKind {

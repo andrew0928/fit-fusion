@@ -1,12 +1,12 @@
 use crate::{
     Error, Result,
     config::Settings,
-    data_source::scalar,
+    native::{NativeValue, Records, read_records},
     output::Calories,
     quality::{self, Selection},
     ride::Ride,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 use std::collections::BTreeMap;
 
 pub(crate) fn ratios((a, b): (i64, i64), (c, d): (i64, i64)) -> [f64; 2] {
@@ -35,25 +35,17 @@ impl MatchedRide {
     }
 }
 
-// (config field, native record field number, FIT base type)
-pub const STREAMS: &[(&str, u8, u8)] = &[
-    ("record.position_lat", 0, 0x85),
-    ("record.position_long", 1, 0x85),
-    ("record.altitude", 2, 0x84),
-    ("record.cadence", 4, 2),
-    ("record.distance", 5, 0x86),
-    ("record.speed", 6, 0x84),
-    ("record.power", 7, 0x84),
-    ("record.temperature", 13, 1),
-    ("record.enhanced_speed", 73, 0x86),
-    ("record.enhanced_altitude", 78, 0x86),
-];
+#[derive(serde::Serialize)]
+pub struct SourceRange {
+    pub start_fit_seconds: u32,
+    pub end_fit_seconds: u32,
+    pub source: Option<String>,
+}
 pub struct FieldSelection {
-    pub name: &'static str,
+    pub name: String,
     pub id: u8,
-    pub base: u8,
-    pub values: Vec<Option<i64>>,
-    pub ranges: Vec<Value>,
+    pub values: Vec<Option<NativeValue>>,
+    pub ranges: Vec<SourceRange>,
     pub primary_only: bool,
 }
 pub struct SelectedRide<'a> {
@@ -96,7 +88,7 @@ impl MergePolicy<'_> {
         }
         let priorities = |field| {
             self.settings
-                .sources_for(field)
+                .configured_sources(field)
                 .map(|s| s.id())
                 .collect::<Vec<_>>()
         };
@@ -106,7 +98,7 @@ impl MergePolicy<'_> {
             primary,
             hr.first().and_then(lookup),
             hr.get(1).and_then(lookup),
-            !hr.is_empty(),
+            &hr,
         )?;
         let heart_source = if heart.only_garmin {
             hr.get(1).and_then(lookup)
@@ -122,21 +114,31 @@ impl MergePolicy<'_> {
         let calories = match calorie_id {
             Some(_) => {
                 let source = calorie_source.ok_or_else(|| {
-                    Error::quality("missing Garmin session for requested calories")
+                    Error::quality("missing configured session for requested calories")
                 })?;
                 Some(Calories::read(primary, source, !total.is_empty())?)
             }
             None => None,
         };
-        let fields = STREAMS
+        let overrides: Vec<_> = self
+            .settings
+            .record_fields()
+            .filter(|(_, id)| *id != 3)
+            .collect();
+        let ids = overrides.iter().map(|(_, id)| *id).collect();
+        let records = pair
+            .rides
             .iter()
-            .filter_map(|&(name, id, base)| {
-                let sources = priorities(name);
-                if sources.is_empty() {
-                    return None;
-                }
-                Some(select_field(pair, name, id, base, &sources))
+            .map(|(id, ride)| {
+                Ok((
+                    id.as_str(),
+                    read_records(&ride.bytes, ride.records.keys(), &ids)?,
+                ))
             })
+            .collect::<Result<BTreeMap<_, _>>>()?;
+        let fields = overrides
+            .into_iter()
+            .map(|(name, id)| select_field(pair, &records, name, id, &priorities(name)))
             .collect();
         Ok(SelectedRide {
             heart,
@@ -154,33 +156,40 @@ impl MergePolicy<'_> {
 
 fn select_field(
     pair: &MatchedRide,
-    name: &'static str,
+    records: &BTreeMap<&str, Records>,
+    name: &str,
     id: u8,
-    base: u8,
     order: &[&str],
 ) -> FieldSelection {
     let primary = pair.primary();
     let sources: Vec<_> = order
         .iter()
-        .filter_map(|source| Some((*source, pair.rides.get(*source)?)))
+        .filter_map(|source| Some((*source, records.get(*source)?)))
         .collect();
     let mut values = Vec::with_capacity(primary.samples.len());
     let mut ranges = Vec::new();
     let mut current: Option<(u32, u32, Option<&str>)> = None;
     let mut primary_only = true;
-    let range = |(start, end, source): (u32, u32, Option<&str>)| json!({"start_fit_seconds":start,"end_fit_seconds":end,"source":source});
+    let range = |(start, end, source): (u32, u32, Option<&str>)| SourceRange {
+        start_fit_seconds: start,
+        end_fit_seconds: end,
+        source: source.map(str::to_owned),
+    };
     for &time in primary.samples.keys() {
         let chosen = sources.iter().find_map(|&(source, ride)| {
-            let message = ride.records.get(&time)?;
+            let message = ride.get(&time)?;
             if id <= 1 {
-                scalar(message, 1 - id)?;
+                message.get(&(1 - id))?;
             }
-            Some((source, scalar(message, id)?))
+            Some((source, message.get(&id)?))
         });
         let origin = chosen.map(|(source, _)| source);
         let value = chosen.map(|(_, v)| v);
         primary_only &= origin.is_none_or(|s| s == pair.primary_id)
-            && value == primary.records.get(&time).and_then(|m| scalar(m, id));
+            && value
+                == records[pair.primary_id.as_str()]
+                    .get(&time)
+                    .and_then(|m| m.get(&id));
         if let Some((_, last, previous)) = &mut current
             && *previous == origin
             && last.checked_add(1) == Some(time)
@@ -192,15 +201,14 @@ fn select_field(
             }
             current = Some((time, time, origin));
         }
-        values.push(value);
+        values.push(value.cloned());
     }
     if let Some(previous) = current {
         ranges.push(range(previous));
     }
     FieldSelection {
-        name,
+        name: name.to_owned(),
         id,
-        base,
         values,
         ranges,
         primary_only,

@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "timezone": "Asia/Taipei",
+  "output_dir": "../../runtime/acceptance/config-v1-streams",
+  "sources": {
+    "bike": {
+      "kind": "fit_directory",
+      "directory": "../../src/rust/merger/tests/stream-fixtures",
+      "device": {"manufacturer": 267, "product": 30001}
+    },
+    "backup": {
+      "kind": "fit_directory",
+      "directory": "../../src/rust/merger/tests/stream-fixtures",
+      "device": {"manufacturer": 1, "product": 30002}
+    }
+  },
+  "merge": {
+    "primary_source": "bike",
+    "min_overlap_ratio": 0.90,
+    "streams": {
+      "record.power": ["bike", "backup"],
+      "record.left_right_balance": ["backup"],
+      "record.left_power_phase": ["backup"]
+    }
+  }
+}

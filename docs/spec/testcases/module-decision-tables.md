@@ -34,7 +34,7 @@
 | A1f | `load → sources_for` | 在 A1b 的設定中，將踏頻順位改為 `[bryton, old_bike]` | 測試註冊的 Neo15 支援踏頻 | `sources_for(record.cadence)` 依序回傳 `bryton`、`old_bike` | 心率仍為 `[bryton, garmin]`，總熱量仍為 `[garmin]` |
 | A2a | `selected_fields, sources_for` | 預設順位 | 查 `record.heart_rate` | `[bryton, garmin]` | 心率在啟用清單內 |
 | A2b | `selected_fields, sources_for` | 預設順位 | 查 `session.total_calories` | `[garmin]` | 總熱量在啟用清單內 |
-| A3 | `selected_fields, sources_for` | 移除 `record.temperature` | 查溫度 | `[]` | 啟用清單省略溫度 |
+| A3 | `selected_fields, sources_for` | 移除 `record.temperature` | 查溫度 | 主來源 | 覆寫清單省略溫度，輸出沿用主檔 |
 | A4a | `targets` | 省略整段 `destinations` | — | 空集合 | — |
 | A4b | `targets` | 設定 Strava | token 空白 | `{strava}` | 授權流程啟動 0 次 |
 | A4c | `load → targets` | 設定 Strava、`bike_log`（Bryton Activity）、`connect_log`（Garmin Connect） | 三種 target 均已註冊，沒有 token | 依各 target 的 ID 取得 `{strava, bike_log, connect_log}` | 回傳三個獨立實例，授權流程啟動 0 次 |
@@ -132,5 +132,5 @@ Q 列各自隔離一個門檻，其餘品質檢查均通過。Q1a/b 的主時間
 | F2 | 必要總熱量 | 已啟用總熱量，Bryton 有值 | 同趟 Garmin 總量缺失 | `QualityReview` | 記錄必要總量缺失 |
 | F3a | 衍生活動熱量 | 已啟用總熱量與代謝量 | 總量 100，代謝缺值 | 總量 100，衍生值缺 | Garmin 代謝欄標缺 |
 | F3b | 衍生活動熱量 | 同 F3a | 總量 100，代謝 101 | 衍生值缺 | 可查回原值 100、101 |
-| F4 | 選取欄位 | 設定移除溫度，原檔有溫度 | — | 選值結果省略溫度及其摘要 | 同一份原始記錄仍可讀到溫度 |
+| F4 | 選取欄位 | 設定移除溫度，原檔有溫度 | — | 選值結果沿用主檔的溫度及其摘要 | 同一份原始記錄仍可讀到溫度 |
 | F5 | 座標成對 | GPS 只選 Bryton，該秒有緯度、缺經度 | — | 該秒座標對缺值 | 保留主時間點 |

@@ -86,7 +86,7 @@ fn sources_and_field_selection() {
         only.selected_fields().collect::<Vec<_>>(),
         ["record.cadence"]
     );
-    assert!(priority(&only, "record.temperature").is_empty());
+    assert_eq!(priority(&only, "record.temperature"), ["bryton"]);
 }
 
 #[test]
@@ -377,4 +377,29 @@ fn b1_b2_b3_calendar_query_and_dual_threshold() {
     };
     assert_eq!(end_utc - start_utc, 23 * 3600);
     assert!(s.primary_query("2026-02-30").is_err());
+}
+
+#[test]
+fn v1_native_names_and_declarative_devices() {
+    let mut v = example();
+    v["sources"]["new_bike"] = json!({"kind":"fit_directory","directory":"new","device":{"manufacturer":267,"product":30001}});
+    v["merge"]["primary_source"] = json!("new_bike");
+    v["merge"]["streams"] = json!({});
+    let settings = load(&v, &Registry::default()).unwrap();
+    assert_eq!(priority(&settings, "record.power"), ["new_bike"]);
+    assert_eq!(settings.device("new_bike").unwrap().product, 30001);
+    v["merge"]["streams"] =
+        json!({"record.left_right_balance":["garmin"],"record.extra_sensor":["new_bike"]});
+    assert_eq!(issue(&v), "/merge/streams/record.extra_sensor");
+    v["merge"]["field_ids"] = json!({"record.extra_sensor":240});
+    let settings = load(&v, &Registry::default()).unwrap();
+    assert_eq!(
+        settings.record_fields().collect::<Vec<_>>(),
+        [
+            ("record.extra_sensor", 240),
+            ("record.left_right_balance", 30)
+        ]
+    );
+    v["merge"]["field_ids"]["record.extra_sensor"] = json!(7);
+    assert_eq!(issue(&v), "/merge/field_ids/record.extra_sensor");
 }

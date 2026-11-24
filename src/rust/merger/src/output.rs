@@ -2,7 +2,8 @@
 use crate::{
     Error, Result,
     data_source::{decode, number},
-    policy::{STREAMS, SelectedRide},
+    native::{self as native_fields, NativeValue},
+    policy::SelectedRide,
     ride::{Ride, heart},
 };
 use fit_inspector::wire::{self, Field, Record};
@@ -39,7 +40,7 @@ fn set(cells: &mut Vec<Cell>, new: Cell) -> io::Result<()> {
         .iter_mut()
         .find(|x| x.def.id == new.def.id && x.def.developer == new.def.developer)
     {
-        if f.def.base != new.def.base || f.def.size != new.def.size {
+        if f.def.base != new.def.base {
             return Err(wire::invalid("unsupported width/type of selected field"));
         }
         *f = new;
@@ -129,7 +130,7 @@ impl Calories {
     pub fn read(b: &Ride, g: &Ride, require_total: bool) -> Result<Self> {
         let total = number(&g.session, 11).and_then(|v| u16::try_from(v).ok());
         if require_total && total.is_none() {
-            return Err(Error::quality("Garmin session.total_calories missing"));
+            return Err(Error::quality("selected session.total_calories missing"));
         }
         let metabolic = number(&g.session, 196).and_then(|v| u16::try_from(v).ok());
         let dev = (0..255)
@@ -169,10 +170,7 @@ impl Calories {
         Ok(())
     }
 }
-fn remove(cells: &mut Vec<Cell>, id: u8) {
-    cells.retain(|cell| cell.def.developer.is_some() || cell.def.id != id);
-}
-fn matched_summary<'a>(
+pub(crate) fn matched_summary<'a>(
     b: &Ride,
     other: &'a Ride,
     lap: Option<usize>,
@@ -199,14 +197,32 @@ fn summary_stream(session: bool, id: u8) -> Option<u8> {
         (true, 14 | 15) | (false, 13 | 14) => 6,
         (true, 124 | 125) | (false, 110 | 111) => 73,
         (true, 18 | 19 | 92 | 93) | (false, 17 | 18 | 80 | 81) => 4,
-        (true, 20 | 21 | 34) | (false, 19 | 20 | 33) => 7,
+        (true, 20 | 21 | 34 | 48 | 68 | 120 | 121)
+        | (false, 19 | 20 | 33 | 41 | 60 | 106 | 107) => 7,
         (true, 49 | 50 | 71) | (false, 42 | 43 | 62) => 2,
         (true, 126..=128) | (false, 112..=114) => 78,
         (true, 57 | 58 | 150) | (false, 50 | 51 | 124) => 13,
-        _ => return None,
+        _ => {
+            let name = native_fields::NAMES
+                .get(&(if session { 18 } else { 19 }, id))?
+                .split_once('.')?
+                .1;
+            let field = name
+                .strip_prefix("avg_")
+                .or_else(|| name.strip_prefix("max_"))
+                .unwrap_or(name);
+            return native_fields::record_id(&format!("record.{field}"));
+        }
     })
 }
 pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
+    if !selected.heart_enabled
+        && selected.calories.is_none()
+        && selected.fields.iter().all(|f| f.primary_only)
+    {
+        verify(&b.bytes, selected)?;
+        return Ok(b.bytes.clone());
+    }
     let s = &selected.heart;
     let mut header = vec![];
     let mut body = vec![];
@@ -256,38 +272,29 @@ pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
                     20 => {
                         let p = &s.points[record];
                         record += 1;
-                        if p.hr.is_some()
-                            || cells
-                                .iter()
-                                .any(|c| c.def.developer.is_none() && c.def.id == 3)
+                        if selected.heart_enabled
+                            && (p.hr.is_some()
+                                || cells
+                                    .iter()
+                                    .any(|c| c.def.developer.is_none() && c.def.id == 3))
                         {
                             set(&mut cells, native(3, 2, vec![p.hr.unwrap_or(255)]))?;
                         }
-                        if !selected.heart_enabled {
-                            remove(&mut cells, 3);
-                        }
-                        cells.retain(|c| {
-                            c.def.developer.is_some()
-                                || !STREAMS.iter().any(|(_, id, _)| *id == c.def.id)
-                                || selected.fields.iter().any(|f| f.id == c.def.id)
-                        });
                         for field in &selected.fields {
-                            let value = field.values[record - 1];
-                            if value.is_none() && native_value(&cells, field.id, big).is_none() {
+                            if field.primary_only {
                                 continue;
                             }
-                            let (width, invalid) = match field.base {
-                                1 => (1, 127),
-                                2 => (1, 255),
-                                0x84 => (2, 65535),
-                                0x85 => (4, i32::MAX as i64),
-                                _ => (4, u32::MAX as i64),
-                            };
-                            let mut raw = value.unwrap_or(invalid).to_le_bytes()[..width].to_vec();
-                            if big {
-                                raw.reverse();
+                            if let Some(value) = &field.values[record - 1] {
+                                set(&mut cells, native(field.id, value.base, value.encoded(big)))?;
+                            } else if let Some(cell) = cells
+                                .iter_mut()
+                                .find(|c| c.def.developer.is_none() && c.def.id == field.id)
+                            {
+                                let mut value =
+                                    NativeValue::read(cell.def.base.unwrap(), &cell.data, big)?;
+                                value.invalidate();
+                                cell.data = value.encoded(big);
                             }
-                            set(&mut cells, native(field.id, field.base, raw))?;
                         }
                     }
                     n => {
@@ -299,15 +306,13 @@ pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
                         cells.retain(|c| {
                             c.def.developer.is_some()
                                 || summary_stream(session, c.def.id).is_none_or(|id| {
-                                    selected.fields.iter().any(|f| f.id == id && f.primary_only)
+                                    selected.fields.iter().all(|f| f.id != id || f.primary_only)
                                 })
                         });
                         let hr_ids = if session { [16, 17, 64] } else { [15, 16, 63] };
-                        if !selected.heart_enabled {
-                            for id in hr_ids {
-                                remove(&mut cells, id);
-                            }
-                        } else if !selected.heart_source.is_some_and(|g| std::ptr::eq(b, g)) {
+                        if selected.heart_enabled
+                            && !selected.heart_source.is_some_and(|g| std::ptr::eq(b, g))
+                        {
                             let same = selected
                                 .heart_source
                                 .filter(|r| b.samples.keys().eq(r.samples.keys()))
@@ -323,12 +328,6 @@ pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
                             }
                         }
                         if session {
-                            if !selected.write_total {
-                                remove(&mut cells, 11);
-                            }
-                            if !selected.write_metabolic {
-                                remove(&mut cells, 196);
-                            }
                             if let Some(cal) = &selected.calories {
                                 if selected.write_total {
                                     metadata(&mut body, local, cal.dev)?;
@@ -344,7 +343,6 @@ pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
                                 [(11, selected.write_total), (155, selected.write_metabolic)]
                             {
                                 if !enabled {
-                                    remove(&mut cells, id);
                                     continue;
                                 }
                                 let value = same.and_then(|m| number(m, id));
@@ -399,6 +397,9 @@ pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
     Ok(header)
 }
 fn verify(bytes: &[u8], selected: &SelectedRide) -> Result<()> {
+    let times: Vec<_> = selected.heart.points.iter().map(|p| p.time).collect();
+    let ids = selected.fields.iter().map(|f| f.id).collect();
+    let records = native_fields::read_records(bytes, times.iter(), &ids)?;
     let mut points = selected.heart.points.iter().enumerate();
     let mut sessions = 0;
     for m in decode(bytes)?.messages {
@@ -407,11 +408,11 @@ fn verify(bytes: &[u8], selected: &SelectedRide) -> Result<()> {
                 .next()
                 .ok_or_else(|| Error::data("extra output record"))?;
             for f in &selected.fields {
-                if crate::data_source::scalar(&m, f.id) != f.values[index] {
+                if records[&p.time].get(&f.id) != f.values[index].as_ref() {
                     return Err(Error::data(format!("{} read-back differs", f.name)));
                 }
             }
-            if number(&m, 253) != Some(p.time) || heart(&m) != p.hr {
+            if number(&m, 253) != Some(p.time) || (selected.heart_enabled && heart(&m) != p.hr) {
                 return Err(Error::data("output timestamp or heart rate differs"));
             }
         } else if m.num.0 == 18 {
@@ -427,7 +428,7 @@ fn verify(bytes: &[u8], selected: &SelectedRide) -> Result<()> {
                     .developer_fields
                     .iter()
                     .find(|f| f.developer_data_index == cal.dev && f.num == id);
-                if number(&m, id) != value.filter(|_| enabled).map(u32::from)
+                if enabled && number(&m, id) != value.map(u32::from)
                     || selected.write_total
                         && !dev.is_some_and(
                             |f| matches!(f.value,Value::Uint16(x) if x==value.unwrap_or(u16::MAX)),

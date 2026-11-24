@@ -28,7 +28,7 @@ This is stream merging, NOT concatenating routes or activities.
    Bryton heart rate, select Garmin for the entire heart-rate stream after a
    quality check. Apple Watch heart rate is for analysis. See the
    [heart-rate decision](decisions/2026-11-23-heart-rate-quality.md).
-3. Merge the fields listed in the [specification](specification.md).
+3. Preserve the primary FIT by default. Configured streams override its fields using the [selection specification](specification.md).
    Prefer each field's primary source. Use its designated secondary source
    for a missing stream or individual gaps, and retain missing values when
    neither source has a valid observation.
@@ -68,8 +68,9 @@ reproducible. The scope of this milestone is inspection.
 
 Deliver a Rust CLI with human-readable `--help` and self-contained agent
 instructions via `--skill <topic>`. Use the preset source and stream priorities
-to select same-name fields, merge one ride, export a validated FIT, and
-optionally publish it to Strava. The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
+to select same-name fields and export a validated FIT for manual upload to Strava.
+Optional `merge --parquet` preserves the complete input files and selected values.
+Automated Strava publishing (M2-4) is deferred by the [scope decision](decisions/2026-11-24-manual-strava-export.md). The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
 lists the source for each entry in Strava's public FIT table. Mapping a
 different source field into a destination field is planned for a later release.
 Keep personal Garmin and Strava credentials together in a local config file.

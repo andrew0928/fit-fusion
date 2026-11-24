@@ -86,7 +86,7 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 | `record.heart_rate` | Bryton | Garmin CIRQA | 小缺口用 Garmin 同秒值。整趟判定品質不佳則全部取合格的 Garmin。Apple Watch 只供分析。 |
 | `record.cadence` | Bryton | — | 0 rpm 有效。 |
 | `record.temperature` | Bryton | — | 逐點溫度。 |
-| `record.power` | — | — | 本批三台均無有效功率。 |
+| `record.power` | 主車錶原值 | 可在 config 指定備援 | 本批實騎沒有功率計。車錶新增功率後自動保留瓦數，含 0 W。 |
 | `session.sport` | Bryton | — | 活動類型，主流程限騎乘。 |
 | `session.sub_sport` | Bryton | — | 主檔運動子類型。 |
 | `session.start_time` | Bryton | — | 騎乘開始。 |
@@ -170,4 +170,4 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 3. **正式 CLI 技術選型已確認。** 2026-11-23 使用者選定 Rust、RustyFIT（Cargo 套件 `rustyfit`）與 macOS。合成檔案的讀寫已通過逐欄比對。實騎原檔的未知欄位保存與 Strava 匯入仍待驗證。[技術選型決策](decisions/2026-11-21-production-fit-sdk.md)
 4. **融合規則與機讀格式。** 心率先依整趟品質決定選源模式，其餘依逐欄順位補缺。已確認的設定檔 v1 明列來源與順位，跨裝置時鐘偏移、插值、未指定的備援裝置及未知裝置辨識仍待驗證。[設定檔 v1](config/README.md)
 5. **未解決：私有欄位與來源歸屬。** Garmin `record` 的 135、136、143 保留原值。136 在本檔每筆等於標準心率欄位 3；先前討論的腕式心率（136）及 Body Battery（143）屬非官方線索，143 在樣本中由 57 降至 30。三者均缺已確認的官方語義，135 的用途未定。Garmin 訊息 233 共 14,604 筆且無獨立時間戳，22、288 只有零星記錄。Bryton 的 65282、65286 亦保留。Apple 的體力消耗強度、運動分鐘與日照只確認同手錶同時段，缺逐筆運動歸屬。
-6. **M2 正式需求。** 交付可離線合併並輸出 FIT、可自動發佈到 Strava 的 macOS Rust CLI。用 `--help` 與 `--skill <topic>` 說明操作。CLI、Parquet 交付、實檔未知欄位寫回及 Strava 實際匯入仍待實作驗證。M3 收錄憑證安全保管、正式發佈與其他整合。[M2 流程、驗收與 M3 待辦](milestones/m2-cli.md)
+6. **M2 正式需求。** 交付可離線合併並輸出 FIT 的 macOS Rust CLI，由騎士手動上傳至 Strava。用 `--help` 與 `--skill <topic>` 說明操作。M2-5 提供可選的 Parquet 分析檔，M2-4 自動發佈延後。[本版範圍決策](decisions/2026-11-24-manual-strava-export.md)M3 收錄憑證安全保管、正式發佈與其他整合。[M2 流程、驗收與 M3 待辦](milestones/m2-cli.md)

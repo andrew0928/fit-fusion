@@ -1,6 +1,7 @@
 """Verify the production offline Rust merger with the independent Python FIT reader."""
 import csv
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -23,7 +24,7 @@ EXPECTED = {
 }
 
 
-def fixture(bryton, rates, start=START):
+def fixture(bryton, rates, start=START, extra_sensor=42):
     n = len(rates)
     maker, product = (267, 2205) if bryton else (1, 5019)
     body = message_definition(0, 0, [(0, 1, 0), (1, 2, 0x84), (2, 2, 0x84)])
@@ -34,7 +35,7 @@ def fixture(bryton, rates, start=START):
     body += bytes([1, 0, 11, 2]) + b"old\0"
     body += message_definition(2, 20, [(253, 4, 0x86), (3, 1, 2), (4, 1, 2), (240, 1, 2)])
     for i, hr in enumerate(rates):
-        body += struct.pack("<BIBBB", 2, start+i, hr, 0, 42)
+        body += struct.pack("<BIBBB", 2, start+i, hr, 0, extra_sensor)
     body += message_definition(3, 18, [(253, 4, 0x86), (2, 4, 0x86), (5, 1, 0), (7, 4, 0x86),
                                         (11, 2, 0x84), (196, 2, 0x84)], [(11, 1, 0)])
     body += struct.pack("<BIIBIHHB", 3, start+n-1, start, 2, n*1000, 6 if bryton else 2, 1, 77)
@@ -216,11 +217,11 @@ class Merger(unittest.TestCase):
         records = list(rows(Path(new["artifacts"]["fit"])))
         for n, fields in records:
             if n == 20:
-                self.assertNotIn((None,13), fields)
-                self.assertNotIn((None,3), fields)
+                self.assertEqual(fields[None,13], 22)
+                self.assertIn((None,3), fields)
             if n == 18:
                 for key in [57,11,196]:
-                    self.assertNotIn((None,key), fields)
+                    self.assertIn((None,key), fields)
         points = [f for n,f in records if n == 20]
         self.assertEqual(len(points),6)
         self.assertEqual((points[2][None,0],points[2][None,1]),(2**31-1,2**31-1))
@@ -232,6 +233,190 @@ class Merger(unittest.TestCase):
         self.secondary.rmdir()
         only=self.configured(*day)["rides"][0]
         self.assertEqual(list(json.loads(Path(only["artifacts"]["report"]).read_text())["inputs"]),["bryton"])
+
+    def test_m09_parquet_revisions_and_conflicts(self):
+        config = self.date_setup()
+        fixtures = ROOT / "src/rust/merger/tests/fixtures"
+        shutil.copy(fixtures / "rider.fit", self.primary / "ride.fit")
+        shutil.copy(fixtures / "cirqa.fit", self.secondary / "watch.fit")
+        args = ("--date", "2024-01-09")
+        plain = self.configured(*args)["rides"][0]
+        initial = self.configured(*args, "--parquet")["rides"][0]
+        self.assertNotIn("parquet", plain["artifacts"])
+        self.assertNotEqual(plain["revision_id"], initial["revision_id"])
+        self.assertEqual(Path(plain["artifacts"]["fit"]).read_bytes(),
+                         Path(initial["artifacts"]["fit"]).read_bytes())
+        archive = Path(initial["artifacts"]["parquet"])
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        report = json.loads(Path(initial["artifacts"]["report"]).read_text())
+        self.assertEqual(report["parquet"], {"schema_version": 2, "sha256": digest})
+        self.assertTrue(self.configured(*args, "--parquet")["rides"][0]["reused"])
+        config["merge"]["streams"].pop("record.temperature")
+        self.conf.write_text(json.dumps(config))
+        new = self.configured(*args, "--parquet")["rides"][0]
+        self.assertNotEqual(new["revision_id"], initial["revision_id"])
+        self.assertEqual(hashlib.sha256(archive.read_bytes()).hexdigest(), digest)
+        target = Path(new["artifacts"]["parquet"])
+        target.write_bytes(b"damaged")
+        self.assertEqual(self.configured(*args, "--parquet", expected=3)["rides"][0]["code"], "output_conflict")
+        self.assertEqual(target.read_bytes(), b"damaged")
+        target.unlink()
+        self.assertEqual(self.configured(*args, "--parquet", expected=3)["rides"][0]["code"], "output_conflict")
+        self.assertFalse(target.exists())
+
+    def verify_archive(self, db, path, sources):
+        db.read_parquet(path).create_view("audit")
+        manifest = json.loads(db.execute(
+            "SELECT decode(value) FROM parquet_kv_metadata(?) WHERE decode(key) = 'fit_fusion'", [path]
+        ).fetchone()[0])
+        self.assertEqual(manifest["schema_version"], 2)
+        for source, original in sources.items():
+            frames = db.execute("SELECT frame_offset, frame_bytes FROM audit WHERE row_kind='frame' "
+                                "AND source_id=? ORDER BY frame_offset", [source]).fetchall()
+            restored = bytearray()
+            for offset, data in frames:
+                self.assertEqual(offset, len(restored))
+                restored.extend(data)
+            self.assertEqual(restored, original.read_bytes())
+            self.assertEqual(hashlib.sha256(restored).hexdigest(), manifest["input_sha256"][source])
+        self.assertEqual(set(manifest["input_sha256"]), set(sources))
+        unmatched = db.sql("""SELECT count(*) FROM
+            (SELECT * FROM audit WHERE row_kind='selected' AND value_int IS NOT NULL) s
+            ANTI JOIN (SELECT * FROM audit WHERE row_kind='sample' AND developer_index IS NULL) r
+            USING (source_id, frame_offset, message_id, field_id, value_int)""").fetchone()[0]
+        self.assertEqual(unmatched, 0)
+        return manifest
+
+    @unittest.skipUnless(importlib.util.find_spec("duckdb"), "independent Parquet read-back requires duckdb")
+    def test_m09_parquet_independent_readback(self):
+        import duckdb
+        config = self.date_setup()
+        self.b.write_bytes(fixture(True, [110, 111, 255, 114, 114, 115]))
+        self.g.write_bytes(fixture(False, [109, 110, 113, 113, 114, 115]))
+        for key in config["merge"]["streams"].values():
+            key[:] = ["cycle_computer" if s == "bryton" else "watch" for s in key]
+        config["sources"]["cycle_computer"] = config["sources"].pop("bryton")
+        config["sources"]["watch"] = config["sources"].pop("garmin")
+        config["merge"]["primary_source"] = "cycle_computer"
+        self.conf.write_text(json.dumps(config))
+        result = self.configured(self.g, self.b, "--out", self.dir / "audit", "--parquet")
+        path = result["artifacts"]["parquet"]
+        with duckdb.connect() as db:
+            self.verify_archive(db, path, {"cycle_computer": self.b, "watch": self.g})
+            heart = db.sql("SELECT source_id, value_int FROM audit WHERE row_kind='selected' "
+                           "AND field_name='record.heart_rate' ORDER BY timestamp_fit_s").fetchall()
+            self.assertEqual(heart, list(zip(["cycle_computer"] * 2 + ["watch"] + ["cycle_computer"] * 3,
+                                            [110, 111, 113, 114, 114, 115])))
+            self.assertEqual(db.sql("SELECT DISTINCT value_int FROM audit WHERE row_kind='sample' "
+                                    "AND message_id=20 AND field_id=240").fetchall(), [(42,)])
+            developer_values = db.sql("SELECT value_json FROM audit WHERE row_kind='sample' AND message_id=18 "
+                                      "AND field_id=11 AND developer_index=0").fetchall()
+            self.assertEqual([json.loads(value) for (value,) in developer_values], ["4d", "4d"])
+            self.assertGreater(db.sql("SELECT count(*) FROM audit WHERE row_kind='frame' AND frame_kind='data' "
+                                      "AND timestamp_fit_s IS NULL").fetchone()[0], 0)
+            zeros = db.sql("SELECT count(*) FROM audit WHERE row_kind='selected' AND field_name='record.cadence' "
+                           "AND value_int=0 AND source_id='cycle_computer'").fetchone()[0]
+            self.assertEqual(zeros, 6)
+            missing = db.sql("SELECT count(*) FROM audit WHERE row_kind='selected' AND field_name='record.speed' "
+                             "AND value_int IS NULL AND frame_offset IS NULL AND source_id IS NULL").fetchone()[0]
+            self.assertEqual(missing, 6)
+            self.assertEqual(db.sql("SELECT value_int FROM audit WHERE row_kind='derived' "
+                                    "AND field_name='session.active_calories'").fetchall(), [(1,)])
+
+        config["merge"]["streams"] = {"record.cadence": ["cycle_computer"]}
+        self.conf.write_text(json.dumps(config))
+        result = self.configured(self.b, self.g, "--out", self.dir / "primary_only", "--parquet")
+        with duckdb.connect() as db:
+            db.read_parquet(result["artifacts"]["parquet"]).create_view("audit")
+            self.assertEqual(db.sql("SELECT DISTINCT source_id FROM audit WHERE row_kind='frame' "
+                                    "ORDER BY source_id").fetchall(), [("cycle_computer",), ("watch",)])
+            self.assertEqual(db.sql("SELECT DISTINCT source_id FROM audit WHERE row_kind='selected' AND value_int IS NOT NULL").fetchall(),
+                             [("cycle_computer",)])
+            self.assertEqual(db.sql("SELECT count(*) FROM audit WHERE row_kind='selected' AND field_name='record.heart_rate' AND value_int IS NOT NULL").fetchone()[0], 5)
+
+    @unittest.skipUnless(importlib.util.find_spec("duckdb") and (ROOT/"data/index/rides.csv").is_file(),
+                         "real Parquet read-back requires duckdb and private ride fixtures")
+    def test_m09_six_parquet_rides(self):
+        import duckdb
+        config = self.date_setup()
+        for source, directory in [("bryton", "data/sources/bryton/fit"), ("garmin", "data/sources/garmin")]:
+            config["sources"][source]["directory"] = str(ROOT / directory)
+        self.conf.write_text(json.dumps(config))
+        with (ROOT / "data/index/rides.csv").open() as f:
+            rides = list(csv.DictReader(f))
+        for ride in rides:
+            date = ride["ride_date"]
+            with self.subTest(date=date), duckdb.connect() as db:
+                result = self.configured("--date", date, "--parquet")["rides"][0]
+                sources = {s: ROOT / ride[s + "_fit"] for s in ("bryton", "garmin")}
+                manifest = self.verify_archive(db, result["artifacts"]["parquet"], sources)
+                fit = Path(result["artifacts"]["fit"])
+                self.assertEqual(hashlib.sha256(fit.read_bytes()).hexdigest(), manifest["merged_fit_sha256"])
+                self.assertEqual(db.sql("SELECT value_int FROM audit WHERE row_kind='derived' "
+                                        "AND field_name='session.active_calories'").fetchone()[0],
+                                 int(ride["garmin_active_kcal"]))
+                if date == "2026-11-21":
+                    ranges = [t for t in manifest["heart_rate"]["triggers"] if t["reason"] == "stale"]
+                    self.assertEqual([t["seconds"] for t in ranges], [68, 86])
+                    for t, (bpm, low, high) in zip(ranges, [(102, 102, 112), (148, 138, 148)]):
+                        rates = db.execute("""SELECT row_kind, source_id, min(value_int), max(value_int), count(*)
+                            FROM audit WHERE field_name='record.heart_rate' AND timestamp_fit_s BETWEEN ? AND ?
+                            GROUP BY row_kind, source_id ORDER BY row_kind, source_id""",
+                                           [t["start_fit_seconds"], t["end_fit_seconds"]]).fetchall()
+                        self.assertEqual(rates, [("sample", "bryton", bpm, bpm, t["seconds"]),
+                                                 ("sample", "garmin", low, high, t["seconds"]),
+                                                 ("selected", "garmin", low, high, t["seconds"])])
+                    self.assertEqual(db.sql("SELECT source_id, count(*) FROM audit WHERE row_kind='selected' "
+                                            "AND field_name='record.heart_rate' GROUP BY source_id").fetchall(),
+                                     [("garmin", 14149)])
+
+    def test_new_devices_and_native_streams_config_v1(self):
+        config = self.date_setup()
+        fixtures = ROOT / "src/rust/merger/tests/stream-fixtures"
+        bike, backup = self.primary / "bike.fit", self.secondary / "backup.fit"
+        shutil.copy(fixtures / "bike.fit", bike)
+        shutil.copy(fixtures / "backup.fit", backup)
+        config["sources"] = {
+            "bike": {"kind": "fit_directory", "directory": str(self.primary),
+                     "device": {"manufacturer": 267, "product": 30001}},
+            "backup": {"kind": "fit_directory", "directory": str(self.secondary),
+                       "device": {"manufacturer": 1, "product": 30002}},
+        }
+        config["merge"]["primary_source"] = "bike"
+        config["merge"]["streams"] = {}
+        self.conf.write_text(json.dumps(config))
+        args = ("--date", "2024-01-09")
+        original = self.configured(*args)["rides"][0]
+        self.assertEqual(Path(original["artifacts"]["fit"]).read_bytes(), bike.read_bytes())
+        config["merge"]["streams"] = {"record.power": ["bike", "backup"],
+                                     "record.left_right_balance": ["backup"],
+                                     "record.left_power_phase": ["backup"]}
+        self.conf.write_text(json.dumps(config))
+        fused = self.configured(*args)["rides"][0]
+        out = Path(fused["artifacts"]["fit"])
+        records = [r for n, r in rows(out) if n == 20]
+        self.assertEqual([r.get((None, 7)) for r in records], [0, 120, 170, 250, 180, 65535])
+        self.assertEqual([r[None, 30] for r in records], [52] * 6)
+        self.assertEqual([r[None, 69] for r in records], [[32, 64]] * 6)
+        self.assertEqual(self.configured(backup, bike, "--out", self.dir/"manual")["revision_id"], fused["revision_id"])
+        self.assertEqual((self.dir/"manual/merged.fit").read_bytes(), out.read_bytes())
+        report = json.loads(Path(fused["artifacts"]["report"]).read_text())
+        self.assertEqual([r["source"] for r in report["stream_sources"]["record.power"]],
+                         ["bike", "backup", "bike", None])
+        self.assertTrue(self.configured(*args)["rides"][0]["reused"])
+
+    def test_unprofiled_native_field_by_config_name(self):
+        config = self.date_setup()
+        config["merge"]["streams"] = {"record.extra_sensor": ["garmin", "bryton"]}
+        config["merge"]["field_ids"] = {"record.extra_sensor": 240}
+        self.conf.write_text(json.dumps(config))
+        self.b.write_bytes(fixture(True, [110] * 6))
+        self.g.write_bytes(fixture(False, [109] * 6, extra_sensor=56))
+        result = self.configured(self.b, self.g, "--out", self.dir / "private_field")
+        fit = Path(result["artifacts"]["fit"])
+        self.assertEqual([r[None, 240] for n, r in rows(fit) if n == 20], [56] * 6)
+        report = json.loads(Path(result["artifacts"]["report"]).read_text())
+        self.assertEqual(report["stream_sources"]["record.extra_sensor"][0]["source"], "garmin")
 
     def test_m04_insufficient_fallback_and_invalid_pair(self):
         self.b.write_bytes(fixture(True,[255]*600+[120]*400))

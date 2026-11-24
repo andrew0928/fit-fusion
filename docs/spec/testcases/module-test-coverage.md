@@ -47,6 +47,6 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | `q3_q4_plateau_evidence_and_pause_boundaries` | Q3a–f、Q4 | 60 秒平台、覆蓋率、心率變動、連續分歧及暫停邊界。 |
 | `q5_whole_and_affected_coverage_are_independent` | Q5a–c | 全程與異常段覆蓋門檻各自生效。 |
 | `f1_f2_f3_session_calories_missing_and_invalid_difference` | F1、F2、F3a–b | CIRQA 總量、兩個原值、缺總量中止及無法計算的衍生活動熱量。 |
-| `f4_f5_omit_temperature_and_select_coordinates_in_pairs` | F4、F5 | 移除溫度及摘要，保留來源溫度，缺半組 GPS 時兩欄同時缺值。 |
+| `f4_f5_inherit_temperature_and_select_coordinates_in_pairs` | F4、F5 | 移除溫度覆寫時，保留主來源溫度與摘要，缺半組 GPS 時兩欄同時缺值。 |
 
 [Policy 測試](../../../src/rust/merger/src/policy/tests.rs) · [端對端案例](merger.md#目前可重跑的驗收)

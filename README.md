@@ -5,7 +5,7 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 | CLI | 交付範圍與進度 | 規格 | 驗收情境與案例 |
 |---|---|---|---|
 | 檢查器 | Python、C#、Rust 已提供盤點、逐框檢查及 FIT 往返匯出。Node.js 待開發。 | [檢查器規格](docs/spec/inspector.md) | [盤點、逐框還原與跨 SDK 比對](docs/spec/testcases/inspector.md) |
-| 合併器 | macOS Rust CLI 可按日期從本機 FIT 或 Garmin Connect 配對、依設定選源並輸出 FIT 與報告。Strava 自動發佈排在 M2-4。 | [合併器規格](docs/spec/merger.md) | [選源、保存與發佈](docs/spec/testcases/merger.md) |
+| 合併器 | macOS Rust CLI 可按日期從本機 FIT 或 Garmin Connect 配對、依設定選源並輸出 FIT 與報告，可加 `--parquet` 追查逐點選值與還原原檔。騎士手動上傳 FIT 至 Strava。 | [合併器規格](docs/spec/merger.md) | [選源、保存與發佈](docs/spec/testcases/merger.md) |
 
 ## 專案目錄
 
@@ -50,6 +50,10 @@ runtime/build/rust/release/fit-fusion --skill merge
 runtime/build/rust/release/fit-fusion merge data/sources/bryton/fit/261121141151.fit \
   data/sources/garmin/25149578721/25149578721_ACTIVITY.fit --out runtime/acceptance/2026-11-21 --json
 ```
+
+需要分析檔時，在同一條合併命令加 `--parquet`，手動模式請指定新的輸出目錄。日期模式會自動保留各次修訂。Strava 手動上傳請選 `merged.fit`。[分析檔欄位與查詢](docs/spec/merger.md#parquet-分析檔-v2)
+
+可用兩台未註冊的合成車錶驗證新串流。從根目錄執行 `runtime/build/rust/release/fit-fusion --config docs/config/stream-fit.example.json merge --date 2024-01-09 --parquet --json`，即可讀回功率、左右平衡及踩踏功率相位。[新設備與感測器](docs/config/README.md#新感測器與新欄位)
 
 ## 驗證本機 FIT 目錄來源
 

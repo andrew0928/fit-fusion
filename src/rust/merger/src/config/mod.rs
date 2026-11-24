@@ -153,8 +153,28 @@ impl Registry {
         self.targets.insert(kind.into(), validate);
     }
     fn device(&self, id: &str, v: &Value) -> Result<Device> {
+        if let Some(identity) = v["device"].as_object() {
+            let get = |key: &str| {
+                identity
+                    .get(key)?
+                    .as_u64()
+                    .and_then(|n| u16::try_from(n).ok())
+            };
+            return get("manufacturer")
+                .zip(get("product"))
+                .map(|(manufacturer, product)| Device {
+                    manufacturer,
+                    product,
+                })
+                .ok_or_else(|| {
+                    invalid(
+                        &format!("/sources/{id}/device"),
+                        "invalid FIT device identity",
+                    )
+                });
+        }
         self.devices
-            .get(v["device"].as_str().unwrap())
+            .get(v["device"].as_str().unwrap_or_default())
             .copied()
             .ok_or_else(|| invalid(&format!("/sources/{id}/device"), "unregistered device"))
     }
@@ -167,6 +187,7 @@ pub struct Settings {
     sources: BTreeMap<String, Box<dyn DataSource>>,
     targets: Vec<Target>,
     devices: BTreeMap<String, Device>,
+    record_fields: BTreeMap<String, u8>,
     selection: Value,
     pub timezone: String,
     pub output_dir: PathBuf,
@@ -259,31 +280,47 @@ impl Settings {
         }
         let merge = &v["merge"];
         let primary = merge["primary_source"].as_str().unwrap();
-        if !sources.contains_key(primary) || definitions[primary]["device"] != "bryton_rider_460" {
+        if !sources.contains_key(primary) || definitions[primary]["kind"] == "apple_health_export" {
             return Err(invalid(
                 "/merge/primary_source",
-                "expected a configured Rider 460 source",
+                "expected a configured cycling activity source",
             ));
         }
         let streams = merge["streams"].as_object().unwrap();
+        let mut record_fields = BTreeMap::new();
+        if let Some(aliases) = merge["field_ids"].as_object() {
+            for (name, value) in aliases {
+                let id = value.as_u64().unwrap() as u8;
+                if crate::native::NAMES.contains_key(&(20, id))
+                    || crate::native::record_id(name).is_some()
+                    || record_fields.values().any(|&v| v == id)
+                {
+                    return Err(invalid(
+                        &format!("/merge/field_ids/{name}"),
+                        "use the canonical name for a known FIT field; private IDs must be unique",
+                    ));
+                }
+                record_fields.insert(name.clone(), id);
+            }
+        }
         for (field, ids) in streams {
+            if field.starts_with("record.") {
+                let id = crate::native::record_id(field).or_else(|| record_fields.get(field).copied())
+                    .filter(|id| *id < 253).ok_or_else(|| invalid(&format!("/merge/streams/{field}"), "unknown or structural record field; declare a new native ID in merge.field_ids"))?;
+                record_fields.insert(field.clone(), id);
+            }
             for (i, id) in ids.as_array().unwrap().iter().enumerate() {
                 let source_id = id.as_str().unwrap();
                 let at = format!("/merge/streams/{field}/{i}");
                 let spec = definitions
                     .get(source_id)
                     .ok_or_else(|| invalid(&at, "undeclared source ID"))?;
-                let allowed = match field.as_str() {
-                    "record.heart_rate" => match i {
-                        0 => spec["device"] == "bryton_rider_460",
-                        1 => spec["device"] == "garmin_cirqa",
-                        _ => false,
-                    },
-                    "session.total_calories" | "session.metabolic_calories" => {
-                        i == 0 && spec["device"] == "garmin_cirqa"
-                    }
-                    _ => spec["kind"] != "apple_health_export",
-                };
+                let allowed = spec["kind"] != "apple_health_export"
+                    && match field.as_str() {
+                        "record.heart_rate" => i < 2,
+                        "session.total_calories" | "session.metabolic_calories" => i == 0,
+                        _ => true,
+                    };
                 if !allowed {
                     return Err(invalid(&at, "source incompatible with this selection rule"));
                 }
@@ -310,8 +347,10 @@ impl Settings {
             targets,
             devices: definitions
                 .iter()
-                .filter_map(|(id, v)| Some((id.clone(), *r.devices.get(v["device"].as_str()?)?)))
-                .collect(),
+                .filter(|(_, v)| v.get("device").is_some())
+                .map(|(id, v)| r.device(id, v).map(|device| (id.clone(), device)))
+                .collect::<Result<_>>()?,
+            record_fields,
             selection: merge.clone(),
             timezone: timezone.into(),
             output_dir: resolve(base, v["output_dir"].as_str().unwrap())?,
@@ -332,6 +371,12 @@ impl Settings {
     pub fn targets(&self) -> impl Iterator<Item = &Target> {
         self.targets.iter()
     }
+    pub(crate) fn record_fields(&self) -> impl Iterator<Item = (&str, u8)> {
+        self.record_fields
+            .iter()
+            .filter(|(name, _)| self.selection["streams"].get(name).is_some())
+            .map(|(name, id)| (name.as_str(), *id))
+    }
     pub fn selected_fields(&self) -> impl Iterator<Item = &str> {
         self.selection["streams"]
             .as_object()
@@ -339,7 +384,18 @@ impl Settings {
             .keys()
             .map(String::as_str)
     }
+    /// An omitted stream follows the primary device without an explicit override.
     pub fn sources_for(&self, field: &str) -> impl Iterator<Item = &dyn DataSource> {
+        let inherited = self.selection["streams"].get(field).is_none()
+            && (field.starts_with("record.")
+                || matches!(
+                    field,
+                    "session.total_calories" | "session.metabolic_calories"
+                ));
+        self.configured_sources(field)
+            .chain(inherited.then(|| self.primary_source()))
+    }
+    pub(crate) fn configured_sources(&self, field: &str) -> impl Iterator<Item = &dyn DataSource> {
         self.selection["streams"][field]
             .as_array()
             .into_iter()

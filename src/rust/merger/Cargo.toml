@@ -14,8 +14,11 @@ hex = "0.4"
 tempfile = "3"
 rustix = { version = "1", features = ["fs"] }
 jsonschema = { version = "0.33", default-features = false }
-serde = "1"
+serde = { version = "1", features = ["derive"] }
 jiff = "1"
 ureq = "2.12"
 base64 = "0.22"
 zip = { version = "4", default-features = false, features = ["deflate"] }
+arrow-array = "60"
+arrow-schema = "60"
+parquet = { version = "60", default-features = false, features = ["arrow", "snap"] }

@@ -33,17 +33,14 @@
       "properties": {
         "primary_source": {"$ref": "#/definitions/sourceId"},
         "min_overlap_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "field_ids": {
+          "type": "object",
+          "propertyNames": {"pattern": "^record\\.[a-z][a-z0-9_]*$"},
+          "additionalProperties": {"type": "integer", "minimum": 0, "maximum": 252}
+        },
         "streams": {
           "type": "object",
-          "minProperties": 1,
-          "propertyNames": {
-            "enum": [
-              "record.heart_rate", "record.position_lat", "record.position_long",
-              "record.speed", "record.enhanced_speed", "record.altitude", "record.enhanced_altitude",
-              "record.distance", "record.cadence", "record.temperature", "record.power",
-              "session.total_calories", "session.metabolic_calories"
-            ]
-          },
+          "propertyNames": {"pattern": "^(record\\.[a-z][a-z0-9_]*|session\\.(total_calories|metabolic_calories))$"},
           "additionalProperties": {
             "type": "array",
             "minItems": 1,
@@ -75,6 +72,16 @@
     "optionalText": {"type": ["string", "null"], "minLength": 1},
     "expiresAt": {"type": ["integer", "null"], "minimum": 0},
     "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "device": {
+      "oneOf": [
+        {"$ref": "#/definitions/identifier"},
+        {"type": "object", "additionalProperties": false, "required": ["manufacturer", "product"],
+         "properties": {
+           "manufacturer": {"type": "integer", "minimum": 0, "maximum": 65534},
+           "product": {"type": "integer", "minimum": 0, "maximum": 65534}
+         }}
+      ]
+    },
     "sourceId": {"$ref": "#/definitions/identifier"},
     "extensionConnector": {
       "type": "object",
@@ -91,7 +98,7 @@
       "required": ["kind", "device", "directory"],
       "properties": {
         "kind": {"const": "fit_directory"},
-        "device": {"$ref": "#/definitions/identifier"},
+        "device": {"$ref": "#/definitions/device"},
         "directory": {"$ref": "#/definitions/text"}
       }
     },
@@ -101,7 +108,7 @@
       "required": ["kind", "device", "cache_dir", "auth"],
       "properties": {
         "kind": {"const": "garmin_connect"},
-        "device": {"$ref": "#/definitions/identifier"},
+        "device": {"$ref": "#/definitions/device"},
         "cache_dir": {"$ref": "#/definitions/text"},
         "auth": {
           "type": "object",

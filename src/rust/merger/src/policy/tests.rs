@@ -1,6 +1,7 @@
 use super::*;
 use crate::data_source::{ActivityRecording, number, scalar};
 use rustyfit::proto::Value as FitValue;
+use serde_json::Value;
 use std::path::Path;
 
 const RIDER: &[u8] = include_bytes!("../../tests/scenarios/rider-gps.fit");
@@ -236,7 +237,7 @@ fn f1_f2_f3_session_calories_missing_and_invalid_difference() {
     assert!(e.message.contains("total_calories"), "F2");
 }
 #[test]
-fn f4_f5_omit_temperature_and_select_coordinates_in_pairs() {
+fn f4_f5_inherit_temperature_and_select_coordinates_in_pairs() {
     let p = fixture(6);
     let mut v: Value = serde_json::from_str(include_str!(
         "../../../../../docs/config/config.example.json"
@@ -260,7 +261,7 @@ fn f4_f5_omit_temperature_and_select_coordinates_in_pairs() {
     let fit = crate::output::build(p.primary(), &s).unwrap();
     for m in crate::data_source::decode(&fit).unwrap().messages {
         if m.num.0 == 18 {
-            assert!(!m.fields.iter().any(|f| f.num == 57), "F4 summary");
+            assert_eq!(number(&m, 57), Some(22), "F4 primary summary");
         }
     }
 }

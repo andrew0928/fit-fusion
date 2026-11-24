@@ -1,5 +1,7 @@
+mod analysis;
 pub mod config;
 pub mod data_source;
+mod native;
 mod output;
 mod policy;
 mod quality;
@@ -17,7 +19,12 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-const VERSION: &str = "configured-fit-v2";
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum ExportFormat {
+    Fit,
+    FitAndParquet,
+}
+const VERSION: &str = "configured-fit-v3";
 #[derive(Debug)]
 pub struct Error {
     pub code: &'static str,
@@ -76,16 +83,27 @@ fn provenance(s: &Selection) -> Vec<Value> {
     }
     ranges
 }
-fn write_result(out: &Path, bytes: &[u8], report: &Value) -> Result<bool> {
+fn write_result(
+    out: &Path,
+    bytes: &[u8],
+    report: &Value,
+    parquet: Option<tempfile::NamedTempFile>,
+) -> Result<bool> {
     let parent = out
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
     fs::create_dir_all(parent)?;
     let contents = serde_json::to_vec_pretty(report).map_err(std::io::Error::other)?;
+    let with_parquet = parquet.is_some();
     let reuse = || -> Result<bool> {
         if fs::read(out.join("merged.fit")).ok().as_deref() == Some(bytes)
             && fs::read(out.join("merge-report.json")).ok().as_deref() == Some(contents.as_slice())
+            && (!with_parquet
+                || file_hash(&out.join("merged.parquet"))
+                    .ok()
+                    .as_deref()
+                    .is_some_and(|digest| Some(digest) == report["parquet"]["sha256"].as_str()))
         {
             Ok(true)
         } else {
@@ -105,6 +123,10 @@ fn write_result(out: &Path, bytes: &[u8], report: &Value) -> Result<bool> {
         f.write_all(data)?;
         f.sync_all()?;
     }
+    if let Some(file) = parquet {
+        file.persist(tmp.path().join("merged.parquet"))
+            .map_err(|e| e.error)?;
+    }
     use rustix::fs::{CWD, RenameFlags, renameat_with};
     match renameat_with(CWD, tmp.path(), CWD, out, RenameFlags::NOREPLACE) {
         Ok(()) => Ok(false),
@@ -113,12 +135,27 @@ fn write_result(out: &Path, bytes: &[u8], report: &Value) -> Result<bool> {
     }
 }
 pub fn merge_files(inputs: [PathBuf; 2], out: PathBuf) -> Result<Value> {
+    merge_files_with_format(inputs, out, ExportFormat::Fit)
+}
+pub fn merge_files_with_format(
+    inputs: [PathBuf; 2],
+    out: PathBuf,
+    format: ExportFormat,
+) -> Result<Value> {
     let [first, second] = inputs;
-    merge_recordings(
+    manual_pair(
+        &config::Settings::embedded()?,
         FitDirectory::open_file(&first)?,
         FitDirectory::open_file(&second)?,
         &out,
+        format,
     )
+}
+
+fn file_hash(path: &Path) -> std::io::Result<String> {
+    let mut digest = Sha256::new();
+    std::io::copy(&mut fs::File::open(path)?, &mut digest)?;
+    Ok(hex::encode(digest.finalize()))
 }
 
 /// Merge two already-open recordings with the production dual-file defaults.
@@ -128,21 +165,42 @@ pub fn merge_recordings(
     second: ActivityRecording,
     out: &Path,
 ) -> Result<Value> {
-    manual_pair(&config::Settings::embedded()?, first, second, out)
+    manual_pair(
+        &config::Settings::embedded()?,
+        first,
+        second,
+        out,
+        ExportFormat::Fit,
+    )
 }
 fn manual_pair(
     settings: &config::Settings,
     first: ActivityRecording,
     second: ActivityRecording,
     out: &Path,
+    format: ExportFormat,
 ) -> Result<Value> {
-    use data_source::Device;
-    let (b, g) = match (first.metadata.device, second.metadata.device) {
-        (Device::RIDER_460, Device::CIRQA) => (first, second),
-        (Device::CIRQA, Device::RIDER_460) => (second, first),
-        _ => return Err(Error::data("expected one Rider 460 and one CIRQA")),
-    };
     let primary_id = settings.primary_source().id().to_owned();
+    let device = settings
+        .device(&primary_id)
+        .ok_or_else(|| Error::usage("manual FIT pairing requires a primary device identity"))?;
+    let (b, g) = match (
+        first.metadata.device == device,
+        second.metadata.device == device,
+    ) {
+        (true, false) => (first, second),
+        (false, true) => (second, first),
+        (true, true) => {
+            return Err(Error::usage(
+                "both files match the primary model; use date mode with separate source directories",
+            ));
+        }
+        _ => {
+            return Err(Error::data(
+                "neither FIT matches the configured primary device",
+            ));
+        }
+    };
     let mut rides = BTreeMap::from([(primary_id.clone(), Ride::from_recording(b)?)]);
     let ids = workflow::required(settings);
     if ids.len() > 1 {
@@ -151,20 +209,37 @@ fn manual_pair(
         ));
     }
     if let Some(id) = ids.first() {
-        if settings.device(id) != Some(Device::CIRQA) {
+        if settings.device(id) != Some(g.metadata.device) {
             return Err(Error::usage(
-                "second input must match the configured CIRQA source",
+                "second input must match the configured secondary device",
             ));
         }
         rides.insert(id.clone(), Ride::from_recording(g)?);
+    } else if format == ExportFormat::FitAndParquet {
+        // A manually supplied FIT is part of the analysis input even when every stream selects the primary.
+        let mut configured = settings
+            .sources()
+            .filter(|s| settings.device(s.id()) == Some(g.metadata.device));
+        let id = match (configured.next(), configured.next()) {
+            (Some(s), None) => s.id(),
+            _ => "@input-secondary",
+        };
+        rides.insert(id.to_owned(), Ride::from_recording(g)?);
     }
-    export(settings, &MatchedRide { primary_id, rides }, out, false)
+    export(
+        settings,
+        &MatchedRide { primary_id, rides },
+        out,
+        false,
+        format,
+    )
 }
 fn export(
     settings: &config::Settings,
     pair: &MatchedRide,
     out: &Path,
     revision_path: bool,
+    format: ExportFormat,
 ) -> Result<Value> {
     let selected = settings.merge_policy().select(pair)?;
     let b = pair.primary();
@@ -183,12 +258,18 @@ fn export(
         });
         inputs.insert(id, info);
     }
-    let calories=selected.calories.as_ref().map(|c|json!({
+    let mut calories=selected.calories.as_ref().map(|c|json!({
         "source":selected.calorie_source.and_then(|r|pair.rides.iter().find(|(_,v)|std::ptr::eq(*v,r)).map(|(id,_)|id)),
         "bryton_original":data_source::number(&b.session,11),"total_calories":c.total,"metabolic_calories":c.metabolic,
         "active_calories":c.active(),"developer_index":selected.write_total.then_some(c.dev),
         "application_id":hex::encode(output::APP_ID)
     }));
+    if let Some(c) = &mut calories {
+        c["primary_original"] = json!(data_source::number(&b.session, 11));
+        if b.device.manufacturer != data_source::Device::RIDER_460.manufacturer {
+            c.as_object_mut().unwrap().remove("bryton_original");
+        }
+    }
     let hr_ids = settings
         .sources_for("record.heart_rate")
         .map(|s| s.id())
@@ -207,25 +288,51 @@ fn export(
     let field_sources: BTreeMap<_, _> = selected
         .fields
         .iter()
-        .map(|f| (f.name, &f.ranges))
+        .map(|f| (&f.name, &f.ranges))
         .collect();
     let first_overlap = selected.overlaps.values().next();
-    let report = json!({"schema_version":1,"rules_version":VERSION,"inputs":inputs,"primary_timeline":pair.primary_id,
-        "selection":settings.selection(),"overlap":{"record_ratios":first_overlap.map(|r|r[0]),"session_ratios":first_overlap.map(|r|r[1]),"by_source":selected.overlaps},
+    let mut report = json!({"schema_version":1,"rules_version":VERSION,"inputs":inputs,"primary_timeline":pair.primary_id,
+        "selection":settings.selection(),"unlisted_streams":"preserve_primary","overlap":{"record_ratios":first_overlap.map(|r|r[0]),"session_ratios":first_overlap.map(|r|r[1]),"by_source":selected.overlaps},
         "heart_rate":s.report,"heart_rate_sources":hr_ranges,"stream_sources":field_sources,"calories":calories,"output_sha256":hash(&bytes)});
     let hashes: BTreeMap<_, _> = pair.rides.iter().map(|(id, r)| (id, &r.hash)).collect();
-    let revision = hash(
-        &serde_json::to_vec(&(VERSION, hashes, settings.selection()))
-            .map_err(std::io::Error::other)?,
-    );
+    let revision = match format {
+        ExportFormat::Fit => serde_json::to_vec(&(VERSION, &hashes, settings.selection())),
+        ExportFormat::FitAndParquet => serde_json::to_vec(&(
+            VERSION,
+            &hashes,
+            settings.selection(),
+            "parquet",
+            analysis::SCHEMA_VERSION,
+        )),
+    }
+    .map(|identity| hash(&identity))
+    .map_err(std::io::Error::other)?;
     let out = if revision_path {
         out.join(&b.hash).join(&revision)
     } else {
         out.to_owned()
     };
-    let reused = write_result(&out, &bytes, &report)?;
+    let mut artifacts =
+        json!({"fit":out.join("merged.fit"),"report":out.join("merge-report.json")});
+    let parquet = if format == ExportFormat::FitAndParquet {
+        let parent = out
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        fs::create_dir_all(parent)?;
+        let mut file = tempfile::NamedTempFile::new_in(parent)?;
+        analysis::write(file.as_file_mut(), pair, &selected, settings, &report)?;
+        file.as_file().sync_all()?;
+        report["parquet"] =
+            json!({"schema_version":analysis::SCHEMA_VERSION,"sha256":file_hash(file.path())?});
+        artifacts["parquet"] = json!(out.join("merged.parquet"));
+        Some(file)
+    } else {
+        None
+    };
+    let reused = write_result(&out, &bytes, &report, parquet)?;
     Ok(
         json!({"schema_version":1,"status":"exported","code":"ok","revision_id":revision,"reused":reused,
-        "artifacts":{"fit":out.join("merged.fit"),"report":out.join("merge-report.json")},"next_action":null}),
+        "artifacts":artifacts,"next_action":null}),
     )
 }

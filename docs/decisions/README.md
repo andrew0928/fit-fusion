@@ -18,6 +18,8 @@
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |
 | 2026-11-24 | [先實作本機 FIT 目錄，Garmin API 與 Apple Health ZIP 分型保留](2026-11-24-local-fit-source.md) | accepted |
+| 2026-11-24 | [本版手動上傳 Strava，跳過 M2-4 並接續分析匯出](2026-11-24-manual-strava-export.md) | accepted |
+| 2026-11-24 | [config v1 預設保留主 FIT，依欄名及設備識別擴充](2026-11-24-config-primary-inheritance.md) | accepted |
 | 2026-11-23 | [Apple Watch 騎乘資料的漸進式匯出](2026-11-23-apple-health-incremental-export.md) | proposed |
 | 2026-11-23 | [整趟騎乘的熱量消耗優先使用 Garmin](2026-11-23-ride-calorie-source.md)（發佈 CIRQA 總熱量並另存兩個原值） | accepted |
 | 2026-11-23 | [心率先判整趟品質，再決定逐點補缺或整趟改用 Garmin](2026-11-23-heart-rate-quality.md) | accepted |

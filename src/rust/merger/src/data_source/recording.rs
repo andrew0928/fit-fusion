@@ -134,13 +134,18 @@ pub struct ActivityRecording {
     pub(crate) developers: BTreeSet<u8>,
 }
 
+pub struct NativeSample {
+    pub timestamp_utc: i64,
+    pub raw: Option<serde_json::Value>,
+}
+
 pub struct Sample {
     pub timestamp_utc: i64,
     /// Encoded integer in the FIT field's native scale and units.
     pub raw: Option<i64>,
 }
 
-/// Native fields in the v1 selection contract (numbers from the FIT Record message).
+/// Common record field numbers for the integer convenience API. Use read_native_stream for arbitrary FIT fields.
 #[derive(Clone, Copy)]
 #[repr(u8)]
 pub enum StreamKey {
@@ -237,6 +242,31 @@ impl ActivityRecording {
                 })
                 .collect()
         })
+    }
+    /// A lossless wire-based field read decoded into scalar, array or string values.
+    /// The outer None means the file has no such native record field.
+    pub fn read_native_stream(&self, field: u8) -> Result<Option<Vec<NativeSample>>> {
+        if !self.native.contains(&(20, field)) {
+            return Ok(None);
+        }
+        let times = self
+            .fit
+            .messages
+            .iter()
+            .filter(|m| m.num.0 == 20)
+            .filter_map(|m| number(m, 253))
+            .collect::<Vec<_>>();
+        let records =
+            crate::native::read_records(&self.bytes, times.iter(), &BTreeSet::from([field]))?;
+        Ok(Some(
+            records
+                .into_iter()
+                .map(|(time, values)| NativeSample {
+                    timestamp_utc: FIT_EPOCH_UNIX + i64::from(time),
+                    raw: values.get(&field).map(|v| v.decoded()),
+                })
+                .collect(),
+        ))
     }
     pub fn read_summary(&self, key: SummaryKey) -> Option<Vec<Summary>> {
         let (message, field) = match key {

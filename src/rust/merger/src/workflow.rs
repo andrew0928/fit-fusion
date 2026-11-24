@@ -1,6 +1,6 @@
 //! Resolve configured sources first, then apply the same selection policy for each ride.
 use crate::{
-    Error, Result,
+    Error, ExportFormat, Result,
     config::Settings,
     data_source::{ActivitySummary, DataSource, Device, FitDirectory},
     policy::{MatchedRide, overlap},
@@ -93,7 +93,11 @@ fn prepare(
     };
     for id in required(settings) {
         let source = settings.source(&id).unwrap();
-        let forced = known.filter(|_| settings.device(&id) == Some(Device::CIRQA));
+        let forced = known.filter(|_| {
+            settings
+                .device(&id)
+                .is_some_and(|d| d.manufacturer == Device::CIRQA.manufacturer)
+        });
         match candidates(settings, source, &plan.primary, start, end, forced) {
             Ok((fits, details)) => {
                 if forced.is_some() && fits.is_empty() {
@@ -132,6 +136,7 @@ fn finish(
     owners: &Owners,
     out: &Path,
     date_mode: bool,
+    format: ExportFormat,
 ) -> Result<Value> {
     if let Some(mut e) = plan.failure {
         if e.details.is_null() {
@@ -164,20 +169,33 @@ fn finish(
             rides.insert(id, c.ride);
         }
     }
-    crate::export(settings, &MatchedRide { primary_id, rides }, out, date_mode)
-        .map(|mut result| {
-            result["matched_sources"] = json!(matched);
-            result
-        })
-        .map_err(|mut e| {
-            if !e.details.is_object() {
-                e.details = json!({});
-            }
-            e.details["examined"] = json!(plan.diagnostics);
-            e
-        })
+    crate::export(
+        settings,
+        &MatchedRide { primary_id, rides },
+        out,
+        date_mode,
+        format,
+    )
+    .map(|mut result| {
+        result["matched_sources"] = json!(matched);
+        result
+    })
+    .map_err(|mut e| {
+        if !e.details.is_object() {
+            e.details = json!({});
+        }
+        e.details["examined"] = json!(plan.diagnostics);
+        e
+    })
 }
 pub fn date(settings: &Settings, day: &str) -> Result<(Value, u8)> {
+    date_with_format(settings, day, ExportFormat::Fit)
+}
+pub fn date_with_format(
+    settings: &Settings,
+    day: &str,
+    format: ExportFormat,
+) -> Result<(Value, u8)> {
     let query = settings.primary_query(day)?;
     let primary = settings.primary_source();
     let mut rows = primary.list_activities(&query)?;
@@ -206,9 +224,16 @@ pub fn date(settings: &Settings, day: &str) -> Result<(Value, u8)> {
         plan,
     ) in plans
     {
-        let mut result = match plan
-            .and_then(|p| finish(settings, p, &used, &settings.output_dir.join(day), true))
-        {
+        let mut result = match plan.and_then(|p| {
+            finish(
+                settings,
+                p,
+                &used,
+                &settings.output_dir.join(day),
+                true,
+                format,
+            )
+        }) {
             Ok(result) => {
                 succeeded += 1;
                 result
@@ -251,31 +276,46 @@ pub fn manual(
     known: Option<&str>,
     out: &Path,
 ) -> Result<Value> {
+    manual_with_format(settings, inputs, auto, known, out, ExportFormat::Fit)
+}
+pub fn manual_with_format(
+    settings: &Settings,
+    inputs: &[PathBuf],
+    auto: bool,
+    known: Option<&str>,
+    out: &Path,
+    format: ExportFormat,
+) -> Result<Value> {
     match inputs {
         [a, b] if !auto && known.is_none() => crate::manual_pair(
             settings,
             FitDirectory::open_file(a)?,
             FitDirectory::open_file(b)?,
             out,
+            format,
         ),
         [a] if auto || known.is_some() => {
             let primary = FitDirectory::open_file(a)?;
-            if primary.metadata().device != Device::RIDER_460 {
-                return Err(Error::data("expected Rider 460 primary file"));
+            if Some(primary.metadata().device) != settings.device(settings.primary_source().id()) {
+                return Err(Error::data("expected the configured primary device"));
             }
             if known.is_some()
                 && required(settings)
                     .iter()
-                    .filter(|id| settings.device(id) == Some(Device::CIRQA))
+                    .filter(|id| {
+                        settings
+                            .device(id)
+                            .is_some_and(|d| d.manufacturer == Device::CIRQA.manufacturer)
+                    })
                     .count()
                     != 1
             {
                 return Err(Error::usage(
-                    "--garmin-id requires one configured CIRQA source in the selection",
+                    "--garmin-id requires one configured Garmin source in the selection",
                 ));
             }
             let plan = prepare(settings, primary, known)?;
-            finish(settings, plan, &Owners::new(), out, false)
+            finish(settings, plan, &Owners::new(), out, false, format)
         }
         _ => Err(Error::usage(
             "provide two FITs or one primary FIT with --garmin auto or --garmin-id ID",

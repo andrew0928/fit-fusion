@@ -182,3 +182,25 @@ fn merge_accepts_already_open_recordings() {
     assert_eq!(report["inputs"]["garmin"]["source_id"], "my_band");
     assert_eq!(report["heart_rate"]["samples"]["garmin"], 1);
 }
+
+#[test]
+fn arbitrary_native_field_reader_exposes_arrays_zeros_and_missing_samples() {
+    let r = ActivityRecording::from_fit_bytes(
+        "backup",
+        std::path::Path::new("backup.fit"),
+        include_bytes!("../../tests/stream-fixtures/backup.fit").to_vec(),
+    )
+    .unwrap();
+    let phases = r.read_native_stream(69).unwrap().unwrap();
+    assert_eq!(phases[0].raw, Some(serde_json::json!([32, 64])));
+    assert!(r.read_native_stream(240).unwrap().is_none());
+    let bike = ActivityRecording::from_fit_bytes(
+        "bike",
+        std::path::Path::new("bike.fit"),
+        include_bytes!("../../tests/stream-fixtures/bike.fit").to_vec(),
+    )
+    .unwrap();
+    let watts = bike.read_native_stream(7).unwrap().unwrap();
+    assert_eq!(watts[0].raw, Some(serde_json::json!(0)));
+    assert!(watts[2].raw.is_none());
+}

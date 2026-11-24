@@ -97,21 +97,25 @@ pub fn select(
     b: &Ride,
     preferred: Option<&Ride>,
     backup: Option<&Ride>,
-    enabled: bool,
+    order: &[&str],
 ) -> Result<Selection> {
     let times: Vec<_> = b.samples.keys().copied().collect();
-    if !enabled {
+    if order.is_empty() {
         let points = times
             .into_iter()
             .map(|time| Point {
                 time,
-                hr: None,
-                source: "missing",
+                hr: b.samples[&time],
+                source: if b.samples[&time].is_some() {
+                    "bryton"
+                } else {
+                    "missing"
+                },
             })
             .collect();
         return Ok(Selection {
             points,
-            report: json!({"mode":"disabled"}),
+            report: json!({"mode":"preserve_primary"}),
             only_bryton: false,
             only_garmin: false,
         });
@@ -145,11 +149,30 @@ pub fn select(
         .filter(|&&i| second[i].is_some())
         .count();
     let n = times.len();
-    let mut report = json!({"mode":if switch {"whole_garmin"}else{"bryton_with_gap_fill"},
-        "primary_valid":n-checks.missing,"garmin_valid":n-secondary.missing,"record_count":n,
-        "triggers":checks.triggers,"plateaus_without_confirmation":checks.suspect,
-        "affected_seconds":checks.affected.len(),"garmin_valid_affected":affected_valid,
-        "garmin_triggers":secondary.triggers,"garmin_longest_constant_seconds":secondary.longest_flat});
+    let mut report = json!({
+        "mode": if switch { "whole_backup" } else { "preferred_with_gap_fill" },
+        "preferred_source": order[0], "backup_source": order.get(1),
+        "primary_valid": n-checks.missing, "backup_valid": n-secondary.missing,
+        "record_count": n, "triggers": checks.triggers, "plateaus_without_confirmation": checks.suspect,
+        "affected_seconds": checks.affected.len(), "backup_valid_affected": affected_valid,
+        "backup_triggers": secondary.triggers, "backup_longest_constant_seconds": secondary.longest_flat
+    });
+    // Keep the existing default reports readable by previous CLI consumers.
+    if order == ["bryton", "garmin"] {
+        report["mode"] = json!(if switch {
+            "whole_garmin"
+        } else {
+            "bryton_with_gap_fill"
+        });
+        for key in [
+            "valid",
+            "valid_affected",
+            "triggers",
+            "longest_constant_seconds",
+        ] {
+            report[format!("garmin_{key}")] = report[format!("backup_{key}")].clone();
+        }
+    }
     if switch && backup.is_none() {
         let mut e = Error::quality("missing heart-rate backup");
         report["reason"] = json!("missing_backup");
@@ -163,7 +186,7 @@ pub fn select(
             || secondary.longest_flat >= 600)
     {
         let mut e =
-            Error::quality("Garmin coverage or quality insufficient for whole-stream replacement");
+            Error::quality("backup coverage or quality insufficient for whole-stream replacement");
         e.details = report;
         return Err(e);
     }
@@ -184,7 +207,15 @@ pub fn select(
             source: ["bryton", "garmin", "missing"][source],
         });
     }
-    report["samples"] = json!({"bryton":counts[0],"garmin":counts[1],"missing":counts[2]});
+    let mut samples = std::collections::BTreeMap::from([(order[0], counts[0])]);
+    if let Some(&backup) = order.get(1) {
+        samples.insert(backup, counts[1]);
+    }
+    report["samples"] = json!(samples);
+    report["missing_samples"] = json!(counts[2]);
+    if !samples.contains_key("missing") {
+        report["samples"]["missing"] = json!(counts[2]);
+    }
     Ok(Selection {
         points,
         report,

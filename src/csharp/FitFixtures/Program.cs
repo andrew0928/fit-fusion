@@ -2,12 +2,19 @@ using Dynastream.Fit;
 using FitDateTime = Dynastream.Fit.DateTime;
 using FitFile = Dynastream.Fit.File;
 
-if (args.Length is < 1 or > 2 || args.Length == 2 && args[1] != "--scenarios")
+if (args.Length is < 1 or > 2 || args.Length == 2 && args[1] is not ("--scenarios" or "--streams"))
 {
-    Console.Error.WriteLine("Usage: FitFixtures NEW_DIRECTORY [--scenarios]");
+    Console.Error.WriteLine("Usage: FitFixtures NEW_DIRECTORY [--scenarios | --streams]");
     return 2;
 }
 Directory.CreateDirectory(args[0]);
+if (args.Length == 2 && args[1] == "--streams")
+{
+    // Synthetic product numbers: neither model is registered in the CLI.
+    WriteRide("bike.fit", 267, 30001, [110, 111, 255, 114, 114, 115], 6, true, power: true);
+    WriteRide("backup.fit", 1, 30002, [109, 110, 113, 113, 114, 115], 2, true, power: true);
+    return 0;
+}
 if (args.Length == 2)
 {
     WriteRide("rider-gps.fit", 267, 2205, [110, 111, 255, 114, 114, 115], 6, true, sensors: true);
@@ -21,7 +28,7 @@ WriteRide("rider-later.fit", 267, 2205, [120, 121], 3, true, 0x40000010);
 WriteRide("cirqa.fit", 1, 5019, [109, 110, 113, 113, 114, 115], 2, false);
 return 0;
 
-void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ushort total, bool cadence, uint start = 0x40000000, bool sensors = false)
+void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ushort total, bool cadence, uint start = 0x40000000, bool sensors = false, bool power = false)
 {
     using var stream = new FileStream(Path.Combine(args[0], name), FileMode.CreateNew);
     var encoder = new Encode(ProtocolVersion.V20);
@@ -42,6 +49,17 @@ void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ush
             record.SetPositionLat(100 + i);
             record.SetPositionLong(i == 2 ? int.MaxValue : 200 + i);
             record.SetTemperature(22);
+        }
+        if (power)
+        {
+            ushort?[] watts = maker == 267 ? [0, 120, null, 250, 180, null] : [99, 99, 170, 99, 99, null];
+            if (watts[i] is ushort sample) record.SetPower(sample);
+            record.SetLeftRightBalance((byte)(maker == 267 ? 45 : 52));
+            if (maker == 1)
+            {
+                record.SetLeftPowerPhase(0, 45f);
+                record.SetLeftPowerPhase(1, 90f);
+            }
         }
         encoder.Write(record);
     }

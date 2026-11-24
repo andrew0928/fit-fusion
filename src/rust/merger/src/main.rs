@@ -1,14 +1,19 @@
-use fit_fusion::{Error, Result, config::Settings, data_source::ActivityQuery, merge_files};
+use fit_fusion::{
+    Error, ExportFormat, Result, config::Settings, data_source::ActivityQuery,
+    merge_files_with_format,
+};
 use serde_json::json;
 use std::{path::PathBuf, process::ExitCode};
-const HELP: &str = "fit-fusion [--config FILE] merge --date YYYY-MM-DD [--json]
+const HELP: &str = "fit-fusion [--config FILE] merge --date YYYY-MM-DD [--parquet] [--json]
 Find cycling activities starting that day in the configured time zone. Write each verified FIT and report under output_dir.
-fit-fusion [--config FILE] merge PRIMARY.fit (--garmin auto | --garmin-id ID) --out DIRECTORY [--json]
+fit-fusion [--config FILE] merge PRIMARY.fit (--garmin auto | --garmin-id ID) --out DIRECTORY [--parquet] [--json]
 Local directories stay offline. Garmin Connect reads activity lists and downloads originals, then caches verified FITs. No uploads.
-fit-fusion [--config FILE] merge INPUT.fit INPUT.fit --out DIRECTORY [--json]
-Merge one Bryton Rider 460 and one Garmin CIRQA cycling recording offline.
+fit-fusion [--config FILE] merge INPUT.fit INPUT.fit --out DIRECTORY [--parquet] [--json]
+Merge two configured cycling FITs offline. Embedded defaults use Rider 460 and CIRQA.
 Inputs may be supplied in either order. Creates merged.fit and merge-report.json.
 The default stream rules are embedded. No account or network is required.
+Unlisted fields keep their primary values. Configure record.FIELD priorities to override them.
+Add --parquet to also write merged.parquet with original frames and field selections.
 Identical results can reuse a directory. Different contents require a new directory.
 fit-fusion [--config FILE] config init|check [--json]
 fit-fusion [--config FILE] activities list --source ID [--json]
@@ -29,13 +34,13 @@ fn run(args: &[String]) -> Result<u8> {
                 match *topic {
                     "index" => HELP,
                     "merge" =>
-                        "fit-fusion --config FILE merge --date 2026-11-21 --json\nInspect rides[] for artifacts, reused, code and details. Partial batches preserve successful rides. For ambiguous_match use merge PRIMARY.fit --garmin-id ID --out NEW_DIR. Retry rate limits after retry_after. Exit 4: update Garmin key. Exit 5: wait. Exit 6: check Garmin connection.\nfit-fusion merge bryton.fit garmin.fit --out rides/merged --json\nRead stdout as one JSON. Exit 0: inspect artifacts.fit and artifacts.report. Exit 2: fix usage. Exit 3: inspect code and details; quality_review requires review before publishing. Identical inputs/rules may reuse a verified result. No upload occurs.",
+                        "fit-fusion --config FILE merge --date 2026-11-21 --json\nInspect rides[] for artifacts, reused, code and details. Add --parquet for artifacts.parquet plus FIT and report. With a manual --out use a new directory when changing formats. Partial batches preserve successful rides. For ambiguous_match use merge PRIMARY.fit --garmin-id ID --out NEW_DIR. Retry rate limits after retry_after. Exit 4: update Garmin key. Exit 5: wait. Exit 6: check Garmin connection.\nfit-fusion merge bryton.fit garmin.fit --out rides/merged --json\nRead stdout as one JSON. Exit 0: inspect artifacts.fit and artifacts.report. Exit 2: fix usage. Exit 3: inspect code and details; quality_review requires review before publishing. Identical inputs/rules may reuse a verified result. No upload occurs.",
                     "config" =>
-                        "fit-fusion --config FILE config init --json\nWrites the credential-free template or preserves the existing config. Set your source paths and Garmin key, then run fit-fusion --config FILE config check --json.\nValidates the v1 config offline. Inspect sources, primary_source, streams and destinations. Exit 2: fix the setting at details.path. Credentials are omitted. Explicit dual-file merge uses embedded defaults unless --config is supplied.",
+                        "fit-fusion --config FILE config init --json\nWrites the credential-free template or preserves the existing config. Set your source paths and Garmin key, then run fit-fusion --config FILE config check --json.\nValidates the v1 config offline. Inspect sources, primary_source, streams and destinations. Exit 2: fix the setting at details.path. Credentials are omitted. Use device {manufacturer, product} for new FIT recorders. merge.streams lists overrides; omitted fields inherit the primary. Use merge.field_ids for native fields outside the bundled FIT Profile. Explicit dual-file merge uses embedded defaults unless --config is supplied.",
                     "sources" =>
                         "fit-fusion --config FILE activities list --source ID --json\nRecursively list local cycling FITs for the configured device. IDs are SHA-256 of the original bytes. Timestamps are Unix UTC seconds. Empty list is success. Missing directory, invalid FIT or an unavailable reader returns exit 3. Garmin Connect lists account cycling activities, verifies downloaded devices at merge time and reuses cached originals. Apple Health ZIP is reserved for analysis.",
                     "publish" =>
-                        "This release exports locally. Upload artifacts.fit manually if desired. Automated Strava publishing is a later M2 step.",
+                        "Upload artifacts.fit manually to Strava. In date mode use rides[].artifacts.fit for each exported ride.",
                     _ =>
                         return Err(Error::usage(
                             "available skills: index, merge, config, sources, publish"
@@ -67,6 +72,7 @@ fn run(args: &[String]) -> Result<u8> {
     let (mut date, mut garmin, mut known) = (None, None, None);
     let mut inputs = vec![];
     let mut as_json = false;
+    let mut format = ExportFormat::Fit;
     while let Some(x) = args.next() {
         match x {
             "--date" | "--garmin" | "--garmin-id" => {
@@ -83,6 +89,7 @@ fn run(args: &[String]) -> Result<u8> {
                     return Err(Error::usage(format!("duplicate {x}")));
                 }
             }
+            "--parquet" if format == ExportFormat::Fit => format = ExportFormat::FitAndParquet,
             "--json" if !as_json => as_json = true,
             "--out" if out.is_none() => {
                 out = Some(PathBuf::from(
@@ -104,15 +111,29 @@ fn run(args: &[String]) -> Result<u8> {
                 "date mode uses configured sources and output_dir",
             ));
         }
-        fit_fusion::workflow::date(&Settings::load(&settings_path(config_path)?)?, day)?
+        fit_fusion::workflow::date_with_format(
+            &Settings::load(&settings_path(config_path)?)?,
+            day,
+            format,
+        )?
     } else {
         let out = out.ok_or_else(|| Error::usage("--out is required"))?;
         if inputs.len() == 2 && config_path.is_none() && garmin.is_none() && known.is_none() {
-            (merge_files(inputs.try_into().unwrap(), out)?, 0)
+            (
+                merge_files_with_format(inputs.try_into().unwrap(), out, format)?,
+                0,
+            )
         } else {
             let s = Settings::load(&settings_path(config_path)?)?;
             (
-                fit_fusion::workflow::manual(&s, &inputs, garmin.is_some(), known, &out)?,
+                fit_fusion::workflow::manual_with_format(
+                    &s,
+                    &inputs,
+                    garmin.is_some(),
+                    known,
+                    &out,
+                    format,
+                )?,
                 0,
             )
         }

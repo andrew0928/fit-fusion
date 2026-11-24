@@ -15,3 +15,5 @@ __pycache__/
 !src/rust/merger/tests/scenarios/cirqa-later.fit
 !src/rust/merger/tests/scenarios/cirqa-later-alt.fit
 !src/rust/merger/tests/scenarios/cirqa-sensors.fit
+!src/rust/merger/tests/stream-fixtures/bike.fit
+!src/rust/merger/tests/stream-fixtures/backup.fit
