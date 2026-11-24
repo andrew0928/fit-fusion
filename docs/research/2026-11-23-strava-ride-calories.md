@@ -56,3 +56,65 @@ Strava 活動明細的 `calories` 單位為 kcal。`kilojoules` 表示騎乘機�
 公開的 Strava 活動更新 API 沒有可直接覆寫 `calories` 的參數，上傳同趟修正檔也可能被判為重複。這次可先保留既有活動，只用原檔判讀；後續新騎乘若選擇發佈合併檔，應在原裝置自動同步至 Strava 之前決定發佈哪個版本，並以匯入後的活動 ID 讀回熱量。[Strava 活動更新](https://developers.strava.com/docs/reference/#api-models-UpdatableActivity) · [Strava 上傳狀態](https://developers.strava.com/docs/uploads/)
 
 合成室內騎乘已完成 Strava 網頁手動匯入。Bryton 輸入為 410 kcal，Rust 合併檔的標準總熱量為 CIRQA 的 73 kcal，Strava 活動概觀顯示 73 kcal。[匯入驗收紀錄](../spec/testcases/merger.md#strava-網頁手動匯入實測)
+
+## 2026-11-24　冷水坑的 kJ 與 kcal 是否混用
+
+騎士觀察到冷水坑 Strava 頁面的作功數字接近 Garmin 的熱量。這裡有兩個可以分開檢驗的問題。
+
+1. **Strava 的機械作功 kJ 為什麼會接近 Garmin 的 kcal？** Bryton 官方以 150 W 騎兩小時為例，踏板輸出 1,080 kJ，估計人體消耗約 1,080 kcal。同一份能量的換算為 1 kcal = 4.184 kJ，但人體轉為踏板作功的效率約為 20–25%。若以 24% 示範，1,080 ÷（4.184 × 0.24）約為 1,076 kcal。這說明不同物理量可有相近讀數。官方也說明只靠心率或速度估算時誤差較大。[Bryton 能量消耗說明](https://www.brytonsport.com.tw/blogs/article/bryton-energy-expenditure)
+2. **Rider 460 是否把以 kJ 算出的代謝能量直接填進 FIT 的 kcal 欄？** 冷水坑 Bryton 原檔的標準 `session.total_calories` 是 6,186 kcal。假設這個原始數字其實是代謝能量 kJ，除以 4.184 得到 1,478.5 kcal，比 CIRQA 活動熱量 1,514 低 2.35%，比 CIRQA 總熱量 1,897 低 22.1%。Garmin 同趟的代謝欄位為 383 kcal，1,514 是由總量扣除此值而來。Garmin 也是估算來源，不能充當單位標定基準。
+
+以騎乘索引重算，Bryton 原值除以同趟 Garmin **活動熱量**的比值如下。固定單位換算預期倍率接近 4.184。
+
+| 日期 | 10/09 | 10/14 | 10/28 | 11/01 | 11/08 | 11/21 |
+|---|---:|---:|---:|---:|---:|---:|
+| Bryton / Garmin 活動熱量 | 5.42 | 3.94 | 1.04 | 4.09 | 1.54 | 4.12 |
+
+三趟接近該倍率，也有一趟接近 1。這批資料不足以採用固定修正因子，仍可保留「特定條件下估算或寫出有誤」作為待驗假設。
+
+**冷水坑原檔核對。** Bryton 的 `session.total_work` 標準單位為 J，原值為 `0xFFFFFFFF`（uint32 無效碼）。CIRQA 沒有這個 session 欄位。兩份 FIT 的 `record.power` 有效筆數皆為 0。Apple 健康中的 Strava 副本只列活動熱量 6,186 kcal 與騎乘距離。冷水坑 Strava 頁面顯示的確切作功值仍待核對。Strava API 將 `kilojoules` 定義為騎乘作功、`calories` 定義為消耗熱量，`device_watts` 可辨別量測與估算；平台在無功率計時可用體重、車重、速度與高程估算功率。[Strava 活動欄位](https://developers.strava.com/docs/reference/#api-models-DetailedActivity) · [Strava 功率估算](https://support.strava.com/en-us/articles/15401944-how-to-get-power-for-your-rides) · [Strava 熱量來源](https://support.strava.com/en-us/articles/15402159-how-does-strava-calculate-calories)
+
+**第一手案例。** 本次查閱可找到 Bryton 數值偏高、偏低及車友直接質疑單位混用的案例，未找到 Bryton 官方確認 Rider 460 有此單位缺陷的公告。
+
+| 來源 | 車友實測或提問 | 參考價值 |
+|---|---|---|
+| [Mobile01，Rider 420 與 Garmin 500](https://www.mobile01.com/topicdetail.php?f=318&t=6662900) | 相同路線，Bryton 2,980 kcal，Garmin 1,605 kcal。 | 車友觀察到 Bryton 高出約 1.86 倍。原文未統一活動／總熱量口徑。 |
+| [Reddit，Rider 320 搭配 4iiii 功率計](https://www.reddit.com/r/Strava/comments/mw15w9/calories_way_lower_than_total_work/) | 作者上傳 Strava 後看到一趟作功逾 200 kJ、熱量約 100 kcal，另一趟爬坡為 900 kJ、400 kcal。 | 直接比較同一活動的作功與熱量，數值差異方向與冷水坑不同。 |
+| [TrainerRoad，直接討論 Strava 是否將 joules 當成 calories](https://www.trainerroad.com/forum/t/strava-tr-calculated-calories-from-power-meter-data-incorrect-joules-given-as-calories/87500) | 原作者因作功 kJ 與顯示 kcal 接近而懷疑高估約 4.2 倍，回覆指出踏板作功與人體消耗之間還有機械效率。 | 重現相同的單位疑問，討論對象是功率計與平台。 |
+
+騎士已確認當天沒有功率計。Strava 顯示的作功數字可用來辨認畫面所指的物理量，但不能作為實測功率來校準熱量。現有合併規則採同趟 CIRQA 的 `session.total_calories`。[整趟熱量來源決策](../decisions/2026-11-23-ride-calorie-source.md)
+
+## 2026-11-24　用同趟手錶紀錄與騎乘強度檢驗熱量
+
+**同趟、同口徑的比較。** 以兩份原生 FIT 的 `session.total_calories` 對照 Apple Watch 自行記錄的 Workout，將其活動熱量與基礎熱量相加。六趟共同時段占 Bryton 記錄的 96.95% 至 100%，下表使用各裝置完整摘要。三個來源皆為裝置估值，與 Apple Watch 的差距衡量裝置間的一致性。
+
+| 日期 | Apple Watch 總熱量（kcal） | Garmin 總熱量（kcal） | Bryton 總熱量（kcal） |
+|---|---:|---:|---:|
+| 10/09 | 724 | 844 | 2,994 |
+| 10/14 | 1,024 | 1,024 | 3,207 |
+| 10/28 | 998 | 994 | 816 |
+| 11/01 冷水坑 | 1,584 | 1,897 | 6,186 |
+| 11/08 | 1,582 | 1,820 | 2,220 |
+| 11/21 | 1,316 | 1,272 | 4,000 |
+
+六趟中 Garmin 每趟都較接近 Apple Watch。用未取整的 Apple Workout 數值計算，每趟絕對差的中位數是 Garmin 82 kcal、Bryton 2,227 kcal。冷水坑 Garmin 比 Apple Watch 高約 20%，Bryton 約為 Apple Watch 的 3.9 倍。若要比較運動額外消耗，則用 Garmin 活動熱量 1,514 對 Apple 活動熱量 1,189 kcal。六趟數值可用本機 `data/index/rides.csv` 的原檔路徑重算。
+
+**體重與時間的交叉檢查。** 成人活動量表以 1 MET 約等於每公斤體重每小時 1 kcal。以各裝置的總熱量，除以騎士體重及各自全程的小時數，得到冷水坑的隱含平均強度。Apple Watch 約 4.7 MET、Garmin 約 5.6 MET、Bryton 約 18.7 MET。量表給自選中等速度騎乘 7 MET、劇烈上坡登山車 14 MET、登山車競賽 16 MET。這些是族群參考值。冷水坑全程約五小時，包含上坡、下坡與停留，Bryton 數字要求全時段平均強度高過上述競賽參考值。[MET 定義](https://pacompendium.com/) · [2024 成人騎車活動量表](https://pacompendium.com/bicycling/)
+
+Bryton 原檔距離 48.31 km，經過 18,367 秒。逐秒速度大於 1 m/s 的記錄有 14,164 筆，約 3 小時 56 分。若給這段時間 7 MET，其他時間以 1 MET 示範，全程合計約 28.7 kcal/kg，接近 Garmin 的數量級。速度門檻只供這項估算使用，其餘時間含低速及缺值。各段強度均屬假設，無法從這項試算得出個人熱量的精確值。
+
+**車重與爬升的交叉檢查。** 當天 Bryton 與 CIRQA 的 `session.total_ascent` 分別為 854 與 1,031 m，Apple Watch Workout 的 `HKElevationAscended` 為 923.84 m。用人車合重乘以重力加速度與累積爬升（`m × g × h`），可估出克服重力的機械能，再依效率估算此部分對應的代謝能量。兩項實測研究分別報告上坡平均總效率 18.7% 與跨騎姿、地形平均 22.4%。以騎士提供的人車合重及 Apple 的爬升量示範，光是提升高度約對應 725–868 kcal，整趟另有滾動與空氣阻力等成本。此項試算說明爬升的能量規模，無法單獨驗證整趟總值，也無法判定 Bryton 的運算錯在何處。[Nimmerichter 等人的戶外爬坡研究](https://pubmed.ncbi.nlm.nih.gov/25611890/) · [Millet 等人的平路與上坡實測](https://pubmed.ncbi.nlm.nih.gov/12370567/)
+
+## 2026-11-24　Apple Watch 與 CIRQA 的熱量能驗證到什麼程度
+
+**研究結論與適用範圍。** 六趟騎乘與分圈紀錄顯示，兩台裝置的活動熱量差距隨騎乘和路段而變。目前缺少騎士本人的獨立代謝量測，無法判定冷水坑哪台更準，也缺乏套用固定修正倍率的依據。騎士於 2026-11-24 確認這些結果供分析使用，合併沿用已定案的逐欄順位。整趟熱量採同趟 CIRQA 的原始 `session.total_calories`，Apple Watch 熱量供交叉核對。[資料流順位表](../specification.md#strava-fit-逐欄選源表) · [熱量來源決策](../decisions/2026-11-23-ride-calorie-source.md)
+
+**六趟的活動熱量。** 由本機 `data/index/rides.csv` 找出 Apple Watch 自己記錄的 Workout，取其活動熱量。Garmin 取原始 FIT 的總熱量減去代謝欄位。以 Apple 為分母，按 10/09、10/14、10/28、11/01、11/08、11/21 排列，Garmin 相對差依序為 +26.4%、+0.5%、+0.7%、+27.3%、+21.0%、−0.2%。三趟相差不到 1%，另三趟 Garmin 高出 21–27%。這是裝置間的差距，各裝置依自身完整記錄時段計算。
+
+**冷水坑的差距從哪裡來。** Garmin 的活動熱量比 Apple 高 324.8 kcal（1,514 對 1,189.2），靜息部分反而低 12.1 kcal（383 對 395.1）。兩支裝置記錄時長相差約 73 秒。在三台皆有心率的 3,663 個同秒樣本中，Apple 與 CIRQA 心率的平均絕對差為 1.13 bpm。心率相近仍可得到不同熱量，現有資料無法確定裝置內部造成差距的機制。前述 MET 試算也無法區分兩者。沿用相同移動時間及其餘時間 1 MET 的假設，把移動時段取為 5.8 或 7 MET，整趟總熱量分別約為 1,559 或 1,866 kcal，依序接近 Apple 的 1,584 與 Garmin 的 1,897 kcal。[同秒心率分析](rides/2026-11-three-device-comparison.md#三台同秒讀數的差異) · [成人騎乘 MET 參考表](https://pacompendium.com/bicycling/)
+
+**同一趟內也會變換方向。** 10/09 的 Garmin FIT 有五個分圈。對照每圈的活動熱量與 Apple Watch 同一時段的活動熱量樣本，第一圈 Garmin 為 147 kcal、Apple 約 92 kcal，第二圈則是 Garmin 94 kcal、Apple 約 113 kcal。Apple 各圈可分別以「完整落入圈內的樣本加總」及「所有與該圈重疊的樣本加總」作為邊界，前兩圈分別為 92.23–92.48 與 113.33–113.52 kcal。邊界處理不影響差距方向。冷水坑的 Garmin FIT 只有一個整趟分圈，缺少可辨識的逐點熱量，無法用相同方法定位路段。
+
+**外部研究與個人驗證。** 一項固定式自行車間歇研究以 COSMED K5 間接熱量測定為參考，Apple Watch Series 8 與 Garmin Forerunner 955 在該測試的平均偏差（裝置減參考）分別為 +21.6 與 +68.6 kcal。型號、受試者與運動時間皆不同，該結果不能用來校正個人的 Series 9 或 CIRQA。Series 9 本身也有間接熱量測定研究，採用的是 10 分鐘跑步機測試。這次查詢未找到以呼吸氣體為參考、同時比較 Series 9 與 CIRQA 騎乘熱量的研究。[自行車研究與測試方法](https://doi.org/10.1371/journal.pone.0353261) · [Series 9 跑步機研究](https://pubmed.ncbi.nlm.nih.gov/39728259/)
+
+若要驗證騎士自己的兩支裝置，可在運動科學實驗室同時佩戴兩者，以固定式自行車和呼吸氣體分析同步記錄平常的輕鬆及中等強度。先測靜息基準，兩支裝置用相同個人資料、同步起訖及暫停設定。整段氣體量測所得消耗與裝置總熱量相比，扣除等時長靜息消耗後再與活動熱量相比，各自列出相差幾 kcal 和百分比。能在不同天重測，更能看出偏差是否穩定。較低門檻的做法是借有量測功率、已校準的訓練台，在相同實測作功下重複比較兩支裝置；個人踩踏效率仍是未知數，只能用此法檢查重複性與消耗的合理範圍。[踏頻、地形對實測效率的影響](https://pubmed.ncbi.nlm.nih.gov/25611890/)
