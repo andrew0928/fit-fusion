@@ -24,7 +24,7 @@ pub enum ExportFormat {
     Fit,
     FitAndParquet,
 }
-const VERSION: &str = "configured-fit-v3";
+pub const RULES_VERSION: &str = "configured-fit-v4";
 #[derive(Debug)]
 pub struct Error {
     pub code: &'static str,
@@ -181,45 +181,65 @@ fn manual_pair(
     format: ExportFormat,
 ) -> Result<Value> {
     let primary_id = settings.primary_source().id().to_owned();
-    let device = settings
-        .device(&primary_id)
-        .ok_or_else(|| Error::usage("manual FIT pairing requires a primary device identity"))?;
-    let (b, g) = match (
-        first.metadata.device == device,
-        second.metadata.device == device,
-    ) {
-        (true, false) => (first, second),
-        (false, true) => (second, first),
-        (true, true) => {
-            return Err(Error::usage(
-                "both files match the primary model; use date mode with separate source directories",
-            ));
-        }
-        _ => {
-            return Err(Error::data(
-                "neither FIT matches the configured primary device",
-            ));
-        }
-    };
-    let mut rides = BTreeMap::from([(primary_id.clone(), Ride::from_recording(b)?)]);
     let ids = workflow::required(settings);
     if ids.len() > 1 {
         return Err(Error::usage(
             "use date mode to identify multiple configured secondary sources",
         ));
     }
-    if let Some(id) = ids.first() {
-        if settings.device(id) != Some(g.metadata.device) {
+    let primary_filter = settings.device(&primary_id);
+    let secondary_filter = ids.first().and_then(|id| settings.device(id));
+    let fits_order = |primary, secondary| {
+        primary_filter.is_none_or(|d| d == primary)
+            && secondary_filter.is_none_or(|d| d == secondary)
+    };
+    let a = first.metadata.device;
+    let b = second.metadata.device;
+    let first_is_primary = match (fits_order(a, b), fits_order(b, a)) {
+        (true, false) => true,
+        (false, true) => false,
+        (false, false) if primary_filter.is_some_and(|d| d == a || d == b) => {
             return Err(Error::usage(
                 "second input must match the configured secondary device",
             ));
         }
+        (false, false) => {
+            return Err(Error::data(
+                "FITs do not match the configured device filters",
+            ));
+        }
+        (true, true) => {
+            // A configured but unselected recorder can still identify a manually supplied companion.
+            let matches_companion = |device| {
+                ids.is_empty()
+                    && settings
+                        .sources()
+                        .any(|s| s.id() != primary_id && settings.device(s.id()) == Some(device))
+            };
+            match (matches_companion(a), matches_companion(b)) {
+                (false, true) => true,
+                (true, false) => false,
+                _ => {
+                    return Err(Error::usage(
+                        "cannot assign FITs to source roles uniquely; use date mode or set device filters",
+                    ));
+                }
+            }
+        }
+    };
+    let (b, g) = if first_is_primary {
+        (first, second)
+    } else {
+        (second, first)
+    };
+    let mut rides = BTreeMap::from([(primary_id.clone(), Ride::from_recording(b)?)]);
+    if let Some(id) = ids.first() {
         rides.insert(id.clone(), Ride::from_recording(g)?);
     } else if format == ExportFormat::FitAndParquet {
         // A manually supplied FIT is part of the analysis input even when every stream selects the primary.
         let mut configured = settings
             .sources()
-            .filter(|s| settings.device(s.id()) == Some(g.metadata.device));
+            .filter(|s| s.id() != primary_id && settings.device(s.id()) == Some(g.metadata.device));
         let id = match (configured.next(), configured.next()) {
             (Some(s), None) => s.id(),
             _ => "@input-secondary",
@@ -247,7 +267,7 @@ fn export(
     let s = &selected.heart;
     let mut inputs = BTreeMap::new();
     for (id, r) in &pair.rides {
-        let mut info = json!({"sha256":r.hash,"device":{"manufacturer":r.device.manufacturer,"product":r.device.product},"record_interval_fit_seconds":r.span(),"unknown_native_message_field_pairs":r.unknown_fields});
+        let mut info = json!({"sha256":r.hash,"device":r.recorder,"record_interval_fit_seconds":r.span(),"unknown_native_message_field_pairs":r.unknown_fields});
         if !revision_path {
             info["path"] = json!(r.path);
         }
@@ -266,7 +286,7 @@ fn export(
     }));
     if let Some(c) = &mut calories {
         c["primary_original"] = json!(data_source::number(&b.session, 11));
-        if b.device.manufacturer != data_source::Device::RIDER_460.manufacturer {
+        if b.recorder.manufacturer != data_source::Device::RIDER_460.manufacturer {
             c.as_object_mut().unwrap().remove("bryton_original");
         }
     }
@@ -291,14 +311,14 @@ fn export(
         .map(|f| (&f.name, &f.ranges))
         .collect();
     let first_overlap = selected.overlaps.values().next();
-    let mut report = json!({"schema_version":1,"rules_version":VERSION,"inputs":inputs,"primary_timeline":pair.primary_id,
+    let mut report = json!({"schema_version":1,"rules_version":RULES_VERSION,"inputs":inputs,"primary_timeline":pair.primary_id,
         "selection":settings.selection(),"unlisted_streams":"preserve_primary","overlap":{"record_ratios":first_overlap.map(|r|r[0]),"session_ratios":first_overlap.map(|r|r[1]),"by_source":selected.overlaps},
         "heart_rate":s.report,"heart_rate_sources":hr_ranges,"stream_sources":field_sources,"calories":calories,"output_sha256":hash(&bytes)});
     let hashes: BTreeMap<_, _> = pair.rides.iter().map(|(id, r)| (id, &r.hash)).collect();
     let revision = match format {
-        ExportFormat::Fit => serde_json::to_vec(&(VERSION, &hashes, settings.selection())),
+        ExportFormat::Fit => serde_json::to_vec(&(RULES_VERSION, &hashes, settings.selection())),
         ExportFormat::FitAndParquet => serde_json::to_vec(&(
-            VERSION,
+            RULES_VERSION,
             &hashes,
             settings.selection(),
             "parquet",

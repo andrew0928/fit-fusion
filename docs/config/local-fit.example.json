@@ -3,25 +3,24 @@
   "timezone": "Asia/Taipei",
   "output_dir": "../../runtime/acceptance/local-fit",
   "sources": {
-    "bryton": {
+    "bike_meter": {
       "kind": "fit_directory",
-      "device": "bryton_rider_460",
+      "device": {"manufacturer": 267, "product": 2205},
       "directory": "../../src/rust/merger/tests/fixtures"
     },
-    "garmin": {
+    "health_band": {
       "kind": "fit_directory",
-      "device": "garmin_cirqa",
+      "device": {"manufacturer": 1, "product": 5019},
       "directory": "../../src/rust/merger/tests/fixtures"
     }
   },
   "merge": {
-    "primary_source": "bryton",
+    "primary_source": "bike_meter",
     "min_overlap_ratio": 0.90,
     "streams": {
-      "record.heart_rate": ["bryton", "garmin"],
-      "record.cadence": ["bryton"],
-      "session.total_calories": ["garmin"],
-      "session.metabolic_calories": ["garmin"]
+      "record.heart_rate": ["bike_meter", "health_band"],
+      "session.total_calories": ["health_band"],
+      "session.metabolic_calories": ["health_band"]
     }
   }
 }

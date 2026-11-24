@@ -1,0 +1,8 @@
+{
+  "name": "fit-fusion-inspector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=22.12"},
+  "dependencies": {"@garmin/fitsdk": "21.222.0"}
+}

@@ -62,7 +62,7 @@ fn candidates(
         };
         let meta = r.metadata().clone();
         let ride = Ride::from_recording(r)?;
-        if !seen_hash.insert(ride.hash.clone()) {
+        if ride.hash == primary.hash || !seen_hash.insert(ride.hash.clone()) {
             continue;
         }
         let ratios = overlap(primary, &ride);
@@ -158,7 +158,7 @@ fn finish(
         {
             let mut e = Error::new(
                 "ambiguous_match",
-                "multiple qualifying pairings; select the ride and Garmin ID explicitly",
+                "multiple qualifying pairings for this source. Review the candidate activity IDs and times",
                 3,
             );
             e.details = json!({"source_id":id,"candidates":items.iter().map(|c|&c.detail).collect::<Vec<_>>()});
@@ -296,7 +296,10 @@ pub fn manual_with_format(
         ),
         [a] if auto || known.is_some() => {
             let primary = FitDirectory::open_file(a)?;
-            if Some(primary.metadata().device) != settings.device(settings.primary_source().id()) {
+            if settings
+                .device(settings.primary_source().id())
+                .is_some_and(|d| d != primary.metadata().device)
+            {
                 return Err(Error::data("expected the configured primary device"));
             }
             if known.is_some()
@@ -318,7 +321,7 @@ pub fn manual_with_format(
             finish(settings, plan, &Owners::new(), out, false, format)
         }
         _ => Err(Error::usage(
-            "provide two FITs or one primary FIT with --garmin auto or --garmin-id ID",
+            "provide two FITs or one primary FIT with --auto-match or --garmin-id ID",
         )),
     }
 }

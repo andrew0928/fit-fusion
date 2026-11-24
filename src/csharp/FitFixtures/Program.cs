@@ -2,12 +2,19 @@ using Dynastream.Fit;
 using FitDateTime = Dynastream.Fit.DateTime;
 using FitFile = Dynastream.Fit.File;
 
-if (args.Length is < 1 or > 2 || args.Length == 2 && args[1] is not ("--scenarios" or "--streams"))
+if (args.Length is < 1 or > 2 || args.Length == 2 && args[1] is not ("--scenarios" or "--streams" or "--identities"))
 {
-    Console.Error.WriteLine("Usage: FitFixtures NEW_DIRECTORY [--scenarios | --streams]");
+    Console.Error.WriteLine("Usage: FitFixtures NEW_DIRECTORY [--scenarios | --streams | --identities]");
     return 2;
 }
 Directory.CreateDirectory(args[0]);
+if (args.Length == 2 && args[1] == "--identities")
+{
+    WriteRide("file-name.fit", 267, 2004, [120, 121], 2, true, fileName: "Recorder A", creatorName: "Recorder B");
+    WriteRide("creator-name.fit", 267, 2004, [120, 121], 2, true, creatorName: "Recorder B");
+    WriteRide("sensor-only.fit", 267, 30001, [120, 121], 2, true, accessory: true);
+    return 0;
+}
 if (args.Length == 2 && args[1] == "--streams")
 {
     // Synthetic product numbers: neither model is registered in the CLI.
@@ -28,7 +35,7 @@ WriteRide("rider-later.fit", 267, 2205, [120, 121], 3, true, 0x40000010);
 WriteRide("cirqa.fit", 1, 5019, [109, 110, 113, 113, 114, 115], 2, false);
 return 0;
 
-void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ushort total, bool cadence, uint start = 0x40000000, bool sensors = false, bool power = false)
+void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ushort total, bool cadence, uint start = 0x40000000, bool sensors = false, bool power = false, string fileName = null, string creatorName = null, bool accessory = false)
 {
     using var stream = new FileStream(Path.Combine(args[0], name), FileMode.CreateNew);
     var encoder = new Encode(ProtocolVersion.V20);
@@ -37,7 +44,17 @@ void WriteRide(string name, ushort maker, ushort product, byte[] heartRates, ush
     file.SetType(FitFile.Activity);
     file.SetManufacturer(maker);
     file.SetProduct(product);
+    if (fileName != null) file.SetProductName(fileName);
     encoder.Write(file);
+    if (creatorName != null || accessory)
+    {
+        var info = new DeviceInfoMesg();
+        info.SetDeviceIndex(accessory ? (byte)1 : (byte)0);
+        info.SetManufacturer(maker);
+        info.SetProduct(product);
+        info.SetProductName(accessory ? "Cadence sensor" : creatorName);
+        encoder.Write(info);
+    }
     for (int i = 0; i < heartRates.Length; i++)
     {
         var record = new RecordMesg();

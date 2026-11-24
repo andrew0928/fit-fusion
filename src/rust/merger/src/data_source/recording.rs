@@ -1,4 +1,4 @@
-use super::{ActivityMetadata, Device};
+use super::{ActivityMetadata, Device, FitProductName};
 use crate::{Error, Result, hash};
 use fit_inspector::wire::{self, Record};
 use rustyfit::Decoder;
@@ -26,6 +26,8 @@ pub(super) fn inventory(
     let mut found = Inventory::default();
     let mut members = 0;
     let mut device = None;
+    let mut file_name = None;
+    let mut creator_names = Vec::new();
     let mut activity_file = false;
     let mut file_ids = 0;
     let mut sessions = Vec::new();
@@ -41,7 +43,7 @@ pub(super) fn inventory(
                     }
                 }
             }
-            Record::Data { layout, values, .. } if matches!(layout.number, 0 | 18) => {
+            Record::Data { layout, values, .. } if matches!(layout.number, 0 | 18 | 23) => {
                 let uint = |id| {
                     let (field, bytes) = layout
                         .fields
@@ -54,11 +56,28 @@ pub(super) fn inventory(
                     }
                     Some(wire::unsigned(bytes, layout.big) as u32)
                 };
+                let text = |id| {
+                    let (_, raw) =
+                        layout.fields.iter().zip(&values).find(|(f, _)| {
+                            f.developer.is_none() && f.id == id && f.base == Some(7)
+                        })?;
+                    let value = std::str::from_utf8(raw.split(|b| *b == 0).next()?)
+                        .ok()?
+                        .trim();
+                    (!value.is_empty()).then(|| value.to_owned())
+                };
+                if layout.number == 23
+                    && uint(0) == Some(0)
+                    && let Some(name) = text(27)
+                {
+                    creator_names.push((uint(2), uint(4), name));
+                }
                 if layout.number == 0 {
                     file_ids += 1;
                 }
                 if layout.number == 0 && uint(0) == Some(4) {
                     activity_file = true;
+                    file_name = text(8);
                     device = uint(1).zip(uint(2)).and_then(|(maker, product)| {
                         Some(Device {
                             manufacturer: u16::try_from(maker).ok()?,
@@ -118,6 +137,15 @@ pub(super) fn inventory(
         source_id: source.into(),
         activity_id: hash(bytes),
         device,
+        product_name: file_name.map(FitProductName::FileId).or_else(|| {
+            creator_names
+                .into_iter()
+                .find(|(maker, product, _)| {
+                    maker.is_none_or(|n| n == u32::from(device.manufacturer))
+                        && product.is_none_or(|n| n == u32::from(device.product))
+                })
+                .map(|(_, _, s)| FitProductName::Creator(s))
+        }),
         sport: 2,
         start_utc,
         end_utc: start_utc + i64::from(elapsed.div_ceil(1000)),

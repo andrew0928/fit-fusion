@@ -1,0 +1,9 @@
+{identity} — Inspect FIT fields and sample coverage
+
+Usage
+  {cli} inspect FILE.fit{decoder_args}
+
+{decoder_note}
+
+Output
+  One JSON object with per-member messages, fields and timing.

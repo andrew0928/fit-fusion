@@ -1,16 +1,21 @@
-"""Acceptance through all three executables, using only generated FIT files."""
+"""Acceptance through all four executables, using only generated FIT files."""
+import json
 import os
+import re
+import shlex
 from pathlib import Path
 import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+from xml.etree import ElementTree
 
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(TOOLS), str(TOOLS.parent/"python"), str(TOOLS.parent/"python/tests")]
 from verify_roundtrip import build_commands, compare_file
 from test_inspect import START, fit_member, message_definition, recording
+from fit_fusion import __version__ as python_version
 
 
 class RoundTripTests(unittest.TestCase):
@@ -95,9 +100,125 @@ class RoundTripTests(unittest.TestCase):
         self.assertIn("field 3",sdk.stderr)
         self.assertFalse(sdk.stdout)
 
-    def test_rust_help_and_skills(self):
-        for args in (["--help"],["--skill","index"],["--skill","raw"],["--skill","inspect"],["--skill","roundtrip"]):
-            r=self.invoke("rust",*args)
-            self.assertEqual(r.returncode,0)
-            self.assertIn("fit-inspector",r.stdout)
-        self.assertEqual(self.invoke("rust","--skill","unknown").returncode,2)
+    def test_node_sdk_reads_vendor_fields_and_reports_encoder_limit(self):
+        self.source.write_bytes(recording())
+        result = self.invoke("node", "sdk-check", self.source)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        member, = json.loads(result.stdout)["members"]
+        self.assertEqual(member["sdk_messages"], member["wire_messages"])
+        self.assertGreater(member["native_values_compared"], 0)
+        self.assertTrue(member["native_values_equal"])
+        self.assertFalse(member["encode_field_values_equal"])
+        self.assertIsNotNone(member["encode_error"])
+
+    def test_node_sdk_reads_and_reencodes_standard_record(self):
+        layout = message_definition(0, 20, [(253,4,0x86),(3,1,2)])
+        self.source.write_bytes(fit_member(layout + struct.pack("<BIB",0,START,120)))
+        result = self.invoke("node", "sdk-check", self.source)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        member, = json.loads(result.stdout)["members"]
+        self.assertTrue(member["native_values_equal"])
+        self.assertTrue(member["encode_field_values_equal"], member)
+        self.assertEqual(member["native_values_compared"], 2)
+
+    def test_follow_inspector_skill_index_and_examples(self):
+        src = TOOLS.parent
+        fixture = src / "rust/merger/tests/fixtures/rider.fit"
+        for lang, launcher in {
+            "python": "PYTHONPATH=src/python python3 -m fit_fusion",
+            "csharp": "dotnet FitFusion.dll",
+            "rust": "fit-inspector",
+            "node": "node src/node/inspector/cli.mjs",
+        }.items():
+            with self.subTest(language=lang):
+                topics = ["inspect", "raw", "roundtrip"] + (["sdk-check"] if lang == "node" else [])
+                index = self.invoke(lang, "--skill", "index")
+                self.assertEqual(index.returncode, 0, index.stderr)
+                self.assertEqual(self.invoke(lang, "--skill").stdout, index.stdout)
+                self.assertNotEqual(index.stdout, self.invoke(lang, "--help").stdout)
+                links = re.findall(re.escape(launcher) + r" --skill ([a-z-]+)`", index.stdout)
+                self.assertCountEqual(links, topics)
+                dest = self.work / (lang + "-copy.fit")
+                for topic in links:
+                    with self.subTest(topic=topic):
+                        help_page = self.invoke(lang, topic, "-h")
+                        self.assertEqual(help_page.returncode, 0, help_page.stderr)
+                        self.assertIn(topic, help_page.stdout)
+                        self.assertIn("FILE.fit", help_page.stdout)
+                        guide = self.invoke(lang, "--skill", topic)
+                        self.assertEqual(guide.returncode, 0, guide.stderr)
+                        example, = re.findall(r"```sh\n(.+?)\n```", guide.stdout, re.S)
+                        cmd = shlex.split(example)
+                        prefix = shlex.split(launcher)
+                        self.assertEqual(cmd[:len(prefix)], prefix)
+                        paths = {"ride.fit": str(fixture), "copy.fit": str(dest)}
+                        cmd = [paths.get(word, word) for word in cmd]
+                        env = os.environ.copy()
+                        cwd = src.parent
+                        if lang == "python":
+                            key, value = cmd.pop(0).split("=", 1)
+                            env[key] = value
+                        elif lang == "csharp":
+                            cwd = Path(self.commands[lang][1]).parent
+                        elif lang == "rust":
+                            env["PATH"] = str(Path(self.commands[lang][0]).parent) + os.pathsep + env["PATH"]
+                        r = subprocess.run(cmd, cwd=cwd, env=env, capture_output=True, text=True)
+                        self.assertEqual(r.returncode, 0, r.stderr)
+                        if topic == "raw":
+                            frames = [json.loads(line) for line in r.stdout.splitlines()]
+                            self.assertEqual(b"".join(bytes.fromhex(f["hex"]) for f in frames), fixture.read_bytes())
+                        elif topic == "roundtrip":
+                            self.assertTrue(json.loads(r.stdout)["semantic_equal"])
+                            self.assertTrue(dest.is_file())
+                        elif topic == "inspect":
+                            record = next(m for m in json.loads(r.stdout)["members"][0]["messages"] if m["number"] == 20)
+                            self.assertEqual(record["message_count"], 6)
+                        else:
+                            self.assertIn("encode_field_values_equal", json.loads(r.stdout)["members"][0])
+                invalid = self.invoke(lang, "--skill", "unknown")
+                self.assertEqual(invalid.returncode, 2)
+                self.assertFalse(invalid.stdout)
+                for topic in topics:
+                    self.assertIn(topic, invalid.stderr)
+
+    def test_help_and_version_match_each_inspector_package(self):
+        src = TOOLS.parent
+        metadata = subprocess.check_output(["cargo", "metadata", "--format-version=1", "--no-deps",
+                                            "--manifest-path", src / "rust/inspector/Cargo.toml"], text=True)
+        rust = next(p for p in json.loads(metadata)["packages"] if p["name"] == "fit-inspector")
+        versions = {
+            "rust": rust["version"],
+            "node": json.loads((src / "node/inspector/package.json").read_text())["version"],
+            "csharp": ElementTree.parse(src / "csharp/FitFusion/FitFusion.csproj").findtext(".//Version"),
+            "python": python_version,
+        }
+        for lang, package_version in versions.items():
+            with self.subTest(language=lang):
+                version = self.invoke(lang, "--version")
+                alias = self.invoke(lang, "-V")
+                self.assertEqual((version.returncode, alias.returncode), (0, 0))
+                self.assertEqual(version.stdout, alias.stdout)
+                self.assertFalse(version.stderr)
+                identity, *lines = version.stdout.splitlines()
+                self.assertEqual(identity.split()[:2], ["fit-inspector", package_version])
+                details = dict(line.split(maxsplit=1) for line in lines)
+                for field in (("Compiler", "Target", "FIT") if lang == "rust" else ("Runtime", "Platform", "FIT")):
+                    self.assertTrue(details[field])
+                commands = ["inspect", "raw", "roundtrip"] + (["sdk-check"] if lang == "node" else [])
+                for path in [[], *([cmd] for cmd in commands)]:
+                    help_page = self.invoke(lang, *path, "--help")
+                    self.assertEqual(help_page.returncode, 0, help_page.stderr)
+                    self.assertTrue(help_page.stdout.splitlines()[0].startswith(identity + " — "))
+
+    def test_rust_parser_validates_flags_before_opening_files(self):
+        invalid = self.invoke("rust", "inspect", "--bogus")
+        self.assertEqual(invalid.returncode, 2, invalid.stderr)
+        self.assertFalse(invalid.stdout)
+        self.assertIn("--bogus", invalid.stderr)
+        help_page = self.invoke("rust", "inspect", "missing.fit", "--help")
+        self.assertEqual(help_page.returncode, 0, help_page.stderr)
+        self.assertEqual(help_page.stdout, self.invoke("rust", "inspect", "--help").stdout)
+        self.source.write_bytes(recording())
+        reordered = self.invoke("rust", "inspect", "--decoder=wire", self.source)
+        self.assertEqual(reordered.returncode, 0, reordered.stderr)
+        self.assertEqual(json.loads(reordered.stdout), json.loads(self.invoke("rust", "inspect", self.source, "--decoder", "wire").stdout))

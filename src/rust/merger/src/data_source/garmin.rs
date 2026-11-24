@@ -347,18 +347,17 @@ impl DataSource for GarminConnect {
                     .or_else(|| row["duration"].as_f64())
                     .filter(|n| *n > 0.0)
                     .ok_or_else(protocol)?;
-                let meta = ActivityMetadata {
+                let summary = ActivitySummary {
                     source_id: self.id.clone(),
                     activity_id: id.clone(),
-                    device: self.device,
-                    sport: 2,
+                    device: None,
                     start_utc: start,
                     end_utc: start
                         .checked_add(elapsed.ceil() as i64)
                         .ok_or_else(protocol)?,
                 };
-                if query.matches(&meta) {
-                    result.insert(id, meta.summary());
+                if query.matches_interval(summary.start_utc, summary.end_utc) {
+                    result.insert(id, summary);
                 }
             }
             if rows.len() < LIMIT {

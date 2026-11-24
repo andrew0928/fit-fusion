@@ -2,7 +2,7 @@
 
 **實作基準。** 2026-11-24 騎士確認 A＝Config、B＝Query、C＝Data source、D＝Policy 的整體結構，授權依現有列進入開發。每列可用 `Row` 指定保留、修改、拆分或刪除，例如「A5b 修改 Result 2」。字母後綴是上一版情境拆出的子列；D 表保留 H（心率選源）、Q（品質門檻）、F（其他欄位）的編號。[已確認的 C#／Rust 介面](../config-and-data-source.md)
 
-`Condition` 是呼叫前可安排的輸入或環境；`Result` 是呼叫後可斷言的回傳值、來源、診斷或副作用。以下採 Rust 方法名。來源 ID 使用設定範例中的 `bryton`、`garmin`、`apple_watch`。`—` 表示該欄無額外條件或斷言；`缺值` 是有意驗證的資料狀態。
+`Condition` 是呼叫前可安排的輸入或環境；`Result` 是呼叫後可斷言的回傳值、來源、診斷或副作用。以下採 Rust 方法名。來源 ID 使用設定範例中的 `bike_meter`、`health_band`、`apple_watch`。`—` 表示該欄無額外條件或斷言；`缺值` 是有意驗證的資料狀態。
 
 目前可執行的測試函式、已驗證的 Result 與待補列，見[測試覆蓋與排程](module-test-coverage.md)。
 
@@ -26,14 +26,14 @@
 
 | Row | 操作 | Condition 1 · 設定 | Condition 2 · 引數或環境 | Result 1 · 回傳 | Result 2 · 額外斷言 |
 |---|---|---|---|---|---|
-| A1 | `load → sources, primary_source` | 採用範例的三個來源 | 車表未掛載、token 空白 | 來源集合等於設定鍵集合 `{bryton, garmin, apple_watch}` | 主來源為 `bryton`；集合列舉順序任意 |
-| A1b | `load → sources, primary_source, sources_for` | 加入第四個來源 `old_bike`，kind 為 `fit_directory`、device 為 `bryton_neo15` | 測試已註冊 Neo15，僅新增來源段 | 來源集合新增 `old_bike`；兩台 Bryton 依不同 ID 列舉 | 主來源仍為 `bryton`，心率仍為 `[bryton, garmin]`，總熱量仍為 `[garmin]` |
-| A1c | `load → sources, sources_for` | 僅設定 Rider 460 主來源，啟用欄位僅為 Bryton 踏頻 | 省略 Garmin 與 Apple | `{bryton}` | `sources_for(record.cadence)` 為 `[bryton]` |
+| A1 | `load → sources, primary_source` | 採用範例的三個來源 | 車表未掛載、token 空白 | 來源集合等於設定鍵集合 `{bike_meter, health_band, apple_watch}` | 主來源為 `bike_meter`；集合列舉順序任意 |
+| A1b | `load → sources, primary_source, sources_for` | 加入第四個來源 `old_bike`，kind 為 `fit_directory`、device 為 `synthetic_bike` | 測試已註冊合成型號，僅新增來源段 | 來源集合新增 `old_bike`；兩台 Bryton 依不同 ID 列舉 | 主來源仍為 `bike_meter`，心率仍為 `[bike_meter, health_band]`，總熱量仍為 `[health_band]` |
+| A1c | `load → sources, sources_for` | 僅設定 Rider 460 主來源，啟用欄位僅為 Bryton 踏頻 | 省略 Garmin 與 Apple | `{bike_meter}` | `sources_for(record.cadence)` 為 `[bike_meter]` |
 | A1d | `load → sources, sources_for` | 保留來源 ID 與設備，將 Garmin 取檔方式由 Connect 改為本機目錄 | 各載入一份有效設定 | 兩次都列出同一組來源 ID | 兩次的心率與總熱量順位相同 |
-| A1e | `load → sources, primary_source, sources_for` | 新增 `archive2: {"kind":"test_archive","options":{}}` | 已註冊該測試來源，接受空選項 | 來源集合新增 `archive2` | 主來源為 `bryton`，各啟用欄位的來源順位與新增前逐欄相同 |
-| A1f | `load → sources_for` | 在 A1b 的設定中，將踏頻順位改為 `[bryton, old_bike]` | 測試註冊的 Neo15 支援踏頻 | `sources_for(record.cadence)` 依序回傳 `bryton`、`old_bike` | 心率仍為 `[bryton, garmin]`，總熱量仍為 `[garmin]` |
-| A2a | `selected_fields, sources_for` | 預設順位 | 查 `record.heart_rate` | `[bryton, garmin]` | 心率在啟用清單內 |
-| A2b | `selected_fields, sources_for` | 預設順位 | 查 `session.total_calories` | `[garmin]` | 總熱量在啟用清單內 |
+| A1e | `load → sources, primary_source, sources_for` | 新增 `archive2: {"kind":"test_archive","options":{}}` | 已註冊該測試來源，接受空選項 | 來源集合新增 `archive2` | 主來源為 `bike_meter`，各啟用欄位的來源順位與新增前逐欄相同 |
+| A1f | `load → sources_for` | 在 A1b 的設定中，將踏頻順位改為 `[bike_meter, old_bike]` | 測試註冊的車錶支援踏頻 | `sources_for(record.cadence)` 依序回傳 `bike_meter`、`old_bike` | 心率仍為 `[bike_meter, health_band]`，總熱量仍為 `[health_band]` |
+| A2a | `selected_fields, sources_for` | 預設順位 | 查 `record.heart_rate` | `[bike_meter, health_band]` | 心率在啟用清單內 |
+| A2b | `selected_fields, sources_for` | 預設順位 | 查 `session.total_calories` | `[health_band]` | 總熱量在啟用清單內 |
 | A3 | `selected_fields, sources_for` | 移除 `record.temperature` | 查溫度 | 主來源 | 覆寫清單省略溫度，輸出沿用主檔 |
 | A4a | `targets` | 省略整段 `destinations` | — | 空集合 | — |
 | A4b | `targets` | 設定 Strava | token 空白 | `{strava}` | 授權流程啟動 0 次 |
@@ -41,13 +41,13 @@
 | A4d | `load → targets` | 只設定 `bike_log`，kind 為 `bryton_activity` | 已註冊該測試 target | `{bike_log}` | 無需 Strava 設定 |
 | A4e | `load → targets` | 沿用原 v1 的 `destinations.strava`，省略 `kind` | 提供原有形狀的 Strava 欄位 | `{strava}` | 使用 Strava factory |
 | A4f | `load → targets` | 自訂 ID `training` 和 `backup`，兩者均明示 `kind: strava` | 各用獨立設定段 | `{training, backup}` | 同一 factory 可建立兩個可分別尋址的目的地 |
-| A5a | `load → sources_for` | 來源 ID 改為 `cirqa`，同步改全部引用 | 查心率 | `[bryton, cirqa]` | 第二順位的設備仍是 CIRQA |
+| A5a | `load → sources_for` | 來源 ID 改為 `cirqa`，同步改全部引用 | 查心率 | `[bike_meter, cirqa]` | 第二順位的設備仍是 CIRQA |
 | A5b | `load` | 同 A5a，僅保留心率第二順位的舊 ID | — | `ConfigError` | 指向 `/merge/streams/record.heart_rate/1` |
 | A6a | `load` | 新增 `archive2: {"kind":"test_archive","options":{}}` | Schema 合法，未註冊該來源 | `ConfigError` | 指向 `/sources/archive2/kind` |
 | A6b | `load` | 版本為不支援的 `2` | — | `ConfigError` | 指向 `/version` |
-| A6c | `load` | 經度順位為 `[bryton]`，緯度為 `[bryton, garmin]` | — | `ConfigError` | 可定位經緯度選源規則 |
-| A6d | `load` | 心率順位為 `[bryton, apple_watch]` | Apple 來源已宣告 | `ConfigError` | 可定位心率規則中的 Apple 順位 |
-| A6e | `load` | 同 A1b 的 `old_bike` | 未註冊 Neo15 型號 | `ConfigError` | 指向 `/sources/old_bike/device` |
+| A6c | `load` | 經度順位為 `[bike_meter]`，緯度為 `[bike_meter, health_band]` | — | `ConfigError` | 可定位經緯度選源規則 |
+| A6d | `load` | 心率順位為 `[bike_meter, apple_watch]` | Apple 來源已宣告 | `ConfigError` | 可定位心率規則中的 Apple 順位 |
+| A6e | `load` | 同 A1b 的 `old_bike` | 未註冊的型號別名 | `ConfigError` | 指向 `/sources/old_bike/device` |
 | A6f | `load` | `destinations.connect_log.kind` 為 `garmin_connect` | 已註冊 Garmin 讀取 factory，發佈方向未註冊 | `ConfigError` | 指向 `/destinations/connect_log/kind` |
 | A6g | `load` | 已註冊的測試 target 收到 `options.typo` | 該 factory 的選項契約只接受空物件 | `ConfigError` | 可定位該目的地的未知選項 |
 

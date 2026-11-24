@@ -4,8 +4,23 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 
 | CLI | 交付範圍與進度 | 規格 | 驗收情境與案例 |
 |---|---|---|---|
-| 檢查器 | Python、C#、Rust 已提供盤點、逐框檢查及 FIT 往返匯出。Node.js 待開發。 | [檢查器規格](docs/spec/inspector.md) | [盤點、逐框還原與跨 SDK 比對](docs/spec/testcases/inspector.md) |
+| 檢查器 | Python、C#、Rust 與 Node.js 可盤點、逐框檢查及往返匯出。Node.js 另列 Garmin 官方 SDK 的讀寫結果。 | [檢查器規格](docs/spec/inspector.md) | [盤點、逐框還原與跨 SDK 比對](docs/spec/testcases/inspector.md) |
 | 合併器 | macOS Rust CLI 可按日期從本機 FIT 或 Garmin Connect 配對、依設定選源並輸出 FIT 與報告，可加 `--parquet` 追查逐點選值與還原原檔。騎士手動上傳 FIT 至 Strava。 | [合併器規格](docs/spec/merger.md) | [選源、保存與發佈](docs/spec/testcases/merger.md) |
+
+## 下載 macOS Apple Silicon 版
+
+從 [GitHub Release v0.1.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.1.0) 下載 `fit-fusion-v0.1.0-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
+
+```sh
+shasum -a 256 -c SHA256SUMS
+tar -xzf fit-fusion-v0.1.0-macos-arm64.tar.gz
+cd fit-fusion-v0.1.0-macos-arm64
+./fit-fusion --version
+./fit-fusion --help
+./fit-inspector --help
+```
+
+首次使用可執行 `./fit-fusion config init`，填入車錶目錄及手環來源。範本沿用車錶所有串流，只列心率備援與兩個手環熱量欄位。接著執行 `./fit-fusion merge --date YYYY-MM-DD --json`。[設定說明](docs/config/README.md)
 
 ## 專案目錄
 
@@ -14,6 +29,7 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 | [docs/](docs/) | [處理規格](docs/specification.md)、[決策索引](docs/decisions/README.md)、[研究](docs/research/)與[實騎分析](docs/research/rides/)。 |
 | [src/python/](src/python/) | Python FIT 檢查器、FIT Profile 對照表、依賴與測試。 |
 | [src/csharp/](src/csharp/) | 獨立的 .NET FIT 檢查器。 |
+| [src/node/inspector/](src/node/inspector/) | Node.js FIT 檢查器與 Garmin JavaScript SDK 驗證。 |
 | [src/rust/inspector/](src/rust/inspector/) | Rust 檢查器與 RustyFIT 讀寫驗證。 |
 | [src/rust/merger/](src/rust/merger/) | Rust 日期與雙檔合併 CLI。 |
 | [src/tools/](src/tools/) | 跨語言逐框比對與原檔雜湊驗證工具。 |
@@ -35,7 +51,8 @@ dotnet run --no-build --project src/csharp/FitFusion -- inspect path/to/ride.fit
 ```sh
 PYTHONPATH=src/python python3 -m unittest discover -s src/python/tests -v
 python3 src/tools/compare_inspectors.py path/to/bryton.fit path/to/garmin.fit
-python3 src/tools/verify_roundtrip.py  # 三種語言各自重編碼合成樣本，印出報告位置
+npm ci --prefix src/node/inspector
+python3 src/tools/verify_roundtrip.py  # 四種語言各自重編碼合成樣本，印出報告位置
 ```
 
 比對工具將結果寫入 `runtime/reports/milestone-1-1/`。舊版文件裡的 `reports/` 指當時執行環境的產物目錄。[檢查器安裝、原始資料與報告格式](docs/inspectors.md)
@@ -62,13 +79,13 @@ runtime/build/rust/release/fit-fusion merge data/sources/bryton/fit/261121141151
 ```sh
 cargo build --locked --release --manifest-path src/rust/merger/Cargo.toml
 runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json config check --json
-runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json activities list --source bryton --json
-runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json activities list --source garmin --json
+runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json activities list --source bike_meter --json
+runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json activities list --source health_band --json
 cargo test --locked --manifest-path src/rust/merger/Cargo.toml
 python3 -m unittest discover -s src/tools/tests -p test_merger.py -v
 ```
 
-`activities list` 回傳來源 ID、活動 ID 與起迄的 Unix UTC 秒數。本機活動 ID 為內容 SHA-256，Connect 使用 Garmin 活動 ID。
+單打 `fit-fusion activities` 會顯示查詢語法與範例。用 `config check` 取得來源 ID，再以 `activities list --source ID` 列出該來源的騎乘。結果包含活動 ID 與起迄的 Unix UTC 秒數。本機活動 ID 為內容 SHA-256，Connect 使用 Garmin 活動 ID。
 
 ## 按出發日期合併
 
@@ -80,7 +97,9 @@ runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.jso
 
 ```sh
 runtime/build/rust/release/fit-fusion --config docs/config/local-fit.example.json merge \
-  src/rust/merger/tests/fixtures/rider.fit --garmin auto --out runtime/acceptance/m2-3-demo --json
+  src/rust/merger/tests/fixtures/rider.fit --auto-match --out runtime/acceptance/m2-3-demo --json
 ```
 
-日常可在 `~/.config/fit-fusion/config.json` 設定 Bryton 目錄、Garmin 的 `cache_dir` 及 `auth.personal_api_key`，之後執行 `fit-fusion merge --date 2026-11-21 --json`。有兩筆候選時，檢視該趟的 `details.candidates`，用 `merge PRIMARY.fit --garmin-id ID --out NEW_DIR` 指定。日期修訂以輸入內容與有效選源規則識別。兩個來源已有 FIT 時，可把 Garmin 改成 `fit_directory` 完全離線執行。[設定範本](docs/config/config.example.json) · [日期配對契約](docs/config/README.md#只給日期時的處理契約)
+`--auto-match` 會向 `merge.streams` 引用的各個次要來源尋找同趟活動。上例的 `health_band` 是本機 FIT 目錄。
+
+日常可在 `~/.config/fit-fusion/config.json` 設定 Bryton 目錄、Garmin 的 `cache_dir` 及 `auth.personal_api_key`，之後執行 `fit-fusion merge --date 2026-11-21 --json`。有兩筆 Garmin 候選時，檢視該趟的 `details.candidates`，用 `merge PRIMARY.fit --garmin-id ID --out NEW_DIR` 指定。日期修訂以輸入內容與有效選源規則識別。兩個來源已有 FIT 時，可把 Garmin 改成 `fit_directory` 完全離線執行。[設定範本](docs/config/config.example.json) · [日期配對契約](docs/config/README.md#只給日期時的處理契約)

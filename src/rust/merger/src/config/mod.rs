@@ -21,6 +21,17 @@ static SCHEMA: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
     jsonschema::draft7::new(&spec).expect("embedded config v1 schema")
 });
 
+pub fn parse_day(day: &str) -> Result<jiff::civil::Date> {
+    use jiff::civil::Date;
+    let date: Date = day
+        .parse()
+        .map_err(|_| Error::usage("expected YYYY-MM-DD"))?;
+    if date.to_string() != day {
+        return Err(Error::usage("expected YYYY-MM-DD"));
+    }
+    Ok(date)
+}
+
 pub fn invalid(at: &str, why: &str) -> Error {
     let mut e = Error::new(
         "invalid_config",
@@ -104,7 +115,7 @@ impl Default for Registry {
         r.register_device("bryton_rider_460", Device::RIDER_460);
         r.register_device("garmin_cirqa", Device::CIRQA);
         r.register_source("fit_directory", |id, v, base, r| {
-            let device = r.device(id, v)?;
+            let device = v.get("device").map(|_| r.device(id, v)).transpose()?;
             Ok(Box::new(FitDirectory::new(
                 id,
                 resolve(base, v["directory"].as_str().unwrap())?,
@@ -278,7 +289,12 @@ impl Settings {
                 });
             }
         }
-        let merge = &v["merge"];
+        let mut merge = v["merge"].clone();
+        merge
+            .as_object_mut()
+            .expect("validated merge object")
+            .entry("streams")
+            .or_insert_with(|| json!({}));
         let primary = merge["primary_source"].as_str().unwrap();
         if !sources.contains_key(primary) || definitions[primary]["kind"] == "apple_health_export" {
             return Err(invalid(
@@ -351,7 +367,7 @@ impl Settings {
                 .map(|(id, v)| r.device(id, v).map(|device| (id.clone(), device)))
                 .collect::<Result<_>>()?,
             record_fields,
-            selection: merge.clone(),
+            selection: merge,
             timezone: timezone.into(),
             output_dir: resolve(base, v["output_dir"].as_str().unwrap())?,
         })
@@ -413,12 +429,7 @@ impl Settings {
     }
     pub fn primary_query(&self, day: &str) -> Result<crate::data_source::ActivityQuery> {
         use jiff::civil::Date;
-        let date: Date = day
-            .parse()
-            .map_err(|_| Error::usage("expected YYYY-MM-DD"))?;
-        if date.to_string() != day {
-            return Err(Error::usage("expected YYYY-MM-DD"));
-        }
+        let date = parse_day(day)?;
         let midnight = |date: Date| {
             date.at(0, 0, 0, 0)
                 .in_tz(&self.timezone)

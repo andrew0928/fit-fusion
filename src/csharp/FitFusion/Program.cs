@@ -1,14 +1,58 @@
+using System.Reflection;
+using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
-const string usage = "Usage: FitFusion <raw|inspect> FILE.fit\n       FitFusion roundtrip FILE.fit --out NEW.fit";
-if (args is ["--help"] or ["-h"] or ["raw" or "inspect" or "roundtrip", "--help"])
+var assembly = typeof(WireReader).Assembly;
+var version = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()!.InformationalVersion;
+var identity = $"fit-inspector {version} (C#)";
+
+string Guide(string file)
 {
-    Console.WriteLine(usage);
+    using var stream = typeof(WireReader).Assembly.GetManifestResourceStream($"guides.{file}")
+        ?? throw new InvalidOperationException($"Missing embedded guide {file}");
+    using var reader = new StreamReader(stream);
+    return reader.ReadToEnd()
+        .Replace("{cli}", "dotnet FitFusion.dll")
+        .Replace("{identity}", identity)
+        .Replace("{launch_note}", "Run from the directory containing the built C# FitFusion.dll.")
+        .Replace("{decoder_args}", "")
+        .Replace("{decoder_note}", "This inspector uses the C# WireReader.")
+        .Replace("{sdk_row}", "").Replace("{sdk_topic}", "");
+}
+
+if (args is ["--version" or "-V"])
+{
+    Console.WriteLine(identity);
+    Console.WriteLine($"Runtime   {RuntimeInformation.FrameworkDescription}");
+    Console.WriteLine($"Platform  {RuntimeInformation.RuntimeIdentifier}");
+    Console.WriteLine($"Target    {assembly.GetCustomAttribute<TargetFrameworkAttribute>()!.FrameworkName}");
+    Console.WriteLine("FIT       C# WireReader");
     return 0;
+}
+if (args is ["--help" or "-h"])
+{
+    Console.Write(Guide("help.txt"));
+    return 0;
+}
+if (args is ["raw" or "inspect" or "roundtrip", "--help" or "-h"])
+{
+    Console.Write(Guide(args[0] + ".txt"));
+    return 0;
+}
+if (args is ["--skill", ..])
+{
+    if (args is ["--skill"] or ["--skill", "index" or "raw" or "inspect" or "roundtrip"])
+    {
+        Console.Write(Guide((args.Length == 1 ? "index" : args[1]) + ".md"));
+        return 0;
+    }
+    Console.Error.WriteLine("Use --skill index for available topics (inspect, raw, roundtrip).");
+    return 2;
 }
 if (args is not (["raw" or "inspect", _] or ["roundtrip", _, "--out", _]))
 {
-    Console.Error.WriteLine(usage);
+    Console.Error.Write(Guide("help.txt"));
     return 2;
 }
 try

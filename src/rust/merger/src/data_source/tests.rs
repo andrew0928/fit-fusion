@@ -6,6 +6,41 @@ const CIRQA: &[u8] = include_bytes!("../../tests/fixtures/cirqa.fit");
 const START: i64 = 631065600 + 0x40000000;
 
 #[test]
+fn directory_identifies_recorders_by_content_under_one_role() {
+    let dir = tempfile::tempdir().unwrap();
+    let source = FitDirectory::new("bike_meter", dir.path(), None);
+    let fixtures = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/identity-fixtures");
+    for (file, name, origin) in [
+        ("file-name.fit", "Recorder A", "file_id.product_name"),
+        ("creator-name.fit", "Recorder B", "device_info.product_name"),
+        ("sensor-only.fit", "FIT 267/30001", "fit_ids"),
+    ] {
+        let bytes = fs::read(fixtures.join(file)).unwrap();
+        fs::write(dir.path().join(file), &bytes).unwrap();
+        let r = source.open_activity(&crate::hash(&bytes)).unwrap();
+        let device = r.metadata().recorder();
+        assert_eq!((device.name.as_str(), device.name_source), (name, origin));
+    }
+    fs::write(dir.path().join("older-name.fit"), RIDER).unwrap();
+    let rows = source.list_activities(&ActivityQuery::All).unwrap();
+    assert_eq!(rows.len(), 4);
+    for row in rows {
+        assert_eq!(row.source_id, "bike_meter");
+        let device = row.device.unwrap();
+        assert_eq!(
+            device,
+            source.metadata(&row.activity_id).unwrap().recorder()
+        );
+        if row.activity_id == crate::hash(RIDER) {
+            assert_eq!(
+                (device.name.as_str(), device.name_source),
+                ("Bryton Rider 460", "model_lookup")
+            );
+        }
+    }
+}
+
+#[test]
 fn discovers_unique_cycling_files_by_content_in_time_order() {
     let dir = tempfile::tempdir().unwrap();
     let source = FitDirectory::new("bike", dir.path(), Device::RIDER_460);
@@ -178,9 +213,9 @@ fn merge_accepts_already_open_recordings() {
     crate::merge_recordings(first, second, &output).unwrap();
     let report: serde_json::Value =
         serde_json::from_slice(&fs::read(output.join("merge-report.json")).unwrap()).unwrap();
-    assert_eq!(report["inputs"]["bryton"]["source_id"], "my_bike");
-    assert_eq!(report["inputs"]["garmin"]["source_id"], "my_band");
-    assert_eq!(report["heart_rate"]["samples"]["garmin"], 1);
+    assert_eq!(report["inputs"]["bike_meter"]["source_id"], "my_bike");
+    assert_eq!(report["inputs"]["health_band"]["source_id"], "my_band");
+    assert_eq!(report["heart_rate"]["samples"]["health_band"], 1);
 }
 
 #[test]

@@ -1,0 +1,17 @@
+{identity} — Inspect one activity file offline
+
+Usage
+  {cli} COMMAND [OPTIONS]
+
+Commands
+  inspect       Summarize messages, fields, coverage and timing
+  raw           Print one JSON line per FIT frame
+  roundtrip     Write a new FIT and verify its decoded values
+{sdk_row}
+Options
+  -h, --help       Show help for the current command
+  --skill [TOPIC]  Open the agent guide (default: index)
+  -V, --version    Show version and diagnostic details
+
+Example
+  {cli} inspect ride.fit

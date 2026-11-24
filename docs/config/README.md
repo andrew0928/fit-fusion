@@ -9,7 +9,7 @@ fit-fusion merge --date 2026-11-21
 fit-fusion merge --date 2026-11-21 --parquet --json
 ```
 
-預設檔案為 `~/.config/fit-fusion/config.json`。執行 `fit-fusion config init` 可建立權限 0600、含完整預設順位的範本；已有設定會保留原檔，再調整來源目錄與憑證。`fit-fusion config check` 可在離線狀態檢查結構與來源引用。`--config <path>` 可指定另一份設定。[完整 JSON 範例](config.example.json) · [JSON Schema](config-v1.schema.json)
+預設檔案為 `~/.config/fit-fusion/config.json`。執行 `fit-fusion config init` 可建立權限 0600 的範本，已有設定會保留原檔。填好車錶目錄及手環來源即可使用範本的心率與熱量規則。`fit-fusion config check --json` 可離線檢查設定，結果的 `streams` 只列明確指定的規則。`--config <path>` 可指定另一份設定。[完整 JSON 範例](config.example.json) · [JSON Schema](config-v1.schema.json)
 
 ## 檔案結構
 
@@ -18,10 +18,10 @@ fit-fusion merge --date 2026-11-21 --parquet --json
 | `version` | 整數 `1`，表示設定檔契約版本。 |
 | `timezone` | 解讀命令列日期的 IANA 時區。範例為 `Asia/Taipei`，跨裝置配對一律用 UTC。 |
 | `output_dir` | 每趟合併 FIT 與報告的根目錄。 |
-| `sources.<id>` | 一個以上的具名來源實例。ID 供合併規則引用；`kind` 決定取檔方式，設備來源的 `device` 決定辨識哪種設備。 |
-| `merge.primary_source` | 從哪個來源找出當日騎乘，並以該份活動建立主時間軸。預設使用 Rider 460，可改為其他已設定的騎乘來源。 |
+| `sources.<id>` | 一個以上的具名來源實例。ID 供合併規則引用；`kind` 決定取檔方式，本機 FIT 的 `device` 可選填以篩選型號。 |
+| `merge.primary_source` | 從哪個來源找出當日騎乘，並以該份活動建立主時間軸。預設使用 `bike_meter`，可收錄先後使用的多台車錶。 |
 | `merge.min_overlap_ratio` | 配對時雙方各自須達到的重疊比例。範例為 `0.90`。 |
-| `merge.streams` | 覆寫主檔的感測串流與熱量摘要。空物件表示完整沿用主檔。鍵是同名 FIT 欄位，值是由優先到備援的來源 ID 陣列。 |
+| `merge.streams` | 選填。只列需要覆寫或從其他來源追加的同名 FIT 欄位，值為依順位排列的來源 ID。省略整段或填 `{}` 都會完整沿用主檔。 |
 | `merge.field_ids` | 選填。將內附 FIT Profile 尚未收錄的 `record.*` 名稱對應到原生欄號。 |
 | `destinations.<id>` | 零個以上的具名目的地實例。`kind` 指定發佈連線器。僅做本機匯出可省略整段，也可填 `{}`。 |
 
@@ -29,12 +29,14 @@ fit-fusion merge --date 2026-11-21 --parquet --json
 
 ## 如何增加設備或目的地
 
-來源與目的地各有獨立的 ID 空間。ID 可自行命名，例如 `old_bike`；同一種 `kind` 可建立多個實例。以下以合成車錶示範新型號，另列出三個獨立目的地。實際 Neo15 的產品編號須從該車錶的 FIT 讀取。額外發佈服務的授權與上傳另行驗證。
+來源 ID 按用途命名。新版範本使用 `bike_meter`、`health_band` 與 `apple_watch`。來源 ID 決定合併順位，`kind` 決定如何取檔，活動清單和合併報告的 `device` 則識別實際錄製該檔案的設備。已有 v1 設定可繼續使用原 ID；手動改名時一併更新 `merge.primary_source` 和每個 `merge.streams` 引用。
+
+本機車錶可共用一個專屬目錄。省略 `device` 後，Rider 460、Rider 15 Neo 及後續車錶都可使用同一組順位。若同一目錄混放車錶與手環，可用以下數字篩選器區分來源。範例採用已驗證的 Rider 15 Neo 代碼，並示範三個目的地。
 
 ```json
 {
   "sources": {
-    "old_bike": {"kind": "fit_directory", "device": {"manufacturer": 267, "product": 30001}, "directory": "~/Rides/inbox/neo15"}
+    "old_bike": {"kind": "fit_directory", "device": {"manufacturer": 267, "product": 2004}, "directory": "~/Rides/inbox/neo15"}
   },
   "destinations": {
     "strava": {"kind": "strava", "client_id": null},
@@ -44,7 +46,7 @@ fit-fusion merge --date 2026-11-21 --parquet --json
 }
 ```
 
-- **新設備。** `device` 可用已註冊別名，或填入數字物件 `{"manufacturer": 267, "product": 30001}`。此例為合成型號。從新車錶原檔的 `file_id` 讀取兩個數字後即可套用同一個 CLI。Garmin Connect 只接受 Garmin 製造商識別。
+- **新設備。** `device` 可用已註冊別名，或填入數字物件 `{"manufacturer": 267, "product": 2004}`。兩個數字來自 Rider 15 Neo 的 `file_id`。從新車錶原檔的 `file_id` 讀取兩個數字後即可套用同一個 CLI。Garmin Connect 只接受 Garmin 製造商識別。
 - **新連線器。** 新來源或目的地共用 `{"kind":"…","options":{…}}` 形式；`options` 可省略，預設為空物件。基礎 Schema 能驗證外層結構。loader 依方向查找已編入的來源或目的地 factory，再由該 factory 離線驗證自己的選項，包括必要鍵、未知鍵與型別。未知種類、未知設備或不相容的設備皆回報含設定位置的 `ConfigError`。例如註冊 Garmin 下載連線器只提供讀取能力，要將 Garmin 列為目的地另須註冊發佈連線器。
 - **既有 v1 相容。** 舊 `destinations.strava` 可省略 `kind`，此時按 Strava 的既有憑證格式解讀。其他目的地 ID 須填 `kind`；自訂 ID 搭配 `kind: strava` 也適用相同的嚴格憑證欄位檢查。發佈以明確選取的目的地 ID 為單位。
 
@@ -54,27 +56,44 @@ fit-fusion merge --date 2026-11-21 --parquet --json
 
 | 範例來源 | 必要設定 | 日期模式的用途 |
 |---|---|---|
-| `sources.bryton` | `kind: fit_directory`、`directory`、`device: bryton_rider_460` | 遞迴讀取目錄內的 `.fit`（含大寫副檔名）。從 FIT 內的設備、運動與時間辨識主活動，改檔名不影響結果。 |
-| `sources.garmin` | `kind: garmin_connect`、`device: garmin_cirqa`、`cache_dir`、`auth` | 由內建的 Garmin Connect Personal API 連線器依時段列舉活動，按活動 ID 下載原始 FIT 並快取。已取得且通過雜湊驗證的同一版本可重用。 |
+| `sources.bike_meter` | `kind: fit_directory`、`directory`，`device` 選填 | 遞迴讀取目錄內的 `.fit`（含大寫副檔名）。從 FIT 內的設備、運動與時間辨識主活動，改檔名不影響結果。 |
+| `sources.health_band` | `kind: garmin_connect`、`device: {"manufacturer":1,"product":5019}`、`cache_dir`、`auth` | 由內建的 Garmin Connect Personal API 連線器依時段列舉活動，按活動 ID 下載原始 FIT 並快取。已取得且通過雜湊驗證的同一版本可重用。 |
 | `sources.apple_watch` | `kind: apple_health_export`、`archive` | 登記 Apple 健康匯出 ZIP 供分析。日常日期合併不讀此檔，亦可省略此來源。 |
 
-**Garmin 也可完全離線。** 已有兩台設備的 FIT 時，只要將範例中 `sources.garmin` 的內容替換如下，心率及熱量的順位、日期命令均可沿用。專案現有兩個來源目錄分別是 `data/sources/bryton/fit/` 及 `data/sources/garmin/`。
+**Garmin 也可完全離線。** 已有兩台設備的 FIT 時，只要將範例中 `sources.health_band` 的內容替換如下，心率及熱量的順位、日期命令均可沿用。專案現有兩個來源目錄分別是 `data/sources/bryton/fit/` 及 `data/sources/garmin/`。
 
 ```json
-{"kind": "fit_directory", "device": "garmin_cirqa", "directory": "~/Rides/inbox/garmin"}
+{"kind": "fit_directory", "directory": "~/Rides/inbox/health_band"}
 ```
 
-`sources.garmin.auth` 可放 `personal_api_key`、`access_token`、`expires_at`。可用 bearer 直接查詢，屆期由個人 key 換發。Strava 段可放 `client_id`、`client_secret`、`athlete_id`、`access_token`、`refresh_token`、`expires_at`。兩平台的到期時間均為 Unix 秒數（UTC），識別碼以字串保存。範本中的 `null` 或省略表示尚未設定，執行需要該連線的操作時才檢查授權。更新憑證時對同一個設定檔路徑加鎖並原子回存，檔案權限 0600。報告以來源 ID 與內容雜湊追溯資料，敏感欄位不寫入報告。[認證與換發](../milestones/m2-cli.md#本機設定與資料來源)
+`sources.health_band.auth` 可放 `personal_api_key`、`access_token`、`expires_at`。可用 bearer 直接查詢，屆期由個人 key 換發。Strava 段可放 `client_id`、`client_secret`、`athlete_id`、`access_token`、`refresh_token`、`expires_at`。兩平台的到期時間均為 Unix 秒數（UTC），識別碼以字串保存。範本中的 `null` 或省略表示尚未設定，執行需要該連線的操作時才檢查授權。更新憑證時對同一個設定檔路徑加鎖並原子回存，檔案權限 0600。報告以來源 ID 與內容雜湊追溯資料，敏感欄位不寫入報告。[認證與換發](../milestones/m2-cli.md#本機設定與資料來源)
+
+若已有主記錄，執行 `fit-fusion --config rides.json merge PRIMARY.fit --auto-match --out merged-ride`。CLI 逐一向 `merge.streams` 引用的次要來源尋找同趟活動。每個來源的 `kind` 決定從本機 FIT 目錄或 Garmin Connect 取檔。
+
+### 從 FIT 取得設備名稱
+
+本機 `activities list --source bike_meter --json` 的每筆 `activities[].device`、合併報告的 `inputs.<來源 ID>.device` 都包含 `manufacturer`、`product`、`name` 和 `name_source`。依下列順序取第一個可用名稱。
+
+| `name_source` | 如何取得 `name` |
+|---|---|
+| `file_id.product_name` | FIT 內的產品名稱文字。 |
+| `device_info.product_name` | 限建立檔案的設備（`device_index=0`），如有製造商及型號須與 `file_id` 相符。 |
+| `model_lookup` | 用原檔的兩個代碼查已驗證的型號。例如 `267/2004` 為 Bryton Rider 15 Neo，`267/2205` 為 Bryton Rider 460，`1/5019` 為 Garmin CIRQA。 |
+| `fit_ids` | 未收錄型號顯示 `FIT <manufacturer>/<product>`。 |
+
+目前合併器要求原始 FIT 提供有效的製造商與產品代碼，缺碼時回報 `invalid_data`。Garmin API 列表先回傳 `device: null`，開啟下載的原始 FIT 後才確認設備。Apple Health ZIP 維持分析用途。手動給兩個 FIT 時，CLI 依型號篩選器判別角色；兩種排列都成立時，請以各角色專屬目錄執行日期模式，或為其中一個角色設定型號篩選器。[Garmin FIT 檔案識別](https://developer.garmin.com/fit/file-types) · [Activity 裝置資訊](https://developer.garmin.com/fit/file-types/activity)
 
 ## 每個串流如何取值
 
-以下是完整範例中三條規則的節錄。順序由左至右，每個來源只需宣告一次。
+日期合併以 `primary_source` 的 FIT 為底。若只想把整趟總熱量換成 Garmin 的值，整個 `streams` 可以只寫 `{"session.total_calories": ["health_band"]}`。GPS、速度、踏頻、心率及主檔日後新增的功率都會沿用。
+
+目前 `config init` 產生的 `merge.streams` 如下。第一條啟用車錶心率與手環備援，後兩條分別指定 Garmin CIRQA 的兩個原生熱量欄位。
 
 ```json
 {
-  "record.heart_rate": ["bryton", "garmin"],
-  "record.cadence": ["bryton"],
-  "session.total_calories": ["garmin"]
+  "record.heart_rate": ["bike_meter", "health_band"],
+  "session.total_calories": ["health_band"],
+  "session.metabolic_calories": ["health_band"]
 }
 ```
 
@@ -85,7 +104,7 @@ fit-fusion merge --date 2026-11-21 --parquet --json
 
 ### 新感測器與新欄位
 
-功率計配對到車錶後，只要該車錶是主來源，便會自動保留原生 `record.power` 的瓦數。主時間軸每一秒若要由第二台補缺，在現有 `merge.streams` 加入 `"record.power": ["bryton", "garmin"]`。保留 0 W；所有來源都缺時保留缺值，無插值。用 `--config FILE merge --date YYYY-MM-DD` 可由日期自動配對，手動雙檔若要套用自己的順位也應明確指定 `--config FILE`。
+功率計配對到車錶後，只要該車錶是主來源，便會自動保留原生 `record.power` 的瓦數。主時間軸每一秒若要由第二台補缺，在現有 `merge.streams` 加入 `"record.power": ["bike_meter", "health_band"]`。保留 0 W；所有來源都缺時保留缺值，無插值。用 `--config FILE merge --date YYYY-MM-DD` 可由日期自動配對，手動雙檔若要套用自己的順位也應明確指定 `--config FILE`。
 
 內附 FIT Profile 的原生欄位可直接用名稱，例如 `record.left_right_balance` 或陣列 `record.left_power_phase`。若設備寫入 Profile 尚未收錄的原生欄，可加入 `"field_ids": {"record.extra_sensor": 240}` 到 `merge`，再在 `streams` 指定其順位。欄號應由來源規格或檢查器確認；別名不得覆寫已知欄位或共用同一個號碼。陣列依整筆樣本選源，保留所有元素。跨檔選源使用原生欄位；主檔的 developer 欄位直接保留。全新 API 或新格式的解碼仍需要對應的連線器。[可執行的雙設備範例](stream-fit.example.json) · [v1 行為變更](../decisions/2026-11-24-config-primary-inheritance.md)
 

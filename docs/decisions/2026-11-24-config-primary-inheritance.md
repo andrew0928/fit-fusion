@@ -10,7 +10,8 @@ accepted。2026-11-24 使用者要求預設完整保留 primary source，串流�
 
 ## 決策
 
-- 主來源提供時間軸及整份基礎 FIT。`merge.streams` 列出需要覆寫的串流與來源順位。省略欄位即沿用主檔；空物件可交付原檔內容。既有預設心率品質判定與 CIRQA 熱量規則繼續由原有設定啟用。
+- 主來源提供時間軸及整份基礎 FIT。`merge.streams` 只列需要覆寫或追加的欄位及來源順位。使用者確認要縮減設定後，v1 允許省略整段，效果與填 `{}` 相同，日期合併會使用同一個修訂 ID。
+- `config init` 範本列三條規則：心率以車錶優先、手環備援，兩個原生熱量欄位 `session.total_calories` 與 `session.metabolic_calories` 均取自手環。GPS、踏頻、功率和其他主檔串流會自動沿用。已有設定中的明確順位仍有效。
 - 按內附 FIT Profile 將標準 `record.*` 名稱對應原生欄號，按輸入檔的欄位定義保留型別、陣列及位元順序。更新的原生欄或私有原生欄可在 `merge.field_ids` 設定名稱及欄號。來源應對同一欄號使用相同語意與單位。主檔的 developer 欄位連同定義保留；跨設備選取 developer 欄仍需額外的應用程式及欄位身分設計。
 - 現有設備別名可沿用。對新型號直接在具名來源的 `device` 指定 FIT `file_id.manufacturer` 與 `file_id.product`。現有本機 FIT 或 Garmin Connect 連線器負責取檔。新的雲端協定仍由連線器實作。
 
@@ -25,3 +26,5 @@ accepted。2026-11-24 使用者要求預設完整保留 primary source，串流�
 ## 後續工作
 
 以合成的兩個新型號驗證按日期列舉、手動交換輸入、逐點功率補缺、左右平衡、陣列與空覆寫。Neo15 實際的製造商與型號編號仍需由原檔查證。[可執行範例](../config/stream-fit.example.json) · [CLI 驗收](../spec/testcases/merger.md)
+
+2026-11-24 已取得 Bryton Rider 15 Neo 原檔，確認型號為 `267/2004`。後續新增以用途命名來源與目錄型號篩選選填的決策。[來源角色與設備識別](2026-11-24-source-roles.md)

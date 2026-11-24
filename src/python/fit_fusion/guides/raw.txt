@@ -1,0 +1,8 @@
+{identity} — Read the original FIT frames
+
+Usage
+  {cli} raw FILE.fit
+
+Output
+  One JSON object per line in file order. Each includes offset, kind and hex.
+  Check the exit status before consuming the frame sequence.

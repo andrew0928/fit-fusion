@@ -1,17 +1,23 @@
 # 騎乘合併器 CLI 規格
 
-合併器只維護**一套 Rust 實作**，M2 在 macOS 使用 RustyFIT。它從同一次騎乘的多份記錄選取資料，在設定的主來源時間軸上產生一份可發佈的 FIT 與來源報告。Python、C#、Rust、Node.js 檢查器可獨立讀回這個輸出。現行 config v1 預設沿用主檔，`merge.streams` 只覆寫指定串流。設備可用 FIT 製造商與型號配置。[設定範例](../config/stream-fit.example.json)[技術決策](../decisions/2026-11-21-production-fit-sdk.md) · [檢查器規格](inspector.md)
+合併器只維護**一套 Rust 實作**，M2 在 macOS 使用 RustyFIT。它從同一次騎乘的多份記錄選取資料，在設定的主來源時間軸上產生一份可發佈的 FIT 與來源報告。Python、C#、Rust、Node.js 檢查器可獨立讀回這個輸出。現行 config v1 預設沿用主檔，`merge.streams` 選填，只列需要覆寫或追加的欄位。省略整段與填 `{}` 都會逐位元組輸出主 FIT。來源依用途命名，本機目錄可收錄多款設備。CLI 逐檔顯示錄製設備，混合多種用途的目錄可用製造商與型號篩選。[設定範例](../config/stream-fit.example.json)[技術決策](../decisions/2026-11-21-production-fit-sdk.md) · [檢查器規格](inspector.md)
 
 設定如何決定主來源、逐欄順位與整趟選值，以及連線器如何開啟一趟記錄，見[設定與活動來源介面（C# 與 Rust 對照）](config-and-data-source.md)。
 
 ## 輸入與操作
 
+Rust 合併器由 clap 解析子命令、具名選項及位置參數，help 依同一份宣告產生。`--config`、`--json` 可放在子命令前後。單打 `config` 或 `activities` 顯示該群組的 help，結束碼為 0。`merge a.fit --help` 直接顯示合併用法。語法錯誤先於載入設定與讀取 FIT 回報，結束碼為 2。帶 `--json` 的錯誤在 stdout 回傳一份錯誤物件，診斷寫至 stderr。
+
 | 目標入口 | 行為 |
 |---|---|
+| `fit-fusion activities`、`fit-fusion activities list --source ID [--json]` | 單獨執行 `activities` 顯示該群組的查詢語法與範例，結束碼為 0。執行 `list` 時必須指定來源 ID，可由 `config check` 取得。結果列在 `activities[]`，含活動 ID、來源 ID、UTC 起迄時間與可用的設備資訊。 |
+| `--version`、`-V` | 首行印出執行檔名稱與 CLI 版本，下方列出編譯器、Cargo 建置目標、FIT 引擎與合併規則版本。總覽與各子命令的 help 首行也顯示 CLI 版本。合併規則版本可與報告的 `rules_version` 核對。 |
 | `fit-fusion merge --date YYYY-MM-DD [--parquet] [--json]` | 讀取 v1 設定，依設定時區找出在當日開始的主來源騎乘，逐趟配對需要的來源。跨午夜的一趟歸出發日。同日多趟分別輸出。 |
-| `fit-fusion merge <FIT> <FIT> --out <dir>` | 可離線處理兩個已設定設備的原檔，預設為 Bryton 與 CIRQA。依檔內設備與實際時段識別，輸入順序可對調。若只有 Bryton，可用 `--garmin auto` 或 `--garmin-id <id>` 取回對應原檔。 |
+| `fit-fusion merge <FIT> <FIT> --out <dir>` | 可離線處理兩個已設定設備的原檔，預設為車錶與 CIRQA 手環。雙檔能依型號篩選器唯一分派角色時，輸入順序可對調。若兩種排列都成立，可改以日期從各角色目錄配對。 |
+| `fit-fusion merge PRIMARY.fit --auto-match --out <dir>` | 以這份 FIT 作為 `merge.primary_source` 的記錄，依時間重疊門檻到 `merge.streams` 引用的每個次要來源配對。來源 ID 與種類由 config 決定。`--auto-match` 為無值旗標，與雙檔、`--date`、`--garmin-id` 互斥。 |
+| `fit-fusion merge PRIMARY.fit --garmin-id <id> --out <dir>` | 為設定中唯一參與選源且帶 Garmin 裝置篩選器的來源指定活動 ID。API 使用平台活動 ID，本機 FIT 目錄使用檔案 SHA-256。 |
 | M2-4 延後的 `--publish strava`、`fit-fusion publish strava --from <dir>` | 前者在合併並驗證後發佈，後者使用已完成的合併產物。預設執行 merge 只交付本機檔案。 |
-| `--help`、`--skill <topic>` | help 提供人用說明。skill 提供 agent 可重現的前置條件、命令、輸出、結束碼與重試方式。無帳號或網路也能查指引。 |
+| `--help`、`--skill [topic]` | help 依命令列出用法、選項及範例，子命令只顯示該項操作。單獨使用 `--skill` 或指定 `index`，依任務導向 config、sources、selection、merge、results 或 publish。指引包含可執行範例、批次與單趟的輸出路徑、結束碼及重試方式，無帳號或網路也能查閱。 |
 
 來源的檔案位置、Garmin 個人 key／access token、Strava 授權及來源順位依已確認的 config v1。兩個本機 FIT 可使用內建預設離線處理。所有合併入口接受 `--parquet`。目標命令與授權步驟見[M2 命令契約](../milestones/m2-cli.md)及[設定檔 v1](../config/README.md)。
 

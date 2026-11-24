@@ -17,3 +17,6 @@ __pycache__/
 !src/rust/merger/tests/scenarios/cirqa-sensors.fit
 !src/rust/merger/tests/stream-fixtures/bike.fit
 !src/rust/merger/tests/stream-fixtures/backup.fit
+!src/rust/merger/tests/identity-fixtures/file-name.fit
+!src/rust/merger/tests/identity-fixtures/creator-name.fit
+!src/rust/merger/tests/identity-fixtures/sensor-only.fit

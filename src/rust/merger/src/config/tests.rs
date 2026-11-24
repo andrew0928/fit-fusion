@@ -38,16 +38,28 @@ fn sources_and_field_selection() {
     let s = load(&v, &r).unwrap();
     assert_eq!(
         s.sources().map(DataSource::id).collect::<Vec<_>>(),
-        ["apple_watch", "bryton", "garmin"]
+        ["apple_watch", "bike_meter", "health_band"]
     );
-    assert_eq!(s.primary_source().id(), "bryton");
-    assert_eq!(priority(&s, "record.heart_rate"), ["bryton", "garmin"]);
-    assert_eq!(priority(&s, "session.total_calories"), ["garmin"]);
-    v["sources"]["garmin"] =
-        json!({"kind":"fit_directory","device":"garmin_cirqa","directory":"garmin"});
+    assert_eq!(s.primary_source().id(), "bike_meter");
+    assert_eq!(
+        s.selected_fields().collect::<Vec<_>>(),
+        [
+            "record.heart_rate",
+            "session.metabolic_calories",
+            "session.total_calories"
+        ]
+    );
+    assert_eq!(priority(&s, "record.power"), ["bike_meter"]);
+    assert_eq!(
+        priority(&s, "record.heart_rate"),
+        ["bike_meter", "health_band"]
+    );
+    assert_eq!(priority(&s, "session.total_calories"), ["health_band"]);
+    v["sources"]["health_band"] =
+        json!({"kind":"fit_directory","device":"garmin_cirqa","directory":"health_band"});
     let local = load(&v, &r).unwrap();
     assert_eq!(
-        local.source("garmin").unwrap().kind(),
+        local.source("health_band").unwrap().kind(),
         SourceKind::FitDirectory
     );
     for f in s.selected_fields() {
@@ -56,56 +68,56 @@ fn sources_and_field_selection() {
     let garmin = v["sources"]
         .as_object_mut()
         .unwrap()
-        .remove("garmin")
+        .remove("health_band")
         .unwrap();
     v["sources"]["cirqa"] = garmin;
     for ids in v["merge"]["streams"].as_object_mut().unwrap().values_mut() {
         for id in ids.as_array_mut().unwrap() {
-            if id == "garmin" {
+            if id == "health_band" {
                 *id = json!("cirqa");
             }
         }
     }
     assert_eq!(
         priority(&load(&v, &r).unwrap(), "record.heart_rate"),
-        ["bryton", "cirqa"]
+        ["bike_meter", "cirqa"]
     );
     assert_eq!(
         load(&v, &r).unwrap().device("cirqa"),
         Some(Device::CIRQA),
         "A5a"
     );
-    v["merge"]["streams"]["record.heart_rate"][1] = json!("garmin");
+    v["merge"]["streams"]["record.heart_rate"][1] = json!("health_band");
     assert_eq!(issue(&v), "/merge/streams/record.heart_rate/1");
-    v["sources"] = json!({"bryton":v["sources"]["bryton"]});
-    v["merge"]["streams"] = json!({"record.cadence":["bryton"]});
+    v["sources"] = json!({"bike_meter":v["sources"]["bike_meter"]});
+    v["merge"]["streams"] = json!({"record.cadence":["bike_meter"]});
     let only = load(&v, &r).unwrap();
     assert_eq!(only.sources().count(), 1);
-    assert_eq!(priority(&only, "record.cadence"), ["bryton"], "A1c");
+    assert_eq!(priority(&only, "record.cadence"), ["bike_meter"], "A1c");
     assert_eq!(
         only.selected_fields().collect::<Vec<_>>(),
         ["record.cadence"]
     );
-    assert_eq!(priority(&only, "record.temperature"), ["bryton"]);
+    assert_eq!(priority(&only, "record.temperature"), ["bike_meter"]);
 }
 
 #[test]
 fn multiple_devices_and_new_source_kinds() {
     let mut v = example();
     v["sources"]["old_bike"] =
-        json!({"kind":"fit_directory","device":"bryton_neo15","directory":"old"});
+        json!({"kind":"fit_directory","device":"synthetic_bike","directory":"old"});
     assert_eq!(issue(&v), "/sources/old_bike/device");
     let mut r = Registry::default();
-    // Synthetic identity for the test; hardware identification awaits a real Neo15 FIT.
+    // Use an unregistered synthetic alias to exercise extension registration.
     r.register_device(
-        "bryton_neo15",
+        "synthetic_bike",
         Device {
             manufacturer: 267,
             product: 100,
         },
     );
     assert_eq!(load(&v, &r).unwrap().sources().count(), 4);
-    v["merge"]["streams"]["record.cadence"] = json!(["bryton", "old_bike"]);
+    v["merge"]["streams"]["record.cadence"] = json!(["bike_meter", "old_bike"]);
     v["sources"]["archive2"] = json!({"kind":"test_archive","options":{}});
     assert_eq!(
         load(&v, &r).err().unwrap().details["path"],
@@ -119,9 +131,12 @@ fn multiple_devices_and_new_source_kinds() {
     });
     let s = load(&v, &r).unwrap();
     assert_eq!(s.sources().count(), 5);
-    assert_eq!(priority(&s, "record.cadence"), ["bryton", "old_bike"]);
-    assert_eq!(priority(&s, "record.heart_rate"), ["bryton", "garmin"]);
-    assert_eq!(priority(&s, "session.total_calories"), ["garmin"]);
+    assert_eq!(priority(&s, "record.cadence"), ["bike_meter", "old_bike"]);
+    assert_eq!(
+        priority(&s, "record.heart_rate"),
+        ["bike_meter", "health_band"]
+    );
+    assert_eq!(priority(&s, "session.total_calories"), ["health_band"]);
 }
 
 #[test]
@@ -181,8 +196,12 @@ fn invalid_config_is_diagnosed_offline() {
     v["version"] = json!(2);
     assert_eq!(issue(&v), "/version");
     v = example();
-    v["merge"]["streams"]["record.position_lat"] = json!(["bryton", "garmin"]);
-    assert!(issue(&v).contains("position"));
+    v["merge"]["streams"]["record.position_lat"] = json!(["bike_meter", "health_band"]);
+    assert_eq!(issue(&v), "/merge/streams");
+    v["merge"]["streams"]["record.position_long"] = json!(["bike_meter"]);
+    assert_eq!(issue(&v), "/merge/streams/record.position_long");
+    v["merge"]["streams"] = Value::Null;
+    assert_eq!(issue(&v), "/merge/streams");
     v = example();
     v["merge"]["streams"]["record.heart_rate"][1] = json!("apple_watch");
     assert_eq!(issue(&v), "/merge/streams/record.heart_rate/1");
@@ -190,7 +209,7 @@ fn invalid_config_is_diagnosed_offline() {
     v["timezone"] = json!("../etc");
     assert_eq!(issue(&v), "/timezone");
     v = example();
-    v["output_dir"] = v["sources"]["bryton"]["directory"].clone();
+    v["output_dir"] = v["sources"]["bike_meter"]["directory"].clone();
     assert_eq!(issue(&v), "/output_dir");
     assert!(
         Settings::parse(
@@ -231,13 +250,15 @@ fn a_config_loads_named_instances_and_priorities_offline() {
             .map(|t| (t.id.clone(), t.kind.clone()))
             .collect::<Vec<_>>()
     };
-    v["sources"]["bryton"]["directory"] = json!(dir.path().join("unmounted"));
-    v["sources"]["garmin"]["cache_dir"] = json!(dir.path().join("untouched"));
+    v["sources"]["bike_meter"]["directory"] = json!(dir.path().join("unmounted"));
+    v["sources"]["health_band"]["cache_dir"] = json!(dir.path().join("untouched"));
     std::fs::write(&path, v.to_string()).unwrap();
     let defaults = Settings::load(&path).unwrap();
     assert_eq!(
         ids(&defaults),
-        ["bryton", "garmin", "apple_watch"].map(String::from).into(),
+        ["bike_meter", "health_band", "apple_watch"]
+            .map(String::from)
+            .into(),
         "A1"
     );
     assert!(
@@ -259,14 +280,14 @@ fn a_config_loads_named_instances_and_priorities_offline() {
             .any(|f| f == "session.total_calories"),
         "A2b"
     );
-    v["sources"]["garmin"] =
+    v["sources"]["health_band"] =
         json!({"kind":"fit_directory","device":"garmin_cirqa","directory":"elsewhere"});
     let local = load(&v, &r).unwrap();
     assert_eq!(ids(&local), ids(&defaults), "A1d");
     assert_eq!(ordered(&local), ordered(&defaults), "A1d");
     let mut registry = Registry::default();
     registry.register_device(
-        "bryton_neo15",
+        "synthetic_bike",
         Device {
             manufacturer: 267,
             product: 100,
@@ -281,7 +302,7 @@ fn a_config_loads_named_instances_and_priorities_offline() {
     for (id, spec, row) in [
         (
             "old_bike",
-            json!({"kind":"fit_directory","device":"bryton_neo15","directory":"neo"}),
+            json!({"kind":"fit_directory","device":"synthetic_bike","directory":"neo"}),
             "A1b",
         ),
         (
@@ -296,7 +317,7 @@ fn a_config_loads_named_instances_and_priorities_offline() {
         let mut expected = ids(&defaults);
         expected.insert(id.into());
         assert_eq!(ids(&s), expected, "{row}");
-        assert_eq!(s.primary_source().id(), "bryton", "{row}");
+        assert_eq!(s.primary_source().id(), "bike_meter", "{row}");
         assert_eq!(ordered(&s), ordered(&defaults), "{row}");
     }
     v["destinations"] = json!({"strava":{}});
@@ -348,6 +369,7 @@ fn b1_b2_b3_calendar_query_and_dual_threshold() {
             source_id: "g".into(),
             activity_id: "1".into(),
             device: Device::CIRQA,
+            product_name: None,
             sport: 2,
             start_utc: end - 720,
             end_utc: end + 1800,
@@ -389,7 +411,7 @@ fn v1_native_names_and_declarative_devices() {
     assert_eq!(priority(&settings, "record.power"), ["new_bike"]);
     assert_eq!(settings.device("new_bike").unwrap().product, 30001);
     v["merge"]["streams"] =
-        json!({"record.left_right_balance":["garmin"],"record.extra_sensor":["new_bike"]});
+        json!({"record.left_right_balance":["health_band"],"record.extra_sensor":["new_bike"]});
     assert_eq!(issue(&v), "/merge/streams/record.extra_sensor");
     v["merge"]["field_ids"] = json!({"record.extra_sensor":240});
     let settings = load(&v, &Registry::default()).unwrap();

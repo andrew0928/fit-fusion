@@ -1,5 +1,5 @@
 use crate::data_source::number;
-use crate::data_source::{ActivityRecording, Device};
+use crate::data_source::{ActivityRecording, RecorderIdentity};
 use crate::{Error, Result};
 use rustyfit::proto::Message;
 use std::{
@@ -16,7 +16,7 @@ pub struct Ride {
     pub path: PathBuf,
     pub bytes: Vec<u8>,
     pub hash: String,
-    pub device: Device,
+    pub recorder: RecorderIdentity,
     pub session_utc: (i64, i64),
     pub source_id: String,
     pub records: BTreeMap<u32, Message>,
@@ -37,7 +37,6 @@ impl Ride {
             native,
             developers: mut developer_ids,
         } = recording;
-        let device = metadata.device;
         let known: BTreeSet<(u16, u8)> = include_str!("../../../python/fit_fusion/profile.tsv")
             .lines()
             .filter_map(|s| {
@@ -124,7 +123,7 @@ impl Ride {
             bytes,
             path,
             hash,
-            device,
+            recorder: metadata.recorder(),
             session_utc: (metadata.start_utc, metadata.end_utc),
             source_id: metadata.source_id,
             records,

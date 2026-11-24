@@ -3,14 +3,13 @@
   "timezone": "Asia/Taipei",
   "output_dir": "~/Rides/merged",
   "sources": {
-    "bryton": {
+    "bike_meter": {
       "kind": "fit_directory",
-      "device": "bryton_rider_460",
-      "directory": "~/Rides/inbox/bryton"
+      "directory": "~/Rides/inbox/bike_meter"
     },
-    "garmin": {
+    "health_band": {
       "kind": "garmin_connect",
-      "device": "garmin_cirqa",
+      "device": {"manufacturer": 1, "product": 5019},
       "cache_dir": "~/Rides/cache/garmin",
       "auth": {
         "personal_api_key": null,
@@ -24,21 +23,12 @@
     }
   },
   "merge": {
-    "primary_source": "bryton",
+    "primary_source": "bike_meter",
     "min_overlap_ratio": 0.90,
     "streams": {
-      "record.heart_rate": ["bryton", "garmin"],
-      "record.position_lat": ["bryton"],
-      "record.position_long": ["bryton"],
-      "record.speed": ["bryton"],
-      "record.enhanced_speed": ["bryton"],
-      "record.altitude": ["bryton"],
-      "record.enhanced_altitude": ["bryton"],
-      "record.distance": ["bryton"],
-      "record.cadence": ["bryton"],
-      "record.temperature": ["bryton"],
-      "session.total_calories": ["garmin"],
-      "session.metabolic_calories": ["garmin"]
+      "record.heart_rate": ["bike_meter", "health_band"],
+      "session.total_calories": ["health_band"],
+      "session.metabolic_calories": ["health_band"]
     }
   },
   "destinations": {

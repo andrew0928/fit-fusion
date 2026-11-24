@@ -116,15 +116,15 @@ let calories = recording.read_summary(SummaryKey::SessionTotalCalories);
 | 契約 | 呼叫端可觀察的行為 |
 |---|---|
 | 身分 | `SourceId` 是設定中可自訂的來源 ID。`ActivityId` 在該來源內有效，兩者合用才能識別活動。本機 FIT 可用內容雜湊辨識，Connect 用平台活動 ID。開啟後以原始內容雜湊追溯檔案，支援改名、快取及重跑。 |
-| 列舉與 metadata | `ActivitySummary` 至少能識別來源及活動，並提供可用的時段資訊。`ActivityMetadata` 提供配對所需的設備、運動種類與 UTC 起訖，線上候選最終以原檔驗證。查詢由連線器處理必要分頁。完整查詢成功且無活動時回傳空清單；目錄不可讀、憑證失效、限流或中途分頁失敗均回傳可區分的錯誤。指定 ID 查無活動則回報該 ID 不存在。 |
+| 列舉與 metadata | `ActivitySummary` 至少能識別來源及活動，並提供可用的時段資訊。本機摘要帶實際錄製設備及名稱依據，Connect 摘要的設備要到開啟原檔後才確認。`ActivityMetadata` 提供配對所需的設備、運動種類與 UTC 起訖，線上候選最終以原檔驗證。查詢由連線器處理必要分頁。完整查詢成功且無活動時回傳空清單；目錄不可讀、憑證失效、限流或中途分頁失敗均回傳可區分的錯誤。指定 ID 查無活動則回報該 ID 不存在。 |
 | 讀取串流與摘要 | 在已開啟的記錄上，以 C# `recording.ReadStream(key)`／Rust `recording.read_stream(key)` 讀取原始時間序列，以 `ReadSummary(key)`／`read_summary(key)` 讀取同名 session 或 lap 摘要及其時段。能分辨欄位缺失、單點缺值及有效零值。讀同趟的心率與熱量共用一份已開啟的記錄，無須重複下載或解碼整檔。 |
 | 原始資料 | `ActivityRecording` 提供唯讀原始資料及其來源識別。FIT 輸入可查回原始 frame、未知欄位與 developer 定義，讓輸出器保存未修改欄位。Apple 健康分析來源保留 Workout 與關聯檔的來源關係。所有合併產物另存。 |
 
 ## 如何擴充
 
-**新增設備或取檔方式。** 同一種 `fit_directory` 可建立多個具名實例。新增型號時註冊設備辨識資訊，例如 Bryton Neo15 可使用既有的本機取檔方式。新增取檔方式時實作 `IDataSource`／`DataSource`，把 factory 依 `kind` 編入來源註冊表。loader 以來源 ID 建立實例，factory 驗證並解讀該種類的選項。現有 Garmin 來源在本機目錄和 Connect 間切換時可沿用同一個 ID 與逐欄順位。
+**新增設備或取檔方式。** 同一種 `fit_directory` 可建立多個具名實例。專屬目錄可省略型號篩選器。例如 Bryton Rider 15 Neo 和 Rider 460 都可屬於 `bike_meter`；列舉本機活動或開啟原檔後，可取得該份 FIT 的設備代碼、顯示名稱及名稱依據。新增取檔方式時實作 `IDataSource`／`DataSource`，把 factory 依 `kind` 編入來源註冊表。loader 以來源 ID 建立實例，factory 驗證並解讀該種類的選項。現有 Garmin 來源在本機目錄和 Connect 間切換時可沿用同一個 ID 與逐欄順位。
 
-**新增發佈服務。** 實作 `IDataTarget`／`DataTarget` 並將 factory 編入獨立的目的地註冊表。兩個方向可以使用相同的 `kind` 名稱，各自驗證讀取與發佈能力。基礎 Schema 提供新連線器的通用設定結構，未註冊的種類由 loader 指出位置。以 A 表的離線測試註冊 Neo15、Bryton Activity 和 Garmin Connect 目的地，可驗證擴充性；實際連線器各自排入後續整合。[JSON 設定範例與相容性](../config/README.md#如何增加設備或目的地) · [A 表](testcases/module-decision-tables.md#aconfig-test)
+**新增發佈服務。** 實作 `IDataTarget`／`DataTarget` 並將 factory 編入獨立的目的地註冊表。兩個方向可以使用相同的 `kind` 名稱，各自驗證讀取與發佈能力。基礎 Schema 提供新連線器的通用設定結構，未註冊的種類由 loader 指出位置。以 A 表的離線測試註冊合成車錶、Bryton Activity 和 Garmin Connect 目的地，可驗證擴充性；實際連線器各自排入後續整合。[JSON 設定範例與相容性](../config/README.md#如何增加設備或目的地) · [A 表](testcases/module-decision-tables.md#aconfig-test)
 
 **調整選值做法。** 合法的來源順位由 config 決定；整趟品質演算法由 `MergePolicy` 封裝。改心率停滯判準時，修改並測試該規則、更新報告中的規則版本；來源連線器仍提供同一份原始紀錄。每次處理都從唯讀輸入產生新結果，讓兩版策略可用同一趟活動對照。[心率品質決策](../decisions/2026-11-23-heart-rate-quality.md)
 

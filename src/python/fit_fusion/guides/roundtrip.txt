@@ -1,0 +1,8 @@
+{identity} — Re-encode a FIT and verify the result
+
+Usage
+  {cli} roundtrip FILE.fit --out NEW.fit
+
+Output
+  Supply a new destination path in an existing writable directory.
+  On success, stdout contains the verification receipt and both SHA-256 values.

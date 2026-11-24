@@ -11,7 +11,7 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | 測試函式 | 決策列 | 可驗證的結果 |
 |---|---|---|
 | `sources_and_field_selection`、`a_config_loads_named_instances_and_priorities_offline` | A1、A1c、A1d、A2a、A2b、A3、A5a、A5b | 來源 ID 集合、主來源、啟用欄位與精確順位。Garmin 切換讀取器、改名後的設備、引用舊 ID 的錯誤位置。 |
-| `multiple_devices_and_new_source_kinds`、`a_config_loads_named_instances_and_priorities_offline` | A1b、A1e、A1f、A6a、A6e | 新設備與新種類可分別加入；原來的主來源和順位保持一致；指定 Neo15 踏頻備援後只改變該欄。 |
+| `multiple_devices_and_new_source_kinds`、`a_config_loads_named_instances_and_priorities_offline` | A1b、A1e、A1f、A6a、A6e | 新設備與新種類可分別加入；原來的主來源和順位保持一致；指定合成舊車錶的踏頻備援後只改變該欄。 |
 | `target_registration_is_independent_of_readers`、`a_config_loads_named_instances_and_priorities_offline` | A4a–f、A6f、A6g | 空目的地、預設 Strava、兩個獨立 Strava、擴充種類、讀取與發佈方向分開，以及未知選項定位。 |
 | `invalid_config_is_diagnosed_offline` | A6b–d | 版本、座標順位、Apple 心率備援被拒絕；另驗時區、路徑重疊與重複鍵。 |
 

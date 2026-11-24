@@ -29,7 +29,7 @@
     "merge": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["primary_source", "min_overlap_ratio", "streams"],
+      "required": ["primary_source", "min_overlap_ratio"],
       "properties": {
         "primary_source": {"$ref": "#/definitions/sourceId"},
         "min_overlap_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
@@ -40,6 +40,8 @@
         },
         "streams": {
           "type": "object",
+          "default": {},
+          "description": "Source priorities for fields to override or add. Unlisted fields inherit the primary FIT.",
           "propertyNames": {"pattern": "^(record\\.[a-z][a-z0-9_]*|session\\.(total_calories|metabolic_calories))$"},
           "additionalProperties": {
             "type": "array",
@@ -95,7 +97,7 @@
     "fitDirectory": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "device", "directory"],
+      "required": ["kind", "directory"],
       "properties": {
         "kind": {"const": "fit_directory"},
         "device": {"$ref": "#/definitions/device"},

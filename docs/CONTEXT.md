@@ -6,7 +6,7 @@ Maintain two CLI families with independent acceptance criteria.
 - The [inspector](spec/inspector.md) inventories a single FIT and compares
   independent decoding paths across Python, C#, Rust, and Node.js, with room
   for additional languages. See the [inspector cases](spec/testcases/inspector.md).
-- Python, C# and Rust inspectors also serialize decoded FIT data into a new file. Verify cross-language read-back before starting the M2 merger. See the [roundtrip acceptance](inspectors.md#三種檢查器的-fit-往返驗證).
+- Python, C#, Rust and Node.js inspectors also serialize decoded FIT data into a new file. Verify cross-language read-back before starting the M2 merger. See the [roundtrip acceptance](inspectors.md#四種檢查器的-fit-往返驗證).
 - The [merger](spec/merger.md) has one Rust implementation for macOS using
   RustyFIT (Cargo package `rustyfit`). It merges simultaneous device
   recordings into one sensor timeline. See the [merger cases](spec/testcases/merger.md)
@@ -15,6 +15,7 @@ Maintain two CLI families with independent acceptance criteria.
 This is stream merging, NOT concatenating routes or activities.
 
 ## Devices
+- Bryton Rider 15 Neo: historical cycling FIT, manufacturer 267 and product 2004.
 - Bryton Rider 460: GPS, barometric altitude, temperature,
   ANT+ chest heart rate monitor, cadence, speed
 - Apple Watch Series 9: Apple Health / workout data
@@ -70,7 +71,7 @@ Deliver a Rust CLI with human-readable `--help` and self-contained agent
 instructions via `--skill <topic>`. Use the preset source and stream priorities
 to select same-name fields and export a validated FIT for manual upload to Strava.
 Optional `merge --parquet` preserves the complete input files and selected values.
-Automated Strava publishing (M2-4) is deferred by the [scope decision](decisions/2026-11-24-manual-strava-export.md). The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
+Automated Strava publishing (M2-4) is **pending** under the [scope decision](decisions/2026-11-24-manual-strava-export.md). The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
 lists the source for each entry in Strava's public FIT table. Mapping a
 different source field into a destination field is planned for a later release.
 Keep personal Garmin and Strava credentials together in a local config file.
@@ -82,6 +83,8 @@ The [M2 design](milestones/m2-cli.md) describes the commands, inputs,
 outputs, recovery behavior, and end-to-end acceptance cases.
 
 ## Milestone 3 — credential storage, distribution, and other integrations
+
+All M3 work is pending. Version 0.1.0 ships the M2 CLI through a tagged GitHub Release. M15 and M18 represent legacy device acceptance for this version. M16 and M17 are skipped because no more original FIT recordings are available. See the [release decision](decisions/2026-11-24-v0.1.0-release.md).
 
 Research macOS Keychain and hardware-backed key protection, formal release
 channels including Homebrew and GitHub, and further integrations. The

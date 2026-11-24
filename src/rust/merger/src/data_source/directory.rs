@@ -19,16 +19,20 @@ struct Entry {
 pub struct FitDirectory {
     id: String,
     directory: PathBuf,
-    device: Device,
+    device: Option<Device>,
     index: RefCell<BTreeMap<String, Entry>>,
 }
 impl FitDirectory {
     /// Construction only describes the source. A missing mount is reported on first use.
-    pub fn new(id: impl Into<String>, directory: impl Into<PathBuf>, device: Device) -> Self {
+    pub fn new(
+        id: impl Into<String>,
+        directory: impl Into<PathBuf>,
+        device: impl Into<Option<Device>>,
+    ) -> Self {
         Self {
             id: id.into(),
             directory: directory.into(),
-            device,
+            device: device.into(),
             index: RefCell::default(),
         }
     }
@@ -65,7 +69,7 @@ impl FitDirectory {
                 }
                 let bytes = fs::read(&path).map_err(|e| io(&path, e))?;
                 if let Some(meta) =
-                    recording::inventory(&bytes, &self.id, &path, Some(self.device))?.metadata
+                    recording::inventory(&bytes, &self.id, &path, self.device)?.metadata
                 {
                     index
                         .entry(meta.activity_id.clone())

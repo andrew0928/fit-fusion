@@ -1,0 +1,7 @@
+{identity} — Compare the Garmin JavaScript SDK with the wire decoder
+
+Usage
+  {cli} sdk-check FILE.fit
+
+Output
+  Per-member JSON diagnostics for SDK decoding and re-encoding.

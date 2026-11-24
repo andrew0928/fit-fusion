@@ -18,16 +18,19 @@
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |
 | 2026-11-24 | [先實作本機 FIT 目錄，Garmin API 與 Apple Health ZIP 分型保留](2026-11-24-local-fit-source.md) | accepted |
-| 2026-11-24 | [本版手動上傳 Strava，跳過 M2-4 並接續分析匯出](2026-11-24-manual-strava-export.md) | accepted |
-| 2026-11-24 | [config v1 預設保留主 FIT，依欄名及設備識別擴充](2026-11-24-config-primary-inheritance.md) | accepted |
+| 2026-11-24 | [本版手動上傳 Strava，M2-4 維持 pending](2026-11-24-manual-strava-export.md) | accepted |
+| 2026-11-24 | [config v1 沿用主 FIT，streams 選填，只列覆寫或追加欄位](2026-11-24-config-primary-inheritance.md) | accepted |
+| 2026-11-24 | [用用途命名來源，從 FIT 識別實際設備](2026-11-24-source-roles.md) | accepted |
+| 2026-11-24 | [以 M15、M18 代表舊設備驗收，透過 GitHub Release 發佈 v0.1.0](2026-11-24-v0.1.0-release.md) | accepted |
+| 2026-11-24 | [兩支 Rust CLI 以 clap 宣告及解析命令列](2026-11-24-rust-clap.md) | accepted |
 | 2026-11-23 | [Apple Watch 騎乘資料的漸進式匯出](2026-11-23-apple-health-incremental-export.md) | proposed |
 | 2026-11-23 | [整趟騎乘的熱量消耗優先使用 Garmin](2026-11-23-ride-calorie-source.md)（發佈 CIRQA 總熱量並另存兩個原值） | accepted |
 | 2026-11-23 | [心率先判整趟品質，再決定逐點補缺或整趟改用 Garmin](2026-11-23-heart-rate-quality.md) | accepted |
-| 2026-11-23 | [M2 交付可供 agent 操作的 macOS 融合 CLI，M3 處理安全保管與發佈](2026-11-23-cli-milestones.md) | accepted |
-| 2026-11-23 | [個人設定檔分開定義來源與逐串流順位，依日期從主來源找活動](2026-11-23-date-driven-config.md)（M2-3 六趟 API 與離線配對已驗收） | accepted |
+| 2026-11-23 | [M2 交付可供 agent 操作的 macOS 融合 CLI，M3 處理安全保管與發佈](2026-11-23-cli-milestones.md)（11/24 補充 CLI 版本顯示與診斷資訊） | accepted |
+| 2026-11-23 | [個人設定檔分開定義來源與逐串流順位，依日期從主來源找活動](2026-11-23-date-driven-config.md)（M2-3 六趟 API 與離線配對已驗收，11/24 確認單檔自動配對旗標 `--auto-match`） | accepted |
 | 2026-11-23 | [專案以 docs、src、data 與 runtime 分開保存文件、程式及本機資料](2026-11-23-project-layout.md) | accepted |
 | 2026-11-23 | [多語言 FIT 檢查器與單一 Rust 合併器分別驗收](2026-11-23-inspector-and-merger.md) | accepted |
-| 2026-11-23 | [三種檢查器以解碼後的欄位重新編碼 FIT](2026-11-23-inspector-roundtrip.md)（已驗收並啟動 M2 離線合併） | accepted |
+| 2026-11-23 | [三種檢查器以解碼後的欄位重新編碼 FIT](2026-11-23-inspector-roundtrip.md)（三語言驗收後啟動 M2，11/24 補齊 Node.js 對照） | accepted |
 | 2026-11-22 | [騎乘累積距離採用 Bryton 主來源](2026-11-22-primary-distance-stream.md) | accepted |
 | 2026-11-22 | [騎乘資訊流優先使用 Bryton，心率缺漏由 Garmin 替補](2026-11-22-bryton-primary-streams.md)（11/23 確認心率第二順位） | accepted |
 | 2026-11-22 | [CLI 依時間配對同趟記錄，按合併清單與兩級順位選取來源](2026-11-22-device-and-stream-selection.md)（11/23 確認 M2 同名選值與後續 rename） | accepted |

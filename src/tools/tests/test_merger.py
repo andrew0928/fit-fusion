@@ -2,9 +2,12 @@
 import csv
 import hashlib
 import importlib.util
+from itertools import product
 import json
 import os
 from pathlib import Path
+import re
+import shlex
 import shutil
 import struct
 import subprocess
@@ -65,6 +68,118 @@ class Merger(unittest.TestCase):
         self.b = self.dir/"first.fit"
         self.g = self.dir/"second.fit"
 
+    def test_agent_can_follow_merger_index_and_workflow(self):
+        def cli(*args, expected=0):
+            r = subprocess.run([self.cli, *args], cwd=self.dir, capture_output=True, text=True)
+            self.assertEqual(r.returncode, expected, r.stdout + r.stderr)
+            return r
+
+        index = cli("--config", "absent.json", "--skill", "index").stdout
+        self.assertEqual(index, cli("--skill").stdout)
+        self.assertNotEqual(index, cli("--help").stdout)
+        topics = re.findall(r"\x60fit-fusion --skill ([a-z]+)\x60", index)
+        self.assertCountEqual(topics, ["config", "sources", "selection", "merge", "results", "publish"])
+        pages = {topic: cli("--skill", topic).stdout for topic in topics}
+        invalid = cli("--skill", "unknown", expected=2)
+        self.assertFalse(invalid.stdout)
+        for topic in topics:
+            self.assertIn(topic, invalid.stderr)
+        for path in [("merge",), ("config",), ("config", "init"), ("config", "check"),
+                     ("activities",), ("activities", "list")]:
+            help_text = cli("--config", "absent.json", *path, "-h").stdout
+            self.assertIn(" ".join(path), help_text)
+            self.assertNotEqual(help_text, cli("--help").stdout)
+
+        def examples(topic, replacements=None):
+            lines = re.findall(r"^```sh\n(.*?)\n```$", pages[topic], re.S | re.M)
+            self.assertTrue(lines, topic)
+            for block in lines:
+                for line in block.splitlines():
+                    cmd, *args = shlex.split(line)
+                    self.assertEqual(cmd, "fit-fusion")
+                    args = [(replacements or {}).get(arg, arg) for arg in args]
+                    yield json.loads(cli(*args).stdout)
+
+        created, check = examples("config")
+        self.assertEqual(created["code"], "created")
+        self.assertEqual(check["primary_source"], "bike_meter")
+        self.assertEqual(check["streams"], {
+            "record.heart_rate": ["bike_meter", "health_band"],
+            "session.total_calories": ["health_band"],
+            "session.metabolic_calories": ["health_band"],
+        })
+        local, = re.findall(r"```json\n(.*?)\n```", pages["config"], re.S)
+        (self.dir / "rides.json").write_text(local)
+        fixture = ROOT / "src/rust/merger/tests/fixtures"
+        for name, role, source in [("bike.fit", "bike", "rider.fit"), ("band.fit", "band", "cirqa.fit")]:
+            dest = self.dir / "inbox" / role
+            dest.mkdir(parents=True)
+            shutil.copy(fixture / source, dest / name)
+            shutil.copy(dest / name, self.dir / name)
+        checked, bike, band = examples("sources")
+        self.assertEqual(checked["streams"]["record.heart_rate"], ["bike_meter", "health_band"])
+        self.assertEqual(bike["activities"][0]["device"]["name"], "Bryton Rider 460")
+        self.assertEqual(band["activities"][0]["device"]["name"], "Garmin CIRQA")
+        selection, = examples("selection")
+        self.assertEqual(selection, checked)
+        day, manual, auto, by_id = examples("merge", {
+            "2026-11-21": "2024-01-09", "12345": band["activities"][0]["id"],
+        })
+        paths = [self.dir / result["artifacts"]["fit"] for result in
+                 [day["rides"][0], manual, auto, by_id]]
+        self.assertTrue(all(p.read_bytes() == paths[0].read_bytes() for p in paths))
+        report = json.loads((self.dir / manual["artifacts"]["report"]).read_text())
+        inspector, *inspect_args = shlex.split(re.search(r"```sh\n(.+?)\n```", pages["results"], re.S)[1])
+        self.assertEqual(inspector, "fit-inspector")
+        subprocess.run(["cargo", "build", "--release", "--locked", "--manifest-path",
+                        str(ROOT / "src/rust/inspector/Cargo.toml")], cwd=ROOT, check=True)
+        inventory = json.loads(subprocess.check_output(
+            [Path(self.cli).with_name(inspector), *inspect_args], cwd=self.dir, text=True))
+        record = next(m for m in inventory["members"][0]["messages"] if m["number"] == 20)
+        self.assertEqual(record["message_count"], 6)
+        checksum, = re.findall(r"```sh\n(.*?)\n```", pages["publish"], re.S)
+        self.assertEqual(subprocess.check_output(shlex.split(checksum), cwd=self.dir, text=True).split()[0],
+                         report["output_sha256"])
+        args = ("--config", "rides.json", "merge", "--date")
+        self.assertEqual(json.loads(cli(*args, "2024-01-10", "--json").stdout)["status"], "no_activities")
+        shutil.copy(fixture / "rider-later.fit", self.dir / "inbox/bike/later.fit")
+        partial = json.loads(cli(*args, "2024-01-09", "--json", expected=3).stdout)
+        self.assertEqual(partial["status"], "partial")
+        self.assertEqual([ride["code"] for ride in partial["rides"]], ["ok", "quality_review"])
+        self.assertTrue(partial["rides"][0]["reused"])
+        power, = re.findall(r"```json\n(.*?)\n```", pages["selection"], re.S)
+        config = json.loads(local)
+        config["merge"]["streams"].update(json.loads(power))
+        (self.dir / "rides.json").write_text(json.dumps(config))
+        updated, = examples("selection")
+        self.assertEqual(updated["streams"]["record.power"], ["bike_meter", "health_band"])
+        self.assertEqual(updated["streams"]["record.heart_rate"], checked["streams"]["record.heart_rate"])
+
+    def test_help_and_version_match_cargo_and_merge_report(self):
+        manifest = ROOT / "src/rust/merger/Cargo.toml"
+        metadata = subprocess.check_output(["cargo", "metadata", "--format-version=1", "--no-deps",
+                                            "--manifest-path", manifest], cwd=ROOT, text=True)
+        package = next(p for p in json.loads(metadata)["packages"] if p["name"] == "fit-fusion")
+        identity = f"fit-fusion {package['version']}"
+
+        def run(*args):
+            return subprocess.check_output([self.cli, "--config", "absent.json", *args],
+                                           cwd=self.dir, text=True)
+
+        for path in [(), ("merge",), ("config",), ("config", "init"), ("config", "check"),
+                     ("activities",), ("activities", "list")]:
+            self.assertTrue(run(*path, "--help").splitlines()[0].startswith(identity + " "))
+        version = run("--version")
+        self.assertEqual(version, run("-V"))
+        self.assertEqual(version.splitlines()[0], identity)
+        details = dict(line.split(maxsplit=1) for line in version.splitlines()[1:])
+        self.assertTrue(details["Compiler"].startswith("rustc "))
+        self.assertTrue(details["Target"])
+        self.assertIn("RustyFIT", details["FIT"])
+        fixture = ROOT / "src/rust/merger/tests/fixtures"
+        _, report, _ = self.merge(fixture / "rider.fit", fixture / "cirqa.fit")
+        self.assertEqual(details["Rules"], report["rules_version"])
+
     def merge(self, b, g, out="out", expected=0):
         p = subprocess.run([self.cli, "merge", str(b), str(g), "--out", str(self.dir/out), "--json"],
                            text=True, capture_output=True)
@@ -88,7 +203,7 @@ class Merger(unittest.TestCase):
         session = next(r for n,r in data if n==18)
         self.assertEqual((session[None,11], session[None,196],session[0,11],session[1,11],session[1,196]),
                          (2,1,"4d","0200","0100"))
-        self.assertEqual(report["heart_rate"]["samples"], {"bryton":5,"garmin":1,"missing":0})
+        self.assertEqual(report["heart_rate"]["samples"], {"bike_meter":5,"health_band":1,"missing":0})
         self.assertEqual(report["calories"]["active_calories"],1)
         self.assertTrue(self.merge(self.g,self.b)[2]["reused"])
         self.assertEqual(self.b.read_bytes(),original)
@@ -108,9 +223,9 @@ class Merger(unittest.TestCase):
         config = ROOT / "docs/config/local-fit.example.json"
         command = [self.cli, "--config", str(config)]
         check = json.loads(subprocess.check_output(command + ["config", "check", "--json"], cwd=self.dir))
-        self.assertEqual(check["streams"]["record.heart_rate"], ["bryton", "garmin"])
+        self.assertEqual(check["streams"]["record.heart_rate"], ["bike_meter", "health_band"])
         fixtures = ROOT / "src/rust/merger/tests/fixtures"
-        for source, files in (("bryton", ["rider.fit", "rider-later.fit"]), ("garmin", ["cirqa.fit"])):
+        for source, files in (("bike_meter", ["rider.fit", "rider-later.fit"]), ("health_band", ["cirqa.fit"])):
             result = json.loads(subprocess.check_output(
                 command + ["activities", "list", "--source", source, "--json"], cwd=self.dir))
             self.assertEqual([a["id"] for a in result["activities"]],
@@ -140,7 +255,7 @@ class Merger(unittest.TestCase):
                     sessions.append((fields[11], fields[196]))
         self.assertEqual(heart, [110, 111, 113, 114, 114, 115])
         self.assertEqual(sessions, [(2, 1)])
-        self.assertEqual(report["heart_rate"]["samples"], {"bryton": 5, "garmin": 1, "missing": 0})
+        self.assertEqual(report["heart_rate"]["samples"], {"bike_meter": 5, "health_band": 1, "missing": 0})
 
     def date_setup(self):
         self.conf = self.dir / "config.json"
@@ -149,8 +264,8 @@ class Merger(unittest.TestCase):
         self.primary.mkdir()
         self.secondary.mkdir()
         v = json.loads((ROOT / "docs/config/config.example.json").read_text())
-        v["sources"]["bryton"]["directory"] = str(self.primary)
-        v["sources"]["garmin"] = {"kind": "fit_directory", "device": "garmin_cirqa", "directory": str(self.secondary)}
+        v["sources"]["bike_meter"]["directory"] = str(self.primary)
+        v["sources"]["health_band"] = {"kind": "fit_directory", "device": "garmin_cirqa", "directory": str(self.secondary)}
         v["output_dir"] = str(self.dir / "dates")
         self.conf.write_text(json.dumps(v))
         return v
@@ -193,10 +308,132 @@ class Merger(unittest.TestCase):
         result = self.configured(self.primary/"two.fit", "--garmin-id", bad["details"]["candidates"][0]["activity_id"],
                                  "--out", self.dir/"resolved")
         self.assertTrue(Path(result["artifacts"]["fit"]).is_file())
-        self.configured(self.primary/"renamed.fit", "--garmin", "auto", "--out", self.dir/"auto")
+        self.configured(self.primary/"renamed.fit", "--auto-match", "--out", self.dir/"auto")
         shutil.copy(scenarios/"rider-gps.fit", self.primary/"overlapping.fit")
         shared = self.configured(*day, expected=3)
         self.assertTrue(all(r["code"] == "ambiguous_match" for r in shared["rides"]))
+
+    def test_auto_match_uses_stream_source_ids(self):
+        config = self.date_setup()
+        fixtures = ROOT / "src/rust/merger/tests/stream-fixtures"
+        primary = fixtures / "backup.fit"
+        companion = self.secondary / "head-unit.fit"
+        shutil.copy(fixtures / "bike.fit", companion)
+        config["sources"] = {
+            "wrist": {"kind": "fit_directory", "directory": str(self.primary),
+                      "device": {"manufacturer": 1, "product": 30002}},
+            "head_unit": {"kind": "fit_directory", "directory": str(self.secondary),
+                          "device": {"manufacturer": 267, "product": 30001}},
+            "garmin": {"kind": "fit_directory", "directory": str(self.dir / "unused")},
+        }
+        config["merge"]["primary_source"] = "wrist"
+        config["merge"]["streams"] = {"record.power": ["head_unit", "wrist"]}
+        self.conf.write_text(json.dumps(config))
+        matched = self.configured(primary, "--auto-match", "--out", self.dir/"auto")
+        manual = self.configured(primary, companion, "--out", self.dir/"pair")
+        self.assertEqual(set(matched["matched_sources"]), {"head_unit"})
+        self.assertEqual(Path(matched["artifacts"]["fit"]).read_bytes(), Path(manual["artifacts"]["fit"]).read_bytes())
+
+    def test_calories_only_override_keeps_primary_records(self):
+        config = self.date_setup()
+        config["merge"]["streams"] = {"session.total_calories": ["health_band"]}
+        self.conf.write_text(json.dumps(config))
+        scenarios = ROOT / "src/rust/merger/tests/scenarios"
+        bike = self.primary / "bike.fit"
+        band = self.secondary / "band.fit"
+        shutil.copy(scenarios / "rider-gps.fit", bike)
+        shutil.copy(scenarios / "cirqa-sensors.fit", band)
+        result = self.configured("--date", "2024-01-09")["rides"][0]
+        merged = Path(result["artifacts"]["fit"])
+        self.assertEqual([r for n, r in rows(merged) if n == 20],
+                         [r for n, r in rows(bike) if n == 20])
+        def session_total(path):
+            return next(r[None, 11] for n, r in rows(path) if n == 18)
+        self.assertNotEqual(session_total(bike), session_total(band))
+        self.assertEqual(session_total(merged), session_total(band))
+
+    def test_auto_match_rejects_invalid_usage(self):
+        self.conf = self.dir / "absent.json"
+        out = self.dir / "out"
+        cases = [
+            (["a.fit", "--garmin", "auto"], "--auto-match"),
+            (["a.fit", "--auto-match", "--auto-match"], "multiple times"),
+            (["a.fit", "--auto-match", "--garmin-id", "12345"], "--garmin-id"),
+            (["--auto-match"], "FIRST.fit"),
+            (["a.fit", "--auto-match", "auto"], "SECOND.fit"),
+            (["a.fit", "b.fit", "--auto-match"], "SECOND.fit"),
+        ]
+        for args, message in cases:
+            with self.subTest(args=args):
+                error = self.configured(*args, "--out", out, expected=2)
+                self.assertEqual(error["code"], "usage")
+                self.assertIn(message, error["message"])
+        error = self.configured("--date", "2024-01-09", "--auto-match", expected=2)
+        self.assertEqual(error["code"], "usage")
+        self.assertFalse(out.exists())
+
+    def test_activities_group_guides_the_user_to_a_working_query(self):
+        args = [self.cli, "--config", self.dir / "absent.json", "activities"]
+        group = subprocess.check_output(args, text=True)
+        self.assertEqual(group, subprocess.check_output([*args, "--help"], text=True))
+        self.assertIn("activities list --source bike_meter", group)
+        missing = subprocess.run([*args, "list", "--json"], text=True, capture_output=True)
+        self.assertEqual(missing.returncode, 2)
+        self.assertIn("--source <ID>", json.loads(missing.stdout)["message"])
+        local = ROOT / "docs/config/local-fit.example.json"
+        result = subprocess.check_output([self.cli, "--config", local, "activities", "list",
+                                          "--source", "bike_meter", "--json"], text=True)
+        rides = json.loads(result)["activities"]
+        self.assertEqual(len(rides), 2)
+        self.assertTrue(all(ride["source_id"] == "bike_meter" for ride in rides))
+
+    def test_parser_option_order_and_scoped_help(self):
+        local = ROOT / "docs/config/local-fit.example.json"
+        def run(*args):
+            return subprocess.run([self.cli, *args], cwd=self.dir, capture_output=True, text=True)
+
+        queries = [
+            ["--config", local, "activities", "list", "--source", "bike_meter", "--json"],
+            ["activities", "list", "--json", "--source", "bike_meter", "--config", local],
+            ["--json", "activities", "--config", local, "list", "--source=bike_meter"],
+        ]
+        for args in queries:
+            result = run(*args)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(len(json.loads(result.stdout)["activities"]), 2)
+        for group in ["config", "activities"]:
+            bare = run("--config", "missing.json", group)
+            self.assertEqual(bare.returncode, 0, bare.stderr)
+            self.assertEqual(bare.stdout, run(group, "--help").stdout)
+        inline = run("merge", "missing.fit", "--help")
+        self.assertEqual(inline.returncode, 0, inline.stderr)
+        self.assertEqual(inline.stdout, run("merge", "--help").stdout)
+        invalid = run("--config", "missing.json", "merge", "missing.fit", "--out", "out", "--json")
+        self.assertEqual(invalid.returncode, 2)
+        self.assertEqual(json.loads(invalid.stdout)["code"], "usage")
+        self.assertFalse((self.dir / "out").exists())
+
+    def test_parse_all_merge_modes_before_loading_settings(self):
+        self.conf = self.dir / "absent.json"
+        switches = (False, True)
+        for count, date, auto, known, out in product(range(4), switches, switches, switches, switches):
+            args = [f"{i}.fit" for i in range(count)]
+            if date:
+                args.extend(["--date", "2026-11-21"])
+            if auto:
+                args.append("--auto-match")
+            if known:
+                args.extend(["--garmin-id", "12345"])
+            if out:
+                args.extend(["--out", "out"])
+            date_mode = date and count == 0 and not (auto or known or out)
+            pair = count == 2 and not (auto or known)
+            single = count == 1 and auto != known
+            file_mode = not date and out and (pair or single)
+            with self.subTest(args=args):
+                result = self.configured(*args, expected=2)
+                self.assertEqual(result["code"], "invalid_config" if date_mode or file_mode else "usage")
+        self.assertFalse((self.dir / "out").exists())
 
     def test_date_config_changes_fit_and_keeps_original(self):
         v = self.date_setup()
@@ -207,13 +444,13 @@ class Merger(unittest.TestCase):
         shutil.copy(scenarios/"cirqa-sensors.fit", watch)
         day = ("--date", "2024-01-09")
         initial = self.configured(*day)["rides"][0]
-        v["merge"]["streams"] = {"record.position_lat":["bryton"], "record.position_long":["bryton"],
-                                 "record.cadence": ["garmin","bryton"]}
+        v["merge"]["streams"] = {"record.position_lat":["bike_meter"], "record.position_long":["bike_meter"],
+                                 "record.cadence": ["health_band","bike_meter"]}
         self.conf.write_text(json.dumps(v))
         new = self.configured(*day)["rides"][0]
         self.assertNotEqual(new["revision_id"], initial["revision_id"])
         report = json.loads(Path(new["artifacts"]["report"]).read_text())
-        self.assertEqual(report["stream_sources"]["record.cadence"][0]["source"], "garmin")
+        self.assertEqual(report["stream_sources"]["record.cadence"][0]["source"], "health_band")
         records = list(rows(Path(new["artifacts"]["fit"])))
         for n, fields in records:
             if n == 20:
@@ -227,12 +464,12 @@ class Merger(unittest.TestCase):
         self.assertEqual((points[2][None,0],points[2][None,1]),(2**31-1,2**31-1))
         self.assertEqual(points[0][None,4],0)
         self.assertEqual(main.read_bytes(),(scenarios/"rider-gps.fit").read_bytes())
-        v["merge"]["streams"]={"record.cadence":["bryton"]}
+        v["merge"]["streams"]={"record.cadence":["bike_meter"]}
         self.conf.write_text(json.dumps(v))
         watch.unlink()
         self.secondary.rmdir()
         only=self.configured(*day)["rides"][0]
-        self.assertEqual(list(json.loads(Path(only["artifacts"]["report"]).read_text())["inputs"]),["bryton"])
+        self.assertEqual(list(json.loads(Path(only["artifacts"]["report"]).read_text())["inputs"]),["bike_meter"])
 
     def test_m09_parquet_revisions_and_conflicts(self):
         config = self.date_setup()
@@ -251,7 +488,7 @@ class Merger(unittest.TestCase):
         report = json.loads(Path(initial["artifacts"]["report"]).read_text())
         self.assertEqual(report["parquet"], {"schema_version": 2, "sha256": digest})
         self.assertTrue(self.configured(*args, "--parquet")["rides"][0]["reused"])
-        config["merge"]["streams"].pop("record.temperature")
+        config["merge"]["streams"]["record.temperature"] = ["health_band", "bike_meter"]
         self.conf.write_text(json.dumps(config))
         new = self.configured(*args, "--parquet")["rides"][0]
         self.assertNotEqual(new["revision_id"], initial["revision_id"])
@@ -293,10 +530,11 @@ class Merger(unittest.TestCase):
         config = self.date_setup()
         self.b.write_bytes(fixture(True, [110, 111, 255, 114, 114, 115]))
         self.g.write_bytes(fixture(False, [109, 110, 113, 113, 114, 115]))
+        config["merge"]["streams"]["record.speed"] = ["bike_meter", "health_band"]
         for key in config["merge"]["streams"].values():
-            key[:] = ["cycle_computer" if s == "bryton" else "watch" for s in key]
-        config["sources"]["cycle_computer"] = config["sources"].pop("bryton")
-        config["sources"]["watch"] = config["sources"].pop("garmin")
+            key[:] = ["cycle_computer" if s == "bike_meter" else "watch" for s in key]
+        config["sources"]["cycle_computer"] = config["sources"].pop("bike_meter")
+        config["sources"]["watch"] = config["sources"].pop("health_band")
         config["merge"]["primary_source"] = "cycle_computer"
         self.conf.write_text(json.dumps(config))
         result = self.configured(self.g, self.b, "--out", self.dir / "audit", "--parquet")
@@ -339,7 +577,7 @@ class Merger(unittest.TestCase):
     def test_m09_six_parquet_rides(self):
         import duckdb
         config = self.date_setup()
-        for source, directory in [("bryton", "data/sources/bryton/fit"), ("garmin", "data/sources/garmin")]:
+        for source, directory in [("bike_meter", "data/sources/bryton/fit"), ("health_band", "data/sources/garmin")]:
             config["sources"][source]["directory"] = str(ROOT / directory)
         self.conf.write_text(json.dumps(config))
         with (ROOT / "data/index/rides.csv").open() as f:
@@ -348,7 +586,7 @@ class Merger(unittest.TestCase):
             date = ride["ride_date"]
             with self.subTest(date=date), duckdb.connect() as db:
                 result = self.configured("--date", date, "--parquet")["rides"][0]
-                sources = {s: ROOT / ride[s + "_fit"] for s in ("bryton", "garmin")}
+                sources = {"bike_meter": ROOT / ride["bryton_fit"], "health_band": ROOT / ride["garmin_fit"]}
                 manifest = self.verify_archive(db, result["artifacts"]["parquet"], sources)
                 fit = Path(result["artifacts"]["fit"])
                 self.assertEqual(hashlib.sha256(fit.read_bytes()).hexdigest(), manifest["merged_fit_sha256"])
@@ -363,12 +601,12 @@ class Merger(unittest.TestCase):
                             FROM audit WHERE field_name='record.heart_rate' AND timestamp_fit_s BETWEEN ? AND ?
                             GROUP BY row_kind, source_id ORDER BY row_kind, source_id""",
                                            [t["start_fit_seconds"], t["end_fit_seconds"]]).fetchall()
-                        self.assertEqual(rates, [("sample", "bryton", bpm, bpm, t["seconds"]),
-                                                 ("sample", "garmin", low, high, t["seconds"]),
-                                                 ("selected", "garmin", low, high, t["seconds"])])
+                        self.assertEqual(rates, [("sample", "bike_meter", bpm, bpm, t["seconds"]),
+                                                 ("sample", "health_band", low, high, t["seconds"]),
+                                                 ("selected", "health_band", low, high, t["seconds"])])
                     self.assertEqual(db.sql("SELECT source_id, count(*) FROM audit WHERE row_kind='selected' "
                                             "AND field_name='record.heart_rate' GROUP BY source_id").fetchall(),
-                                     [("garmin", 14149)])
+                                     [("health_band", 14149)])
 
     def test_new_devices_and_native_streams_config_v1(self):
         config = self.date_setup()
@@ -383,11 +621,16 @@ class Merger(unittest.TestCase):
                        "device": {"manufacturer": 1, "product": 30002}},
         }
         config["merge"]["primary_source"] = "bike"
-        config["merge"]["streams"] = {}
+        del config["merge"]["streams"]
         self.conf.write_text(json.dumps(config))
         args = ("--date", "2024-01-09")
         original = self.configured(*args)["rides"][0]
         self.assertEqual(Path(original["artifacts"]["fit"]).read_bytes(), bike.read_bytes())
+        config["merge"]["streams"] = {}
+        self.conf.write_text(json.dumps(config))
+        same = self.configured(*args)["rides"][0]
+        self.assertEqual(same["revision_id"], original["revision_id"])
+        self.assertTrue(same["reused"])
         config["merge"]["streams"] = {"record.power": ["bike", "backup"],
                                      "record.left_right_balance": ["backup"],
                                      "record.left_power_phase": ["backup"]}
@@ -407,7 +650,7 @@ class Merger(unittest.TestCase):
 
     def test_unprofiled_native_field_by_config_name(self):
         config = self.date_setup()
-        config["merge"]["streams"] = {"record.extra_sensor": ["garmin", "bryton"]}
+        config["merge"]["streams"] = {"record.extra_sensor": ["health_band", "bike_meter"]}
         config["merge"]["field_ids"] = {"record.extra_sensor": 240}
         self.conf.write_text(json.dumps(config))
         self.b.write_bytes(fixture(True, [110] * 6))
@@ -416,7 +659,7 @@ class Merger(unittest.TestCase):
         fit = Path(result["artifacts"]["fit"])
         self.assertEqual([r[None, 240] for n, r in rows(fit) if n == 20], [56] * 6)
         report = json.loads(Path(result["artifacts"]["report"]).read_text())
-        self.assertEqual(report["stream_sources"]["record.extra_sensor"][0]["source"], "garmin")
+        self.assertEqual(report["stream_sources"]["record.extra_sensor"][0]["source"], "health_band")
 
     def test_m04_insufficient_fallback_and_invalid_pair(self):
         self.b.write_bytes(fixture(True,[255]*600+[120]*400))
@@ -433,8 +676,8 @@ class Merger(unittest.TestCase):
         with (ROOT/"data/index/rides.csv").open() as f:
             rides = list(csv.DictReader(f))
         config = self.date_setup()
-        config["sources"]["bryton"]["directory"]=str(ROOT/"data/sources/bryton/fit")
-        config["sources"]["garmin"]["directory"]=str(ROOT/"data/sources/garmin")
+        config["sources"]["bike_meter"]["directory"]=str(ROOT/"data/sources/bryton/fit")
+        config["sources"]["health_band"]["directory"]=str(ROOT/"data/sources/garmin")
         self.conf.write_text(json.dumps(config))
         empty=self.configured("--date","2026-10-15")
         self.assertEqual((empty["status"],empty["rides"]),("no_activities",[]))
@@ -461,7 +704,7 @@ class Merger(unittest.TestCase):
                     self.assertEqual(y.get((None,3)),hr)
                     for key,value in x.items():
                         if key!=(None,3): self.assertEqual(y[key],value)
-                self.assertEqual(report["heart_rate"]["samples"]["garmin"],count)
+                self.assertEqual(report["heart_rate"]["samples"]["health_band"],count)
                 # Entire private messages and all unrelated messages stay intact.
                 self.assertEqual([(n,x) for n,x in original if n not in (18,19,20,206,207)],
                                  [(n,x) for n,x in merged if n not in (18,19,20,206,207)])
@@ -473,5 +716,5 @@ class Merger(unittest.TestCase):
                 for fid,key in [(11,"garmin_fit_total_kcal"),(196,"garmin_fit_metabolic_kcal")]:
                     self.assertEqual(session[None,fid],int(r[key]))
                     self.assertEqual(int.from_bytes(bytes.fromhex(session[idx,fid]),"little"),int(r[key]))
-                self.assertEqual(hashlib.sha256(b.read_bytes()).hexdigest(),report["inputs"]["bryton"]["sha256"])
-                self.assertEqual(hashlib.sha256(g.read_bytes()).hexdigest(),report["inputs"]["garmin"]["sha256"])
+                self.assertEqual(hashlib.sha256(b.read_bytes()).hexdigest(),report["inputs"]["bike_meter"]["sha256"])
+                self.assertEqual(hashlib.sha256(g.read_bytes()).hexdigest(),report["inputs"]["health_band"]["sha256"])

@@ -1,4 +1,4 @@
-"""Compare three independent FIT inventories and verify each encoder with another reader."""
+"""Compare four independent FIT inventories and verify each encoder with another reader."""
 import argparse
 import hashlib
 from itertools import zip_longest
@@ -82,7 +82,7 @@ def compare_file(source, directory, work, commands):
     if recovered.hexdigest() != source_hash:
         raise ValueError("raw frames did not reproduce input")
     scratch = work / "actual.jsonl"
-    for language in ("csharp", "rust"):
+    for language in ("csharp", "rust", "node"):
         run_to([*commands[language], "raw", str(source)], scratch)
         for n, (p, q) in enumerate(zip_longest(lines(baseline), lines(scratch)), 1):
             mismatch = difference(p, q)
@@ -95,6 +95,8 @@ def compare_file(source, directory, work, commands):
             if mismatch:
                 raise ValueError(f"{language} inspect {mode}: {mismatch}")
 
+    run_to([*commands["node"], "sdk-check", str(source)], scratch)
+    sdk = json.loads(scratch.read_text())
     receipts = []
     for language, command in commands.items():
         output = directory / f"{language}.fit"
@@ -110,7 +112,7 @@ def compare_file(source, directory, work, commands):
             raise ValueError(f"{language}: hash verification failed")
         receipts.append({**receipt, "verified_by": reader})
     return {"source": str(source), "sha256": source_hash, "frames": count,
-            "raw_equal": True, "inspect_equal": True, "exports": receipts}
+            "raw_equal": True, "inspect_equal": True, "exports": receipts, "node_sdk": sdk}
 
 
 def build_commands(work):
@@ -119,7 +121,7 @@ def build_commands(work):
                                      "--message-format=json"], cwd=ROOT, text=True)
     binary = next(m["executable"] for m in map(json.loads,build.splitlines()) if m.get("executable"))
     return {"python": [sys.executable, "-m", "fit_fusion"], "csharp": ["dotnet", str(work/"dotnet/FitFusion.dll")],
-                "rust": [binary]}
+                "node": ["node", str(SRC/"node/inspector/cli.mjs")], "rust": [binary]}
 
 
 def main():
@@ -141,7 +143,8 @@ def main():
         commands = build_commands(work)
         results = [compare_file(p, run/f"{i}-{p.stem}", work, commands) for i,p in enumerate(inputs,1)]
     result = run/"comparison.json"
-    result.write_text(json.dumps({"inspect_backends":{"python":"wire","csharp":"WireReader","rust":["wire","RustyFIT 0.11.2 + wire definitions"]},
+    result.write_text(json.dumps({"node_version":subprocess.check_output(["node","--version"],text=True).strip(),
+                                  "inspect_backends":{"node":"wire + separate Garmin SDK capability report","python":"wire","csharp":"WireReader","rust":["wire","RustyFIT 0.11.2 + wire definitions"]},
                                   "results":results}, indent=2)+"\n")
     print(result)
 

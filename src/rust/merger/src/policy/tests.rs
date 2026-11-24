@@ -9,7 +9,7 @@ const CIRQA: &[u8] = include_bytes!("../../tests/fixtures/cirqa.fit");
 const START: u32 = 0x40000000;
 fn fixture(n: usize) -> MatchedRide {
     let mut rides = BTreeMap::new();
-    for (id, bytes) in [("bryton", RIDER), ("garmin", CIRQA)] {
+    for (id, bytes) in [("bike_meter", RIDER), ("health_band", CIRQA)] {
         let r = ActivityRecording::from_fit_bytes(id, Path::new("fixture"), bytes.into()).unwrap();
         let mut ride = Ride::from_recording(r).unwrap();
         ride.samples = (0..n)
@@ -18,7 +18,7 @@ fn fixture(n: usize) -> MatchedRide {
         rides.insert(id.into(), ride);
     }
     MatchedRide {
-        primary_id: "bryton".into(),
+        primary_id: "bike_meter".into(),
         rides,
     }
 }
@@ -34,17 +34,17 @@ fn select(pair: &MatchedRide) -> Result<SelectedRide<'_>> {
 }
 fn missing(pair: &mut MatchedRide, count: usize, step: usize) {
     for i in 0..count {
-        hr(pair, "bryton", i * step, None);
+        hr(pair, "bike_meter", i * step, None);
     }
 }
 #[test]
 fn h1_h2_h3_preferred_fill_and_unfilled_seconds() {
     let mut p = fixture(100);
-    hr(&mut p, "garmin", 0, Some(135));
-    hr(&mut p, "garmin", 1, Some(135));
-    hr(&mut p, "bryton", 1, None);
-    hr(&mut p, "bryton", 3, None);
-    hr(&mut p, "garmin", 3, None);
+    hr(&mut p, "health_band", 0, Some(135));
+    hr(&mut p, "health_band", 1, Some(135));
+    hr(&mut p, "bike_meter", 1, None);
+    hr(&mut p, "bike_meter", 3, None);
+    hr(&mut p, "health_band", 3, None);
     let points = select(&p).unwrap().heart.points;
     for (i, expected, source, row) in [
         (0, Some(130), "bryton", "H1"),
@@ -63,16 +63,16 @@ fn h1_h2_h3_preferred_fill_and_unfilled_seconds() {
 fn h4_h5_h6_confirmed_and_unconfirmed_plateaus() {
     let mut p = fixture(200);
     for i in 90..180 {
-        hr(&mut p, "bryton", i, Some(120));
-        hr(&mut p, "garmin", i, Some(120 + (i % 2) as u8));
+        hr(&mut p, "bike_meter", i, Some(120));
+        hr(&mut p, "health_band", i, Some(120 + (i % 2) as u8));
     }
     let s = select(&p).unwrap().heart;
-    assert_eq!(s.report["mode"], "bryton_with_gap_fill", "H4");
+    assert_eq!(s.report["mode"], "preferred_with_gap_fill", "H4");
     assert_eq!(s.report["plateaus_without_confirmation"][0]["seconds"], 90);
     for i in 90..180 {
-        hr(&mut p, "garmin", i, Some(130 + (i % 10) as u8));
+        hr(&mut p, "health_band", i, Some(130 + (i % 10) as u8));
     }
-    hr(&mut p, "garmin", 10, None);
+    hr(&mut p, "health_band", 10, None);
     let s = select(&p).unwrap().heart;
     assert_eq!(s.report["triggers"][0]["reason"], "stale", "H5");
     assert_eq!(s.points[0].source, "garmin", "H5");
@@ -87,12 +87,12 @@ fn h7a_h7b_missing_or_unhealthy_backup() {
     let mut p = fixture(1000);
     missing(&mut p, 600, 1);
     for i in 0..600 {
-        hr(&mut p, "garmin", i, Some(123));
+        hr(&mut p, "health_band", i, Some(123));
     }
     let error = select(&p).err().unwrap();
     assert_eq!(error.code, "quality_review", "H7b");
-    assert_eq!(error.details["garmin_longest_constant_seconds"], 600);
-    p.rides.remove("garmin");
+    assert_eq!(error.details["backup_longest_constant_seconds"], 600);
+    p.rides.remove("health_band");
     let error = select(&p).err().unwrap();
     assert_eq!(error.code, "quality_review", "H7a");
     assert_eq!(error.details["reason"], "missing_backup");
@@ -112,7 +112,7 @@ fn q1_q2_missing_duration_and_fraction_boundaries() {
         let s = select(&p).unwrap().heart;
         assert_eq!(s.only_garmin, whole, "{row}");
         assert_eq!(
-            s.report["samples"]["garmin"],
+            s.report["samples"]["health_band"],
             if whole { n } else { gaps },
             "{row}"
         );
@@ -134,7 +134,7 @@ fn q3_q4_plateau_evidence_and_pause_boundaries() {
     ] {
         let mut p = fixture(120);
         for i in 0..n {
-            hr(&mut p, "bryton", 20 + i, Some(120));
+            hr(&mut p, "bike_meter", 20 + i, Some(120));
             let v = if i < run {
                 120 + delta
             } else if delta == 4 && i % 2 == 0 {
@@ -142,11 +142,11 @@ fn q3_q4_plateau_evidence_and_pause_boundaries() {
             } else {
                 120 + delta - spread.min(delta)
             };
-            hr(&mut p, "garmin", 20 + i, (i < valid).then_some(v));
+            hr(&mut p, "health_band", 20 + i, (i < valid).then_some(v));
         }
         if pause {
             p.rides
-                .get_mut("bryton")
+                .get_mut("bike_meter")
                 .unwrap()
                 .boundaries
                 .insert(START + 50);
@@ -181,10 +181,10 @@ fn q5_whole_and_affected_coverage_are_independent() {
         let mut p = fixture(1000);
         missing(&mut p, 600, 1);
         for i in 0..lost_inside {
-            hr(&mut p, "garmin", i * 10, None);
+            hr(&mut p, "health_band", i * 10, None);
         }
         for i in 0..lost_total - lost_inside {
-            hr(&mut p, "garmin", 600 + i * 10, None);
+            hr(&mut p, "health_band", 600 + i * 10, None);
         }
         let result = select(&p);
         if ok {
@@ -192,9 +192,9 @@ fn q5_whole_and_affected_coverage_are_independent() {
         } else {
             let e = result.err().unwrap();
             assert_eq!(e.code, "quality_review", "{row}");
-            assert_eq!(e.details["garmin_valid"], 1000 - lost_total, "{row}");
+            assert_eq!(e.details["backup_valid"], 1000 - lost_total, "{row}");
             assert_eq!(
-                e.details["garmin_valid_affected"],
+                e.details["backup_valid_affected"],
                 600 - lost_inside,
                 "{row}"
             );
@@ -212,14 +212,14 @@ fn f1_f2_f3_session_calories_missing_and_invalid_difference() {
             .unwrap()
             .value = FitValue::Uint16(value)
     };
-    set(p.rides.get_mut("bryton").unwrap(), 11, 6186);
+    set(p.rides.get_mut("bike_meter").unwrap(), 11, 6186);
     for (row, total, metabolic, active) in [
         ("F1", 1897, 383, Some(1514)),
         ("F3a", 100, 65535, None),
         ("F3b", 100, 101, None),
     ] {
-        set(p.rides.get_mut("garmin").unwrap(), 11, total);
-        set(p.rides.get_mut("garmin").unwrap(), 196, metabolic);
+        set(p.rides.get_mut("health_band").unwrap(), 11, total);
+        set(p.rides.get_mut("health_band").unwrap(), 196, metabolic);
         let s = select(&p).unwrap();
         let c = s.calories.unwrap();
         assert_eq!(c.total, Some(total), "{row}");
@@ -231,7 +231,7 @@ fn f1_f2_f3_session_calories_missing_and_invalid_difference() {
         assert_eq!(c.active(), active, "{row}");
         assert_eq!(number(&p.primary().session, 11), Some(6186), "F1");
     }
-    set(p.rides.get_mut("garmin").unwrap(), 11, 65535);
+    set(p.rides.get_mut("health_band").unwrap(), 11, 65535);
     let e = select(&p).err().unwrap();
     assert_eq!(e.code, "quality_review", "F2");
     assert!(e.message.contains("total_calories"), "F2");
@@ -243,10 +243,9 @@ fn f4_f5_inherit_temperature_and_select_coordinates_in_pairs() {
         "../../../../../docs/config/config.example.json"
     ))
     .unwrap();
-    v["merge"]["streams"]
-        .as_object_mut()
-        .unwrap()
-        .remove("record.temperature");
+    for coordinate in ["record.position_lat", "record.position_long"] {
+        v["merge"]["streams"][coordinate] = serde_json::json!(["bike_meter"]);
+    }
     let tmp = tempfile::NamedTempFile::new().unwrap();
     std::fs::write(tmp.path(), v.to_string()).unwrap();
     let settings = Settings::load(tmp.path()).unwrap();

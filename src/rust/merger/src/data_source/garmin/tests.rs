@@ -280,9 +280,9 @@ fn m10_date_merge_renews_token_deduplicates_ids_and_matches_dual_file() {
         "../../../../../../docs/config/config.example.json"
     ))
     .unwrap();
-    v["sources"]["bryton"]["directory"] = json!(primary);
+    v["sources"]["bike_meter"]["directory"] = json!(primary);
     v["output_dir"] = json!(dir.path().join("export"));
-    v["sources"]["garmin"]["cache_dir"] = json!(dir.path().join("cache"));
+    v["sources"]["health_band"]["cache_dir"] = json!(dir.path().join("cache"));
     let config = dir.path().join("config.json");
     fs::write(&config, v.to_string()).unwrap();
     let s = Settings::load_with(&config, &registry).unwrap();
@@ -290,7 +290,10 @@ fn m10_date_merge_renews_token_deduplicates_ids_and_matches_dual_file() {
     assert_eq!(exit, 0);
     assert_eq!(batch["rides"].as_array().unwrap().len(), 1);
     let result = &batch["rides"][0];
-    assert_eq!(result["matched_sources"]["garmin"]["activity_id"], "10");
+    assert_eq!(
+        result["matched_sources"]["health_band"]["activity_id"],
+        "10"
+    );
     let fit = fs::read(result["artifacts"]["fit"].as_str().unwrap()).unwrap();
     let report = fs::read_to_string(result["artifacts"]["report"].as_str().unwrap()).unwrap();
     for secret in ["test-key", "Bearer", "expired"] {

@@ -9,19 +9,22 @@
 | Python | 已有 `inspect`、`raw` 與 wire 欄位重新編碼。目前實檔對照使用自有 `wire` 解碼器。 | `inspect` 也可指定 `--decoder fitdecode`。報告分開記錄兩種後端，`raw` 由 wire 提供。 |
 | C# | 已有 .NET `WireReader` 、獨立統計與欄位重新編碼實作。 | 現行基準為自有讀取器。Garmin 官方 C# SDK 若納入矩陣，另列後端。 |
 | Rust | `inspect` 預設由 RustyFIT 0.11.2 解碼樣本，wire 提供實際編碼的欄位定義與寬度。 | `inspect FILE --decoder wire` 可獨立盤點，`raw` 提供逐框資料。往返命令執行 RustyFIT Decoder 與 Encoder。 |
-| Node.js | Garmin JavaScript SDK 已做讀寫實驗。正式檢查器與跨語言驗收待開發。 | 以相同的未知欄位與 developer field 案例測試 Node.js，分開記錄 SDK 能讀取與能寫出的範圍。 |
+| Node.js | 獨立的 Node.js wire 後端提供盤點、逐框 JSONL 與逐欄重新編碼。 | 另以 `sdk-check` 實際執行 @garmin/fitsdk 21.222.0 Decoder、Encoder，列出每個 member 的原生欄位比對與匯出差異。 |
 
 這四種語言是首批目標。日後新增語言或同語言的其他 SDK，沿用同一份輸入、輸出契約與案例。每個後端要能獨立讀檔。若某項輸出由另一個 wire reader 補足，驗收紀錄標出實際提供者。[兩個既有實作的決策](../decisions/2026-11-21-csharp-inspection-control.md) · [SDK 試驗紀錄](../research/2026-11-23-rust-fit-cli.md)
 
 ## 命令契約
 
+Rust 檢查器由 clap 解析參數。`inspect --decoder wire ride.fit` 與將 `--decoder` 放在檔名後方的寫法等價。`inspect ride.fit --help` 顯示 inspect 的 help。未知旗標回傳結束碼 2、將用法診斷送至 stderr，並在讀取檔案前結束。要傳入以連字號開頭的檔名，可使用位置參數分隔符號，例如 `inspect -- -ride.fit`。
+
 以下入口以參數表示。各語言可使用自己的啟動命令。Python、C# 的可執行範例見[操作手冊](../inspectors.md)。
 
 | 操作 | 輸入、輸出與判定 |
 |---|---|
+| `--version`、`-V` | 四種實作都在總覽與子命令 help 首行顯示 CLI 版本。`--version` 首行使用相同識別，下方列出編譯器或執行環境、目標或平台，以及 FIT 引擎。查詢版本可離線執行。 |
 | `inspect FILE.fit` | 檢查 FIT 完整性，成功時 stdout 恰有一份 JSON。頂層的 `file` 標示來源，`members[]` 按檔案順序各自列出協定版本、profile 版本及 `messages[]`。檔內串接的多個 member 各自統計。 |
 | `raw FILE.fit` | stdout 每行一個 JSON frame，保留檔案順序、byte offset 與原始 `hex`。依 frame 類型列出 header、欄位定義、資料值及 CRC。依序還原 `hex` 所得 SHA-256 必須等於輸入。 |
-| `--help`、`--skill <topic>` | 人用 help 查參數。agent 用 skill 查操作、輸出與失敗處置。兩者應可離線使用。多語言目標包含 `--skill index`、`inspect`、`raw`。Rust 提供上述主題及 `roundtrip`。Python、C# 提供 help。 |
+| `--help`、`--skill [topic]` | 四種檢查器都有總覽與子命令 help。單獨使用 `--skill` 或指定 `index` 可讀取任務索引，從中取得該語言的完整呼叫方式。共用主題為 `inspect`、`raw`、`roundtrip`，Node.js 另有 `sdk-check`。各主題說明輸入、輸出、結束碼與失敗處置。離線即可查閱。 |
 | `roundtrip FILE.fit --out NEW.fit` | 解碼後按欄位重新序列化，驗 CRC 並讀回。只發布新的檔案。成功輸出 JSON，含 backend、路徑、member／訊息數、兩份 SHA-256、`byte_equal` 與 `semantic_equal`。語義差異、無效來源或目的已存在時以非零結束。 |
 | 失敗處理 | 讀檔／解碼失敗回傳非零，stderr 提供原因。`inspect` 的 stdout 應為空。`raw` 的呼叫端依結束碼決定能否採用整批輸出，失敗前可能已收到部分 frame。所有路徑均保持輸入檔原樣。 |
 
@@ -37,4 +40,4 @@
 
 原有雙後端比對工具固定使用 Python wire 與 C# WireReader。兩者共用名稱／單位對照表。其一致結果能驗證獨立解碼及統計，該表的欄位語義則需另外查證。比對成功時回傳 0 並寫出 `comparison.json`，其中逐檔列出 SHA-256、比對筆數及通過項目。解碼或比對失敗時以非零結束並提供診斷。具版本的多後端矩陣是後續驗收目標。[現行比對工具](../../src/tools/compare_inspectors.py) · [檢查器驗收情境與案例](testcases/inspector.md)
 
-三後端驗收另外核對 Rust 的完整 raw 與 inspect，再以另一個後端解碼每份重編碼 FIT。比對項目及可重現命令見[往返實測](../inspectors.md#三種檢查器的-fit-往返驗證)。
+四語言驗收另外核對 Rust 與 Node.js 的完整 raw 與 inspect，再以另一個後端解碼每份重編碼 FIT。比對項目及可重現命令見[往返實測](../inspectors.md#四種檢查器的-fit-往返驗證)。
