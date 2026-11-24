@@ -18,13 +18,36 @@ fit-fusion merge --date 2026-11-21 --publish strava --json
 | `version` | 整數 `1`，表示設定檔契約版本。 |
 | `timezone` | 解讀命令列日期的 IANA 時區。範例為 `Asia/Taipei`，跨裝置配對一律用 UTC。 |
 | `output_dir` | 每趟合併 FIT 與報告的根目錄。 |
-| `sources.<id>` | 每個來源獨立一段。ID 供其他欄位引用，例如 `bryton`、`garmin`。可自行命名。 |
+| `sources.<id>` | 一個以上的具名來源實例。ID 供合併規則引用；`kind` 決定取檔方式，設備來源的 `device` 決定辨識哪種設備。 |
 | `merge.primary_source` | 從哪個來源找出當日騎乘，並以該份活動建立主時間軸。本版的騎乘規格使用 Rider 460。 |
 | `merge.min_overlap_ratio` | 配對時雙方各自須達到的重疊比例。範例為 `0.90`。 |
 | `merge.streams` | 要寫入合併 FIT 的感測串流與熱量摘要。鍵是同名 FIT 欄位，值是由優先到備援的來源 ID 陣列。 |
-| `destinations.strava` | 選用的發佈帳號設定，與來源同在一份 config。僅做本機匯出可省略整段。 |
+| `destinations.<id>` | 零個以上的具名目的地實例。`kind` 指定發佈連線器。僅做本機匯出可省略整段，也可填 `{}`。 |
 
 路徑接受絕對路徑、`~/` 與相對於**設定檔所在目錄**的路徑。來源目錄、下載快取與輸出目錄各自獨立。設定檔為 JSON，重複鍵、未知鍵或未支援的版本都回報設定錯誤。
+
+## 如何增加設備或目的地
+
+來源與目的地各有獨立的 ID 空間。ID 可自行命名，例如 `old_bike`；同一種 `kind` 可建立多個實例。下列 JSON 是設定片段：在既有來源集合加入一台 Bryton Neo15，並設定三個獨立目的地。Neo15 及兩個額外發佈服務以測試註冊項目示範，平台授權與上傳能力另行驗證。
+
+```json
+{
+  "sources": {
+    "old_bike": {"kind": "fit_directory", "device": "bryton_neo15", "directory": "~/Rides/inbox/neo15"}
+  },
+  "destinations": {
+    "strava": {"kind": "strava", "client_id": null},
+    "bike_log": {"kind": "bryton_activity", "options": {}},
+    "connect_log": {"kind": "garmin_connect", "options": {}}
+  }
+}
+```
+
+- **新設備。** `fit_directory` 可重用於已註冊的新型號。Schema 檢查 `device` 的識別字格式，loader 依設備註冊資訊檢查取檔方式是否相容。Neo15 的實際 FIT 製造商與產品編號待原檔確認。加入來源供列舉後，只有明確配置到主來源或串流順位才參與合併，並須符合該規則的設備條件。
+- **新連線器。** 新來源或目的地共用 `{"kind":"…","options":{…}}` 形式；`options` 可省略，預設為空物件。基礎 Schema 能驗證外層結構。loader 依方向查找已編入的來源或目的地 factory，再由該 factory 離線驗證自己的選項，包括必要鍵、未知鍵與型別。未知種類、未知設備或不相容的設備皆回報含設定位置的 `ConfigError`。例如註冊 Garmin 下載連線器只提供讀取能力，要將 Garmin 列為目的地另須註冊發佈連線器。
+- **既有 v1 相容。** 舊 `destinations.strava` 可省略 `kind`，此時按 Strava 的既有憑證格式解讀。其他目的地 ID 須填 `kind`；自訂 ID 搭配 `kind: strava` 也適用相同的嚴格憑證欄位檢查。發佈以明確選取的目的地 ID 為單位。
+
+可直接執行的 [本機 FIT 設定](local-fit.example.json) 與 [驗證步驟](../../README.md#驗證本機-fit-目錄來源) 使用同一目錄內的合成 Bryton／Garmin 活動。
 
 ## 每個來源如何取得資料
 

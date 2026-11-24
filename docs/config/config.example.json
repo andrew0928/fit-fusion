@@ -43,6 +43,7 @@
   },
   "destinations": {
     "strava": {
+      "kind": "strava",
       "client_id": null,
       "client_secret": null,
       "athlete_id": null,

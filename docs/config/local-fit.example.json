@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "timezone": "Asia/Taipei",
+  "output_dir": "../../runtime/acceptance/local-fit",
+  "sources": {
+    "bryton": {
+      "kind": "fit_directory",
+      "device": "bryton_rider_460",
+      "directory": "../../src/rust/merger/tests/fixtures"
+    },
+    "garmin": {
+      "kind": "fit_directory",
+      "device": "garmin_cirqa",
+      "directory": "../../src/rust/merger/tests/fixtures"
+    }
+  },
+  "merge": {
+    "primary_source": "bryton",
+    "min_overlap_ratio": 0.90,
+    "streams": {
+      "record.heart_rate": ["bryton", "garmin"],
+      "record.cadence": ["bryton"],
+      "session.total_calories": ["garmin"],
+      "session.metabolic_calories": ["garmin"]
+    }
+  }
+}

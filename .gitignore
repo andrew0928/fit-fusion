@@ -7,4 +7,7 @@ __pycache__/
 /data/
 /reports/
 *.fit
+!src/rust/merger/tests/fixtures/rider.fit
+!src/rust/merger/tests/fixtures/rider-later.fit
+!src/rust/merger/tests/fixtures/cirqa.fit
 .env

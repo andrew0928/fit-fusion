@@ -1,8 +1,9 @@
 //! Preserve the Bryton wire payload for every unselected field, including private data.
 use crate::{
     Error, Result,
+    data_source::{decode, number},
     quality::Selection,
-    ride::{Ride, decode, heart, number},
+    ride::{Ride, heart},
 };
 use fit_inspector::wire::{self, Field, Record};
 use rustyfit::proto::Value;

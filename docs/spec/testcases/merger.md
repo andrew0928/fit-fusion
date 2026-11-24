@@ -21,6 +21,18 @@
 
 六趟心率回歸預期為 10/09 補 78 秒、10/14 補 1 秒、11/01 補 34 秒。10/28、11/08、11/21 整趟改用 Garmin，分別取 9,632、17,190、14,149 個樣本。來源與時段由本機 `data/index/rides.csv` 對應，回放依據另有記錄。[心率回放與停滯區段](../../research/2026-11-23-heart-rate-quality.md) · [熱量實檔對照](../../research/2026-11-23-strava-ride-calories.md)
 
+## 端對端驗收的代表流程
+
+端對端測試啟動真正的 Rust CLI，準備設定與輸入檔，觀察結束碼、JSON、產物與對外請求。以下三條為 M2 建議的自動化主流程。逐一測試門檻、錯誤分類與來源排列的工作由 [A–D 模組單元測試](module-decision-tables.md) 負責。
+
+| 流程 | 測試資料及操作 | 從 CLI 外部驗證 |
+|---|---|---|
+| 依日期找到活動並輸出 FIT（M07、M14） | 用 C# + Garmin FIT SDK 產生 M14 的六秒雙檔，置於兩個本機來源目錄。以設定時區的出發日呼叫 `merge --date … --json`。 | 回傳 0、僅一趟。獨立 inspector CLI 用 `raw` 讀回心率 `[110, 111, 113, 114, 114, 115]`、總熱量 2 kcal、代謝量 1 kcal，用 `inspect` 核對 6 筆 record。報告列心率來源 5＋1 筆，兩份輸入雜湊與執行前一致。 |
+| 品質不足停止發佈（M04） | 用 M04 的雙檔指定發佈，Strava 服務以可計數的測試端點代替。 | 回傳 3 與 `quality_review`，指出 Garmin 在異常段僅覆蓋 500/600 秒。測試端點收到的上傳請求為 0。 |
+| 發佈後恢復查詢（M11） | 使用已驗證的合併產物。測試端點先接受 FIT 並回傳 upload ID，再模擬暫停與重跑，最後回傳 activity ID。 | 收到的 FIT 雜湊與已驗證產物一致。重跑沿用 upload ID，最終回傳 0、`published` 與同一活動 ID。端點只收到一次上傳。 |
+
+每份新合成 FIT 的預期欄位值來自事先寫定的案例。讀回可用現有 C# `WireReader` 或 Python wire inspector，兩者均獨立於 Rust 合併器。C# 的官方 Garmin SDK 用於造檔，現有 C# inspector 有自己的解碼器。M13 另外記錄使用真實授權帳號的 Strava 平台驗收。[檢查器後端](../inspector.md#語言與解碼器)
+
 ## 11/21 離線驗收步驟
 
 以 M01、M03 為同一趟的兩種觀察。從根目錄執行以下目標命令，在全新的輸出目錄保存結果。使用 Python 或 C# 檢查器讀回 FIT，確認 `record` 數、心率涵蓋及原始逐點值，再核對合併報告中的來源與觸發區段。
@@ -36,6 +48,8 @@ PYTHONPATH=src/python python3 -m fit_fusion inspect --decoder wire \
 ## 目前可重跑的驗收
 
 從根目錄執行 `python3 -m unittest discover -s src/tools/tests -p test_merger.py -v`。合成測試包含 M14 的逐秒讀回、M04 的備援失敗、developer 欄位同號及目的目錄防覆寫。這台 Mac 有六趟私人樣本時也會執行實檔測試，逐秒檢查 M01–M03 的選源、M05 的標準與 developer 熱量，並比較未修改的串流與私有訊息。缺少私人索引時 unittest 會明列跳過該測試。[自動化驗收](../../../src/tools/tests/test_merger.py)
+
+原有 Python 雙檔回歸持續驗證歷史輸出。新增測試用 [C# 產生器](../../../src/csharp/FitFixtures/Program.cs) 與 Garmin.FIT.Sdk 21.222.0 固定設備、六秒心率、踏頻及熱量。測試執行 config check、本機目錄列舉、指定雙檔合併，再以獨立 Python inspector CLI 的 raw 讀回 M14 的心率與熱量。日期與發佈流程待實作。若要重建測試檔，可從根目錄執行 `dotnet run --project src/csharp/FitFixtures -- <新的空目錄>`，再比對兩邊的檔案雜湊。
 
 ## Strava 網頁手動匯入實測
 

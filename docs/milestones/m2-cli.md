@@ -43,7 +43,7 @@ fit-fusion publish strava --from ./rides/local --json
 
 ## 本機設定與資料來源
 
-預設位置為 `~/.config/fit-fusion/config.json`，全域 `--config <path>` 可切換。`sources` 分段定義檔案或 API 與授權，`merge` 明列主來源、配對門檻及各串流的來源 ID 順位，`destinations.strava` 集中發佈憑證。無設定時，手動雙檔入口使用同一份預設選源規則。[完整設定範例](../config/config.example.json) · [格式與檢查](../config/README.md)
+預設位置為 `~/.config/fit-fusion/config.json`，全域 `--config <path>` 可切換。`sources` 分段定義檔案或 API 與授權，`merge` 明列主來源、配對門檻及各串流的來源 ID 順位。`destinations.<id>` 分別保存各目的地設定，M2 以 Strava 發佈作為驗收。無設定時，手動雙檔入口使用同一份預設選源規則。[完整設定範例](../config/config.example.json) · [格式與檢查](../config/README.md)
 
 - **Garmin。** 區分在 Connect 建立的 Personal API Key 與換得的 bearer access token。有效 bearer 可直接使用。需要換發時用同檔的 key 取得新 token 並更新到期時間。若 key 也到期，指引騎士至 Connect 更新。以本案既有的個人 key 啟用時填入 `personal_api_key`。[Garmin Personal API FAQ](https://developer.garmin.com/gc-developer-program/personal/personal-faq/)
 - **Strava。** 騎士在設定內填自己的 app ID、secret，首次同意 `activity:write` 才能上傳及查詢上傳狀態。可選擇授權讀取以驗證平台顯示值，私密活動需要 `activity:read_all`。換發後在同一把設定檔鎖內更新 access token、最新 refresh token 與到期時間。設定目錄權限 0700，檔案及暫存檔 0600，以同目錄原子取代回存。範例、狀態、合併報告均不含認證資料。[Strava OAuth](https://developers.strava.com/docs/authentication/) · [Uploads API](https://developers.strava.com/docs/reference/#api-Uploads)
@@ -80,7 +80,7 @@ M2 依逐欄表從同名 FIT 欄位擇值。session／lap 心率摘要要與選�
 | 4 | Strava 自動發佈 | 模擬處理中、成功、判重、429、送出後斷線及兩個程序同時重跑，核對 POST 次數與恢復結果。另用一趟獲授權且尚未上傳的騎乘實測，記下 upload ID、activity ID，讀回平台熱量並與 FIT 比對。模擬結果與實際匯入分別記錄。[Strava 上傳回應](https://developers.strava.com/docs/reference/#api-Uploads) |
 | 5 | 分析交付 | 加 `--parquet` 後能還原兩份原檔並追查每個選值。驗證主流程不需 Apple 全量匯出。 |
 
-目前第一項雙檔離線流程已可建置及執行，第二項的六趟心率與來源保存亦已有實檔回歸。CLI 採內建串流順位，日期模式、可自訂來源、API 發佈及分析輸出仍待開發。[建置與操作](../../README.md#本機雙檔合併) · [已實作的驗收案例](../spec/testcases/merger.md#目前可重跑的驗收)
+第 1、2 項的手動雙檔合併已改經共用的 Settings、FIT 讀取與 MergePolicy 模組，沿用六趟實檔回歸基準。第 3 項已完成設定檢查與本機 FIT 目錄列舉。下一步先補 Config、本機來源與既有策略的逐列斷言，再接本機日期查詢、唯一配對與套用設定合併。各批的 Row ID 見[模組測試排程](../spec/testcases/module-test-coverage.md#剩餘測試的執行順序)。Garmin API 及 Apple Health ZIP 各保留獨立來源種類。第 4、5 項待開發。[建置與操作](../../README.md#本機雙檔合併) · [已實作的驗收案例](../spec/testcases/merger.md#目前可重跑的驗收)
 
 ## M3 需求與研究待辦
 

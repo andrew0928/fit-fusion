@@ -1,175 +1,21 @@
-mod output;
-mod quality;
-mod ride;
-use output::Calories;
-use quality::Selection;
-use ride::Ride;
-use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
-use std::{
-    fs,
-    io::Write,
-    path::{Path, PathBuf},
-    process::ExitCode,
-};
-
-const VERSION: &str = "offline-dual-fit-v1";
+use fit_fusion::{Error, Result, config::Settings, data_source::ActivityQuery, merge_files};
+use serde_json::json;
+use std::{path::PathBuf, process::ExitCode};
 const HELP: &str = "fit-fusion merge INPUT.fit INPUT.fit --out DIRECTORY [--json]
 Merge one Bryton Rider 460 and one Garmin CIRQA cycling recording offline.
 Inputs may be supplied in either order. Creates merged.fit and merge-report.json.
 The default stream rules are embedded. No account or network is required.
 Identical results can reuse a directory. Different contents require a new directory.
-fit-fusion --skill <index|merge|config|publish>";
-pub struct Error {
-    code: &'static str,
-    message: String,
-    details: Value,
-    exit: u8,
-}
-impl Error {
-    fn new(code: &'static str, message: impl Into<String>, exit: u8) -> Self {
-        Self {
-            code,
-            message: message.into(),
-            details: Value::Null,
-            exit,
-        }
-    }
-    pub fn data(s: impl Into<String>) -> Self {
-        Self::new("invalid_data", s, 3)
-    }
-    pub fn quality(s: impl Into<String>) -> Self {
-        Self::new("quality_review", s, 3)
-    }
-    fn usage(s: impl Into<String>) -> Self {
-        Self::new("usage", s, 2)
-    }
-}
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
-        Self::new("io_error", e.to_string(), 3)
-    }
-}
-type Result<T> = std::result::Result<T, Error>;
-fn hash(data: &[u8]) -> String {
-    hex::encode(Sha256::digest(data))
-}
-fn overlap((a, b): (u32, u32), (c, d): (u32, u32)) -> [f64; 2] {
-    let span = b.min(d).saturating_sub(a.max(c)) as f64;
-    [span / (b - a) as f64, span / (d - c) as f64]
-}
-fn session_span(r: &Ride) -> Result<(u32, u32)> {
-    let a =
-        ride::number(&r.session, 2).ok_or_else(|| Error::quality("session start unavailable"))?;
-    let ms = ride::number(&r.session, 7)
-        .ok_or_else(|| Error::quality("session elapsed time unavailable"))?;
-    let end = a
-        .checked_add(ms.div_ceil(1000))
-        .filter(|&end| end > a)
-        .ok_or_else(|| Error::quality("invalid session duration"))?;
-    Ok((a, end))
-}
-fn provenance(s: &Selection) -> Vec<Value> {
-    let mut ranges = vec![];
-    let mut i = 0;
-    while i < s.points.len() {
-        let p = &s.points[i];
-        let mut j = i + 1;
-        while j < s.points.len()
-            && s.points[j].source == p.source
-            && s.points[j].time == s.points[j - 1].time + 1
-        {
-            j += 1;
-        }
-        ranges.push(json!({"start_fit_seconds":p.time,"end_fit_seconds":s.points[j-1].time,"source":p.source,"field":"record.heart_rate"}));
-        i = j;
-    }
-    ranges
-}
-fn write_result(out: &Path, bytes: &[u8], report: &Value) -> Result<bool> {
-    let parent = out
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    fs::create_dir_all(parent)?;
-    let contents = serde_json::to_vec_pretty(report).map_err(std::io::Error::other)?;
-    let reuse = || -> Result<bool> {
-        if fs::read(out.join("merged.fit")).ok().as_deref() == Some(bytes)
-            && fs::read(out.join("merge-report.json")).ok().as_deref() == Some(contents.as_slice())
-        {
-            Ok(true)
-        } else {
-            Err(Error::new(
-                "output_conflict",
-                "destination exists with other contents; choose a new directory",
-                3,
-            ))
-        }
-    };
-    if out.try_exists()? {
-        return reuse();
-    }
-    let tmp = tempfile::tempdir_in(parent)?;
-    for (name, data) in [("merged.fit", bytes), ("merge-report.json", &contents)] {
-        let mut f = fs::File::create(tmp.path().join(name))?;
-        f.write_all(data)?;
-        f.sync_all()?;
-    }
-    use rustix::fs::{CWD, RenameFlags, renameat_with};
-    match renameat_with(CWD, tmp.path(), CWD, out, RenameFlags::NOREPLACE) {
-        Ok(()) => Ok(false),
-        Err(rustix::io::Errno::EXIST) => reuse(),
-        Err(e) => Err(std::io::Error::from(e).into()),
-    }
-}
-fn merge(inputs: Vec<PathBuf>, out: PathBuf) -> Result<Value> {
-    let a = Ride::read(inputs[0].clone())?;
-    let b = Ride::read(inputs[1].clone())?;
-    let (b, g) = match (a.device, b.device) {
-        ("bryton", "garmin") => (a, b),
-        ("garmin", "bryton") => (b, a),
-        _ => return Err(Error::data("expected one Rider 460 and one CIRQA")),
-    };
-    let defaults: Value =
-        serde_json::from_str(include_str!("../../../../docs/config/config.example.json"))
-            .expect("embedded config");
-    let threshold = defaults["merge"]["min_overlap_ratio"].as_f64().unwrap();
-    let overlap_records = overlap(b.span(), g.span());
-    let overlap_sessions = overlap(session_span(&b)?, session_span(&g)?);
-    if overlap_records
-        .iter()
-        .chain(&overlap_sessions)
-        .any(|&r| r < threshold)
-    {
-        let mut e = Error::new(
-            "unmatched_activities",
-            "riding intervals do not meet the mutual overlap threshold",
-            3,
-        );
-        e.details =
-            json!({"records":overlap_records,"sessions":overlap_sessions,"minimum":threshold});
-        return Err(e);
-    }
-    let s = quality::select(&b, &g)?;
-    let c = Calories::read(&b, &g)?;
-    let bytes = output::build(&b, &g, &s, &c)?;
-    let source = |r: &Ride| json!({"path":r.path,"sha256":r.hash,"record_interval_fit_seconds":r.span(),"unknown_native_message_field_pairs":r.unknown_fields});
-    let report = json!({"schema_version":1,"rules_version":VERSION,"inputs":{"bryton":source(&b),"garmin":source(&g)},
-        "selection":defaults["merge"],"overlap":{"record_ratios":overlap_records,"session_ratios":overlap_sessions},
-        "heart_rate":s.report,"heart_rate_sources":provenance(&s),"primary_timeline":"bryton",
-        "calories":{"source":"garmin","bryton_original":ride::number(&b.session,11),"total_calories":c.total,"metabolic_calories":c.metabolic,
-        "active_calories":c.metabolic.and_then(|v|c.total.checked_sub(v)),"developer_index":c.dev,"application_id":hex::encode(output::APP_ID)},
-        "output_sha256":hash(&bytes)});
-    let reused = write_result(&out, &bytes, &report)?;
-    Ok(
-        json!({"schema_version":1,"status":"exported","code":"ok","reused":reused,"artifacts":{"fit":out.join("merged.fit"),
-        "report":out.join("merge-report.json")},"next_action":null}),
-    )
-}
+fit-fusion [--config FILE] config check [--json]
+fit-fusion [--config FILE] activities list --source ID [--json]
+fit-fusion --skill <index|merge|config|sources|publish>";
 fn run(args: &[String]) -> Result<()> {
     let a: Vec<_> = args.iter().map(String::as_str).collect();
     match a.as_slice() {
-        ["--help" | "-h"] | ["merge", "--help" | "-h"] => {
+        ["--help" | "-h"]
+        | ["merge" | "config" | "activities", "--help" | "-h"]
+        | ["config", "check", "--help"]
+        | ["activities", "list", "--help"] => {
             println!("{HELP}");
             return Ok(());
         }
@@ -181,18 +27,29 @@ fn run(args: &[String]) -> Result<()> {
                     "merge" =>
                         "fit-fusion merge bryton.fit garmin.fit --out rides/merged --json\nRead stdout as one JSON. Exit 0: inspect artifacts.fit and artifacts.report. Exit 2: fix usage. Exit 3: inspect code and details; quality_review requires review before publishing. Identical inputs/rules may reuse a verified result. No upload occurs.",
                     "config" =>
-                        "Offline dual-file mode uses the embedded v1 default priorities (Bryton timeline; Garmin heart-rate fallback and calories). Supply both files and --out. User config, date discovery and API credentials are planned steps.",
+                        "fit-fusion --config FILE config check --json\nValidates the v1 config offline. Inspect sources, primary_source, streams and destinations. Exit 2: fix the setting at details.path. Credentials are omitted. Explicit dual-file merge uses embedded defaults.",
+                    "sources" =>
+                        "fit-fusion --config FILE activities list --source ID --json\nRecursively list local cycling FITs for the configured device. IDs are SHA-256 of the original bytes. Timestamps are Unix UTC seconds. Empty list is success. Missing directory, invalid FIT or an unavailable reader returns exit 3. Garmin Connect and Apple Health ZIP readers are planned.",
                     "publish" =>
                         "This release exports locally. Upload artifacts.fit manually if desired. Automated Strava publishing is a later M2 step.",
                     _ =>
                         return Err(Error::usage(
-                            "available skills: index, merge, config, publish"
+                            "available skills: index, merge, config, sources, publish"
                         )),
                 }
             );
             return Ok(());
         }
         _ => {}
+    }
+    let (config_path, command) = match a.as_slice() {
+        ["--config", path, rest @ ..] if !path.starts_with('-') => {
+            (Some(PathBuf::from(path)), rest)
+        }
+        other => (None, other),
+    };
+    if matches!(command.first(), Some(&"config" | &"activities")) {
+        return configured(command, config_path);
     }
     if a.first() != Some(&"merge") {
         return Err(Error::usage(HELP));
@@ -218,8 +75,8 @@ fn run(args: &[String]) -> Result<()> {
     if inputs.len() != 2 {
         return Err(Error::usage("provide two input FIT files"));
     }
-    let result = merge(
-        inputs,
+    let result = merge_files(
+        inputs.try_into().expect("two inputs checked"),
         out.ok_or_else(|| Error::usage("--out is required"))?,
     )?;
     if as_json {
@@ -230,6 +87,64 @@ fn run(args: &[String]) -> Result<()> {
             result["artifacts"]["fit"].as_str().unwrap(),
             result["artifacts"]["report"].as_str().unwrap()
         );
+    }
+    Ok(())
+}
+fn configured(args: &[&str], path: Option<PathBuf>) -> Result<()> {
+    let (args, json_output) = match args.strip_suffix(&["--json"]) {
+        Some(rest) => (rest, true),
+        None => (args, false),
+    };
+    if matches!(
+        args,
+        ["config", "check", "--help"] | ["activities", "list", "--help"]
+    ) {
+        println!("{HELP}");
+        return Ok(());
+    }
+    let source = match args {
+        ["config", "check"] => None,
+        ["activities", "list", "--source", id] => Some(*id),
+        _ => return Err(Error::usage(HELP)),
+    };
+    let path = path
+        .or_else(|| {
+            std::env::var_os("HOME")
+                .map(|d| PathBuf::from(d).join(".config/fit-fusion/config.json"))
+        })
+        .ok_or_else(|| Error::usage("provide --config FILE"))?;
+    let settings = Settings::load(&path)?;
+    let result = if let Some(id) = source {
+        let source = settings
+            .source(id)
+            .ok_or_else(|| Error::usage(format!("unknown source: {id}")))?;
+        let activities=source.list_activities(&ActivityQuery::All)?.into_iter().map(|a|json!({
+            "id":a.activity_id,"source_id":a.source_id,"start_utc":a.start_utc,"end_utc":a.end_utc
+        })).collect::<Vec<_>>();
+        json!({"schema_version":1,"status":"ok","source":id,"activities":activities})
+    } else {
+        let streams = settings
+            .selected_fields()
+            .map(|field| {
+                (
+                    field.to_owned(),
+                    json!(
+                        settings
+                            .sources_for(field)
+                            .map(|s| s.id())
+                            .collect::<Vec<_>>()
+                    ),
+                )
+            })
+            .collect::<serde_json::Map<_, _>>();
+        json!({"schema_version":1,"status":"ok","primary_source":settings.primary_source().id(),
+            "sources":settings.sources().map(|s|json!({"id":s.id(),"kind":s.kind().name()})).collect::<Vec<_>>(),
+            "destinations":settings.targets().map(|t|json!({"id":t.id,"kind":t.kind})).collect::<Vec<_>>(),"streams":streams})
+    };
+    if json_output {
+        println!("{result}");
+    } else {
+        println!("{result:#}");
     }
     Ok(())
 }

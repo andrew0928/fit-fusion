@@ -2,6 +2,7 @@
 import csv
 import hashlib
 import json
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -92,6 +93,37 @@ class Merger(unittest.TestCase):
         fit.write_bytes(b"existing")
         self.assertEqual(self.merge(self.b,self.g,expected=3)["code"],"output_conflict")
         self.assertEqual(fit.read_bytes(),b"existing")
+
+    def test_configured_directory_and_sdk_fixture_merge(self):
+        config = ROOT / "docs/config/local-fit.example.json"
+        command = [self.cli, "--config", str(config)]
+        check = json.loads(subprocess.check_output(command + ["config", "check", "--json"], cwd=self.dir))
+        self.assertEqual(check["streams"]["record.heart_rate"], ["bryton", "garmin"])
+        fixtures = ROOT / "src/rust/merger/tests/fixtures"
+        for source, files in (("bryton", ["rider.fit", "rider-later.fit"]), ("garmin", ["cirqa.fit"])):
+            result = json.loads(subprocess.check_output(
+                command + ["activities", "list", "--source", source, "--json"], cwd=self.dir))
+            self.assertEqual([a["id"] for a in result["activities"]],
+                             [hashlib.sha256((fixtures / name).read_bytes()).hexdigest() for name in files])
+        fit, report, _ = self.merge(fixtures / "rider.fit", fixtures / "cirqa.fit")
+        raw = subprocess.check_output(
+            [sys.executable, "-m", "fit_fusion", "raw", str(fit)], cwd=self.dir,
+            env={**os.environ, "PYTHONPATH": str(ROOT / "src/python")}, text=True)
+        layouts, heart, sessions = {}, [], []
+        for line in raw.splitlines():
+            frame = json.loads(line)
+            if frame["kind"] == "definition":
+                layouts[frame["local"]] = frame["fields"]
+            elif frame["kind"] == "data":
+                fields = {field["id"]: v for field, v in zip(layouts[frame["local"]], frame["values"])
+                          if field.get("developer_index") is None}
+                if frame["global_id"] == 20:
+                    heart.append(fields[3])
+                elif frame["global_id"] == 18:
+                    sessions.append((fields[11], fields[196]))
+        self.assertEqual(heart, [110, 111, 113, 114, 114, 115])
+        self.assertEqual(sessions, [(2, 1)])
+        self.assertEqual(report["heart_rate"]["samples"], {"bryton": 5, "garmin": 1, "missing": 0})
 
     def test_m04_insufficient_fallback_and_invalid_pair(self):
         self.b.write_bytes(fixture(True,[255]*600+[120]*400))

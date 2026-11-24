@@ -1,22 +1,12 @@
+use crate::data_source::number;
+use crate::data_source::{ActivityRecording, Device};
 use crate::{Error, Result};
-use fit_inspector::wire::{self, Record};
-use rustyfit::{
-    Decoder,
-    proto::{Message, Value},
-};
+use rustyfit::proto::Message;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
 };
 
-pub fn number(m: &Message, id: u8) -> Option<u32> {
-    match &m.fields.iter().find(|f| f.num == id)?.value {
-        Value::Uint8(x) if *x != 255 => Some((*x).into()),
-        Value::Uint16(x) if *x != 65535 => Some((*x).into()),
-        Value::Uint32(x) if *x != u32::MAX => Some(*x),
-        _ => None,
-    }
-}
 pub fn heart(m: &Message) -> Option<u8> {
     number(m, 3)
         .and_then(|v| u8::try_from(v).ok())
@@ -26,7 +16,8 @@ pub struct Ride {
     pub path: PathBuf,
     pub bytes: Vec<u8>,
     pub hash: String,
-    pub device: &'static str,
+    pub device: Device,
+    pub source_id: String,
     pub samples: BTreeMap<u32, Option<u8>>,
     pub boundaries: BTreeSet<u32>,
     pub session: Message,
@@ -35,9 +26,16 @@ pub struct Ride {
     pub developer_ids: BTreeSet<u8>,
 }
 impl Ride {
-    pub fn read(path: PathBuf) -> Result<Self> {
-        let bytes =
-            std::fs::read(&path).map_err(|e| Error::data(format!("{}: {e}", path.display())))?;
+    pub fn from_recording(recording: ActivityRecording) -> Result<Self> {
+        let ActivityRecording {
+            path,
+            bytes,
+            metadata,
+            fit,
+            native,
+            developers: mut developer_ids,
+        } = recording;
+        let device = metadata.device;
         let known: BTreeSet<(u16, u8)> = include_str!("../../../python/fit_fusion/profile.tsv")
             .lines()
             .filter_map(|s| {
@@ -47,34 +45,7 @@ impl Ride {
                 Some((number, field))
             })
             .collect();
-        let mut unknown_fields = BTreeSet::new();
-        let mut members = 0;
-        let mut developer_ids = BTreeSet::new();
-        wire::walk(&bytes, |f| {
-            match f.record {
-                Record::Header { .. } => members += 1,
-                Record::Definition { layout, .. } => {
-                    unknown_fields.extend(
-                        layout
-                            .fields
-                            .iter()
-                            .filter(|f| {
-                                f.developer.is_none() && !known.contains(&(layout.number, f.id))
-                            })
-                            .map(|f| (layout.number, f.id)),
-                    );
-                    developer_ids.extend(layout.fields.iter().filter_map(|f| f.developer))
-                }
-                _ => {}
-            }
-            Ok(())
-        })
-        .map_err(|e| Error::data(format!("{}: {e}", path.display())))?;
-        if members != 1 {
-            return Err(Error::data("expected one FIT activity member"));
-        }
-        let fit = decode(&bytes)?;
-        let mut device = None;
+        let unknown_fields = native.difference(&known).copied().collect();
         let mut samples = BTreeMap::new();
         let mut boundaries = BTreeSet::new();
         let mut session = None;
@@ -83,16 +54,6 @@ impl Ride {
         let mut timer_events = Vec::new();
         for m in fit.messages {
             match m.num.0 {
-                0 => {
-                    if device.is_some() || number(&m, 0) != Some(4) {
-                        return Err(Error::data("expected one activity file_id"));
-                    }
-                    device = Some(match (number(&m, 1), number(&m, 2)) {
-                        (Some(267), Some(2205)) => "bryton",
-                        (Some(1), Some(5019)) => "garmin",
-                        _ => return Err(Error::data("unrecognized recording device")),
-                    });
-                }
                 18 => {
                     if number(&m, 5) != Some(2) || session.replace(m).is_some() {
                         return Err(Error::data("expected one cycling session"));
@@ -154,12 +115,13 @@ impl Ride {
                 stopped = Some(ts);
             }
         }
-        let hash = crate::hash(&bytes);
+        let hash = metadata.activity_id;
         Ok(Self {
             bytes,
             path,
             hash,
-            device: device.ok_or_else(|| Error::data("missing file_id"))?,
+            device,
+            source_id: metadata.source_id,
             samples,
             boundaries,
             session: session.ok_or_else(|| Error::data("missing cycling session"))?,
@@ -174,12 +136,4 @@ impl Ride {
             *self.samples.last_key_value().unwrap().0,
         )
     }
-}
-pub fn decode(bytes: &[u8]) -> Result<rustyfit::proto::FIT> {
-    Decoder::builder()
-        .expand_components(false)
-        .build()
-        .decode(bytes)
-        .map_err(|e| Error::data(format!("RustyFIT: {e:?}")))?
-        .ok_or_else(|| Error::data("empty FIT"))
 }

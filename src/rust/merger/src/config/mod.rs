@@ -1,0 +1,304 @@
+//! Offline configuration: validate first, connect to sources only on demand.
+mod unique_json;
+use crate::{
+    Error, Result,
+    data_source::{DataSource, DeferredSource, Device, FitDirectory, SourceKind},
+    policy::MergePolicy,
+};
+use serde_json::{Value, json};
+use std::{
+    collections::BTreeMap,
+    io::Read,
+    path::{Component, Path, PathBuf},
+    sync::LazyLock,
+};
+
+const EXAMPLE: &str = include_str!("../../../../../docs/config/config.example.json");
+static SCHEMA: LazyLock<jsonschema::Validator> = LazyLock::new(|| {
+    let spec = serde_json::from_str(include_str!(
+        "../../../../../docs/config/config-v1.schema.json"
+    ))
+    .expect("embedded schema JSON");
+    jsonschema::draft7::new(&spec).expect("embedded config v1 schema")
+});
+
+pub fn invalid(at: &str, why: &str) -> Error {
+    let mut e = Error::new(
+        "invalid_config",
+        format!("{}: {why}", if at.is_empty() { "/" } else { at }),
+        2,
+    );
+    e.details = json!({"path":at});
+    e
+}
+fn resolve(base: &Path, s: &str) -> Result<PathBuf> {
+    if s == "~" || s.starts_with("~/") {
+        let home = std::env::home_dir()
+            .ok_or_else(|| invalid("", "home directory unavailable for ~ path"))?;
+        Ok(home.join(s.strip_prefix("~/").unwrap_or("")))
+    } else {
+        Ok(base.join(s))
+    }
+}
+
+fn normalized(path: PathBuf) -> Result<PathBuf> {
+    let mut result = PathBuf::new();
+    for c in std::path::absolute(path)?.components() {
+        match c {
+            Component::ParentDir => {
+                result.pop();
+            }
+            Component::CurDir => {}
+            _ => result.push(c.as_os_str()),
+        }
+    }
+    Ok(result)
+}
+fn check_paths(v: &Value, base: &Path) -> Result<()> {
+    let paths = v["sources"].as_object().unwrap();
+    let output = normalized(resolve(base, v["output_dir"].as_str().unwrap())?)?;
+    let mut writes = vec![("/output_dir".to_owned(), output)];
+    for (id, s) in paths {
+        if s["kind"] == "garmin_connect" {
+            writes.push((
+                format!("/sources/{id}/cache_dir"),
+                normalized(resolve(base, s["cache_dir"].as_str().unwrap())?)?,
+            ));
+        }
+    }
+    for s in paths.values().filter(|s| s["kind"] == "fit_directory") {
+        let input = normalized(resolve(base, s["directory"].as_str().unwrap())?)?;
+        for (at, dir) in &writes {
+            if dir.starts_with(&input) || input.starts_with(dir) {
+                return Err(invalid(at, "output or cache overlaps an input directory"));
+            }
+        }
+    }
+    Ok(())
+}
+type SourceFactory = fn(&str, &Value, &Path, &Registry) -> Result<Box<dyn DataSource>>;
+type TargetFactory = fn(&str, &Value) -> Result<()>;
+pub struct Registry {
+    devices: BTreeMap<String, Device>,
+    sources: BTreeMap<String, SourceFactory>,
+    targets: BTreeMap<String, TargetFactory>,
+}
+impl Default for Registry {
+    fn default() -> Self {
+        let mut r = Self {
+            devices: BTreeMap::new(),
+            sources: BTreeMap::new(),
+            targets: BTreeMap::new(),
+        };
+        r.register_device("bryton_rider_460", Device::RIDER_460);
+        r.register_device("garmin_cirqa", Device::CIRQA);
+        r.register_source("fit_directory", |id, v, base, r| {
+            let device = r.device(id, v)?;
+            Ok(Box::new(FitDirectory::new(
+                id,
+                resolve(base, v["directory"].as_str().unwrap())?,
+                device,
+            )))
+        });
+        r.register_source("garmin_connect", |id, v, _, r| {
+            if r.device(id, v)?.manufacturer != Device::CIRQA.manufacturer {
+                return Err(invalid(
+                    &format!("/sources/{id}/device"),
+                    "incompatible Garmin device",
+                ));
+            }
+            Ok(Box::new(DeferredSource {
+                id: id.into(),
+                kind: SourceKind::GarminConnect,
+            }))
+        });
+        r.register_source("apple_health_export", |id, _, _, _| {
+            Ok(Box::new(DeferredSource {
+                id: id.into(),
+                kind: SourceKind::AppleHealthExport,
+            }))
+        });
+        r.register_target("strava", |_, _| Ok(()));
+        r
+    }
+}
+impl Registry {
+    pub fn register_device(&mut self, name: &str, device: Device) {
+        self.devices.insert(name.into(), device);
+    }
+    pub fn register_source(&mut self, kind: &str, create: SourceFactory) {
+        self.sources.insert(kind.into(), create);
+    }
+    pub fn register_target(&mut self, kind: &str, validate: TargetFactory) {
+        self.targets.insert(kind.into(), validate);
+    }
+    fn device(&self, id: &str, v: &Value) -> Result<Device> {
+        self.devices
+            .get(v["device"].as_str().unwrap())
+            .copied()
+            .ok_or_else(|| invalid(&format!("/sources/{id}/device"), "unregistered device"))
+    }
+}
+pub struct Target {
+    pub id: String,
+    pub kind: String,
+}
+pub struct Settings {
+    sources: BTreeMap<String, Box<dyn DataSource>>,
+    targets: Vec<Target>,
+    selection: Value,
+}
+impl Settings {
+    pub fn load(path: &Path) -> Result<Self> {
+        Self::load_with(path, &Registry::default())
+    }
+    pub fn load_with(path: &Path, registry: &Registry) -> Result<Self> {
+        let text = std::fs::read_to_string(path)
+            .map_err(|e| invalid("", &format!("{}: {e}", path.display())))?;
+        Self::parse(&text, path.parent().unwrap_or(Path::new(".")), registry)
+    }
+    pub(crate) fn embedded() -> Result<Self> {
+        Self::parse(EXAMPLE, Path::new("."), &Registry::default())
+    }
+    fn parse(text: &str, base: &Path, r: &Registry) -> Result<Self> {
+        let v = unique_json::parse(text).map_err(|e| {
+            invalid(
+                "",
+                &format!("invalid JSON at line {}, column {}", e.line(), e.column()),
+            )
+        })?;
+        if let Err(e) = SCHEMA.validate(&v) {
+            return Err(invalid(
+                &e.instance_path.to_string(),
+                "does not match config v1 schema",
+            ));
+        }
+        let zone = Path::new(v["timezone"].as_str().unwrap());
+        let valid_zone = zone.components().all(|c| matches!(c, Component::Normal(_)))
+            && std::fs::File::open(Path::new("/usr/share/zoneinfo").join(zone)).is_ok_and(
+                |mut f| {
+                    let mut magic = [0; 4];
+                    f.read_exact(&mut magic).is_ok() && &magic == b"TZif"
+                },
+            );
+        if !valid_zone {
+            return Err(invalid("/timezone", "unknown IANA time zone"));
+        }
+        check_paths(&v, base)?;
+        let mut sources = BTreeMap::new();
+        let definitions = v["sources"].as_object().unwrap();
+        for (id, v) in definitions {
+            let factory = r.sources.get(v["kind"].as_str().unwrap()).ok_or_else(|| {
+                invalid(&format!("/sources/{id}/kind"), "unregistered source kind")
+            })?;
+            sources.insert(id.clone(), factory(id, v, base, r)?);
+        }
+        let mut targets = Vec::new();
+        if let Some(items) = v["destinations"].as_object() {
+            for (id, v) in items {
+                let kind = v["kind"].as_str().unwrap_or("strava");
+                let factory = r.targets.get(kind).ok_or_else(|| {
+                    invalid(
+                        &format!("/destinations/{id}/kind"),
+                        "unregistered target kind",
+                    )
+                })?;
+                factory(id, v)?;
+                targets.push(Target {
+                    id: id.clone(),
+                    kind: kind.into(),
+                });
+            }
+        }
+        let merge = &v["merge"];
+        let primary = merge["primary_source"].as_str().unwrap();
+        if !sources.contains_key(primary) || definitions[primary]["device"] != "bryton_rider_460" {
+            return Err(invalid(
+                "/merge/primary_source",
+                "expected a configured Rider 460 source",
+            ));
+        }
+        let streams = merge["streams"].as_object().unwrap();
+        for (field, ids) in streams {
+            for (i, id) in ids.as_array().unwrap().iter().enumerate() {
+                let source_id = id.as_str().unwrap();
+                let at = format!("/merge/streams/{field}/{i}");
+                let spec = definitions
+                    .get(source_id)
+                    .ok_or_else(|| invalid(&at, "undeclared source ID"))?;
+                let allowed = match field.as_str() {
+                    "record.heart_rate" => match i {
+                        0 => spec["device"] == "bryton_rider_460",
+                        1 => spec["device"] == "garmin_cirqa",
+                        _ => false,
+                    },
+                    "session.total_calories" | "session.metabolic_calories" => {
+                        i == 0 && spec["device"] == "garmin_cirqa"
+                    }
+                    _ => spec["kind"] != "apple_health_export",
+                };
+                if !allowed {
+                    return Err(invalid(&at, "source incompatible with this selection rule"));
+                }
+            }
+        }
+        if streams.get("record.position_lat") != streams.get("record.position_long") {
+            return Err(invalid(
+                "/merge/streams/record.position_long",
+                "coordinate source priorities must match",
+            ));
+        }
+        if let (Some(total), Some(metabolic)) = (
+            streams.get("session.total_calories"),
+            streams.get("session.metabolic_calories"),
+        ) && total != metabolic
+        {
+            return Err(invalid(
+                "/merge/streams/session.metabolic_calories",
+                "calories must use the same session source",
+            ));
+        }
+        Ok(Self {
+            sources,
+            targets,
+            selection: merge.clone(),
+        })
+    }
+    pub fn sources(&self) -> impl Iterator<Item = &dyn DataSource> {
+        self.sources.values().map(Box::as_ref)
+    }
+    pub fn source(&self, id: &str) -> Option<&dyn DataSource> {
+        self.sources.get(id).map(Box::as_ref)
+    }
+    pub fn primary_source(&self) -> &dyn DataSource {
+        self.sources[self.selection["primary_source"].as_str().unwrap()].as_ref()
+    }
+    pub fn targets(&self) -> impl Iterator<Item = &Target> {
+        self.targets.iter()
+    }
+    pub fn selected_fields(&self) -> impl Iterator<Item = &str> {
+        self.selection["streams"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+    }
+    pub fn sources_for(&self, field: &str) -> impl Iterator<Item = &dyn DataSource> {
+        self.selection["streams"][field]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|id| self.sources[id.as_str().unwrap()].as_ref())
+    }
+    pub(crate) fn selection(&self) -> &Value {
+        &self.selection
+    }
+    pub(crate) fn merge_policy(&self) -> MergePolicy {
+        MergePolicy {
+            minimum_overlap: self.selection["min_overlap_ratio"].as_f64().unwrap(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

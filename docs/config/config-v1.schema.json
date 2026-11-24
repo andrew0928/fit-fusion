@@ -16,7 +16,13 @@
         "oneOf": [
           {"$ref": "#/definitions/fitDirectory"},
           {"$ref": "#/definitions/garminConnect"},
-          {"$ref": "#/definitions/appleHealthExport"}
+          {"$ref": "#/definitions/appleHealthExport"},
+          {
+            "allOf": [
+              {"$ref": "#/definitions/extensionConnector"},
+              {"properties": {"kind": {"not": {"enum": ["fit_directory", "garmin_connect", "apple_health_export"]}}}}
+            ]
+          }
         ]
       }
     },
@@ -53,22 +59,39 @@
     },
     "destinations": {
       "type": "object",
-      "additionalProperties": false,
-      "properties": {"strava": {"$ref": "#/definitions/strava"}}
+      "propertyNames": {"$ref": "#/definitions/identifier"},
+      "properties": {
+        "strava": {
+          "if": {"required": ["kind"]},
+          "then": {"$ref": "#/definitions/target"},
+          "else": {"$ref": "#/definitions/strava"}
+        }
+      },
+      "additionalProperties": {"$ref": "#/definitions/target"}
     }
   },
   "definitions": {
     "text": {"type": "string", "minLength": 1},
     "optionalText": {"type": ["string", "null"], "minLength": 1},
     "expiresAt": {"type": ["integer", "null"], "minimum": 0},
-    "sourceId": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "identifier": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+    "sourceId": {"$ref": "#/definitions/identifier"},
+    "extensionConnector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"$ref": "#/definitions/identifier"},
+        "options": {"type": "object"}
+      }
+    },
     "fitDirectory": {
       "type": "object",
       "additionalProperties": false,
       "required": ["kind", "device", "directory"],
       "properties": {
         "kind": {"const": "fit_directory"},
-        "device": {"enum": ["bryton_rider_460", "garmin_cirqa"]},
+        "device": {"$ref": "#/definitions/identifier"},
         "directory": {"$ref": "#/definitions/text"}
       }
     },
@@ -78,7 +101,7 @@
       "required": ["kind", "device", "cache_dir", "auth"],
       "properties": {
         "kind": {"const": "garmin_connect"},
-        "device": {"const": "garmin_cirqa"},
+        "device": {"$ref": "#/definitions/identifier"},
         "cache_dir": {"$ref": "#/definitions/text"},
         "auth": {
           "type": "object",
@@ -100,10 +123,18 @@
         "archive": {"$ref": "#/definitions/text"}
       }
     },
+    "target": {
+      "type": "object",
+      "required": ["kind"],
+      "if": {"properties": {"kind": {"const": "strava"}}},
+      "then": {"$ref": "#/definitions/strava"},
+      "else": {"$ref": "#/definitions/extensionConnector"}
+    },
     "strava": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
+        "kind": {"const": "strava"},
         "client_id": {"$ref": "#/definitions/optionalText"},
         "client_secret": {"$ref": "#/definitions/optionalText"},
         "athlete_id": {"$ref": "#/definitions/optionalText"},
