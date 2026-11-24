@@ -14,6 +14,7 @@
 
 | 日期 | 決策 | 狀態 |
 |---|---|---|
+| 2026-11-24 | [M2 設定與活動來源的模組邊界、介面簽名與驗收條件](2026-11-24-config-and-data-source.md) | accepted |
 | 2026-11-23 | [Apple Watch 騎乘資料的漸進式匯出](2026-11-23-apple-health-incremental-export.md) | proposed |
 | 2026-11-23 | [整趟騎乘的熱量消耗優先使用 Garmin](2026-11-23-ride-calorie-source.md)（發佈 CIRQA 總熱量並另存兩個原值） | accepted |
 | 2026-11-23 | [心率先判整趟品質，再決定逐點補缺或整趟改用 Garmin](2026-11-23-heart-rate-quality.md) | accepted |

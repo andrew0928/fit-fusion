@@ -2,6 +2,8 @@
 
 合併器只維護**一套 Rust 實作**，M2 在 macOS 使用 RustyFIT。它從同一次騎乘的多份記錄選取資料，在 Bryton 時間軸上產生一份可發佈的 FIT 與來源報告。Python、C#、Rust、Node.js 檢查器可獨立讀回這個輸出。各語言的驗收結果分開記錄。[技術決策](../decisions/2026-11-21-production-fit-sdk.md) · [檢查器規格](inspector.md)
 
+設定如何決定主來源、逐欄順位與整趟選值，以及連線器如何開啟一趟記錄，見[設定與活動來源介面（C# 與 Rust 對照）](config-and-data-source.md)。
+
 ## 輸入與操作
 
 | 目標入口 | 行為 |
