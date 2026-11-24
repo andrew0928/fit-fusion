@@ -2,7 +2,7 @@
 use crate::{
     Error, Result,
     data_source::{decode, number},
-    quality::Selection,
+    policy::{STREAMS, SelectedRide},
     ride::{Ride, heart},
 };
 use fit_inspector::wire::{self, Field, Record};
@@ -118,15 +118,19 @@ fn native_value(cells: &[Cell], id: u8, big: bool) -> Option<u32> {
     Some(wire::unsigned(&c.data, big) as u32)
 }
 pub struct Calories {
-    pub total: u16,
+    pub total: Option<u16>,
     pub metabolic: Option<u16>,
     pub dev: u8,
 }
 impl Calories {
-    pub fn read(b: &Ride, g: &Ride) -> Result<Self> {
-        let total = number(&g.session, 11)
-            .and_then(|v| u16::try_from(v).ok())
-            .ok_or_else(|| Error::quality("Garmin session.total_calories missing"))?;
+    pub fn active(&self) -> Option<u16> {
+        self.total?.checked_sub(self.metabolic?)
+    }
+    pub fn read(b: &Ride, g: &Ride, require_total: bool) -> Result<Self> {
+        let total = number(&g.session, 11).and_then(|v| u16::try_from(v).ok());
+        if require_total && total.is_none() {
+            return Err(Error::quality("Garmin session.total_calories missing"));
+        }
         let metabolic = number(&g.session, 196).and_then(|v| u16::try_from(v).ok());
         let dev = (0..255)
             .find(|n| !b.developer_ids.contains(n))
@@ -137,9 +141,18 @@ impl Calories {
             dev,
         })
     }
-    fn write(&self, cells: &mut Vec<Cell>, big: bool) -> io::Result<()> {
-        for (id, v) in [(11, self.total), (196, self.metabolic.unwrap_or(u16::MAX))] {
-            set(cells, native(id, 0x84, int_bytes(v, big)))?;
+    fn write(&self, cells: &mut Vec<Cell>, big: bool, selected: &SelectedRide) -> io::Result<()> {
+        for (id, value, enabled) in [
+            (11, self.total, selected.write_total),
+            (196, self.metabolic, selected.write_metabolic),
+        ] {
+            let v = value.unwrap_or(u16::MAX);
+            if enabled {
+                set(cells, native(id, 0x84, int_bytes(v, big)))?;
+            }
+            if !selected.write_total {
+                continue;
+            }
             set(
                 cells,
                 Cell {
@@ -156,7 +169,45 @@ impl Calories {
         Ok(())
     }
 }
-pub fn build(b: &Ride, g: &Ride, s: &Selection, cal: &Calories) -> Result<Vec<u8>> {
+fn remove(cells: &mut Vec<Cell>, id: u8) {
+    cells.retain(|cell| cell.def.developer.is_some() || cell.def.id != id);
+}
+fn matched_summary<'a>(
+    b: &Ride,
+    other: &'a Ride,
+    lap: Option<usize>,
+) -> Option<&'a rustyfit::proto::Message> {
+    let m = lap.map_or(&b.session, |i| &b.laps[i]);
+    let start = number(m, 2)?;
+    let duration = number(m, 7)?;
+    let matches = |candidate: &&rustyfit::proto::Message| {
+        number(candidate, 2) == Some(start) && number(candidate, 7) == Some(duration)
+    };
+    if lap.is_none() {
+        return matches(&&other.session).then_some(&other.session);
+    }
+    let mut candidates = other.laps.iter().filter(matches);
+    let first = candidates.next()?;
+    candidates.next().is_none().then_some(first)
+}
+fn summary_stream(session: bool, id: u8) -> Option<u8> {
+    // Optional native lap/session summaries associated with the configured record streams.
+    Some(match (session, id) {
+        (true, 3 | 38) | (false, 3 | 5) => 0,
+        (true, 4 | 39) | (false, 4 | 6) => 1,
+        (_, 9) => 5,
+        (true, 14 | 15) | (false, 13 | 14) => 6,
+        (true, 124 | 125) | (false, 110 | 111) => 73,
+        (true, 18 | 19 | 92 | 93) | (false, 17 | 18 | 80 | 81) => 4,
+        (true, 20 | 21 | 34) | (false, 19 | 20 | 33) => 7,
+        (true, 49 | 50 | 71) | (false, 42 | 43 | 62) => 2,
+        (true, 126..=128) | (false, 112..=114) => 78,
+        (true, 57 | 58 | 150) | (false, 50 | 51 | 124) => 13,
+        _ => return None,
+    })
+}
+pub fn build(b: &Ride, selected: &SelectedRide) -> Result<Vec<u8>> {
+    let s = &selected.heart;
     let mut header = vec![];
     let mut body = vec![];
     let mut record = 0;
@@ -168,10 +219,12 @@ pub fn build(b: &Ride, g: &Ride, s: &Selection, cal: &Calories) -> Result<Vec<u8
             Record::Header { .. } => {
                 header = frame.bytes.to_vec();
             }
-            Record::Definition { local, .. } => {
+            Record::Definition { local, layout } => {
                 original[local] = frame.bytes.to_vec();
-                active[local] = original[local].clone();
-                body.extend(frame.bytes);
+                if ![18, 19, 20].contains(&layout.number) {
+                    active[local] = original[local].clone();
+                    body.extend(frame.bytes);
+                }
             }
             Record::Crc(_) => {}
             Record::Data {
@@ -210,66 +263,57 @@ pub fn build(b: &Ride, g: &Ride, s: &Selection, cal: &Calories) -> Result<Vec<u8
                         {
                             set(&mut cells, native(3, 2, vec![p.hr.unwrap_or(255)]))?;
                         }
-                        let lat = native_value(&cells, 0, big);
-                        let lon = native_value(&cells, 1, big);
-                        if lat.is_none_or(|x| x == i32::MAX as u32)
-                            || lon.is_none_or(|x| x == i32::MAX as u32)
-                        {
-                            for (id, v) in [(0, lat), (1, lon)] {
-                                if v.is_some_and(|v| v != i32::MAX as u32) {
-                                    set(
-                                        &mut cells,
-                                        native(
-                                            id,
-                                            0x85,
-                                            if big {
-                                                i32::MAX.to_be_bytes()
-                                            } else {
-                                                i32::MAX.to_le_bytes()
-                                            }
-                                            .to_vec(),
-                                        ),
-                                    )?;
-                                }
+                        if !selected.heart_enabled {
+                            remove(&mut cells, 3);
+                        }
+                        cells.retain(|c| {
+                            c.def.developer.is_some()
+                                || !STREAMS.iter().any(|(_, id, _)| *id == c.def.id)
+                                || selected.fields.iter().any(|f| f.id == c.def.id)
+                        });
+                        for field in &selected.fields {
+                            let value = field.values[record - 1];
+                            if value.is_none() && native_value(&cells, field.id, big).is_none() {
+                                continue;
                             }
+                            let (width, invalid) = match field.base {
+                                1 => (1, 127),
+                                2 => (1, 255),
+                                0x84 => (2, 65535),
+                                0x85 => (4, i32::MAX as i64),
+                                _ => (4, u32::MAX as i64),
+                            };
+                            let mut raw = value.unwrap_or(invalid).to_le_bytes()[..width].to_vec();
+                            if big {
+                                raw.reverse();
+                            }
+                            set(&mut cells, native(field.id, field.base, raw))?;
                         }
                     }
                     n => {
                         let session = n == 18;
-                        let same_lap = if session {
-                            None
-                        } else {
-                            let lap = &b.laps[lap_index];
+                        let lap = (!session).then_some(lap_index);
+                        if !session {
                             lap_index += 1;
-                            let start = number(lap, 2);
-                            let duration = number(lap, 7);
-                            let mut candidates = g.laps.iter().filter(|m| {
-                                start.is_some()
-                                    && duration.is_some()
-                                    && number(m, 2) == start
-                                    && number(m, 7) == duration
-                            });
-                            let first = candidates.next();
-                            if candidates.next().is_none() {
-                                first
-                            } else {
-                                None
+                        }
+                        cells.retain(|c| {
+                            c.def.developer.is_some()
+                                || summary_stream(session, c.def.id).is_none_or(|id| {
+                                    selected.fields.iter().any(|f| f.id == id && f.primary_only)
+                                })
+                        });
+                        let hr_ids = if session { [16, 17, 64] } else { [15, 16, 63] };
+                        if !selected.heart_enabled {
+                            for id in hr_ids {
+                                remove(&mut cells, id);
                             }
-                        };
-                        let same_summary = if session {
-                            (b.samples.keys().eq(g.samples.keys())
-                                && number(&b.session, 2) == number(&g.session, 2)
-                                && number(&b.session, 7) == number(&g.session, 7))
-                            .then_some(&g.session)
-                        } else {
-                            same_lap
-                        };
-                        if !s.only_bryton {
-                            let ids = if session { [16, 17, 64] } else { [15, 16, 63] };
-                            for id in ids {
-                                let valid = same_summary
-                                    .filter(|_| s.only_garmin)
-                                    .and_then(|m| number(m, id));
+                        } else if !selected.heart_source.is_some_and(|g| std::ptr::eq(b, g)) {
+                            let same = selected
+                                .heart_source
+                                .filter(|r| b.samples.keys().eq(r.samples.keys()))
+                                .and_then(|r| matched_summary(b, r, lap));
+                            for id in hr_ids {
+                                let valid = same.and_then(|m| number(m, id));
                                 if valid.is_some() || native_value(&cells, id, big).is_some() {
                                     set(
                                         &mut cells,
@@ -279,12 +323,31 @@ pub fn build(b: &Ride, g: &Ride, s: &Selection, cal: &Calories) -> Result<Vec<u8
                             }
                         }
                         if session {
-                            metadata(&mut body, local, cal.dev)?;
-                            active[local].clear();
-                            cal.write(&mut cells, big)?;
+                            if !selected.write_total {
+                                remove(&mut cells, 11);
+                            }
+                            if !selected.write_metabolic {
+                                remove(&mut cells, 196);
+                            }
+                            if let Some(cal) = &selected.calories {
+                                if selected.write_total {
+                                    metadata(&mut body, local, cal.dev)?;
+                                    active[local].clear();
+                                }
+                                cal.write(&mut cells, big, selected)?;
+                            }
                         } else {
-                            for id in [11, 155] {
-                                let value = same_lap.and_then(|m| number(m, id));
+                            let same = selected
+                                .calorie_source
+                                .and_then(|r| matched_summary(b, r, lap));
+                            for (id, enabled) in
+                                [(11, selected.write_total), (155, selected.write_metabolic)]
+                            {
+                                if !enabled {
+                                    remove(&mut cells, id);
+                                    continue;
+                                }
+                                let value = same.and_then(|m| number(m, id));
                                 if value.is_some() || native_value(&cells, id, big).is_some() {
                                     set(
                                         &mut cells,
@@ -332,31 +395,43 @@ pub fn build(b: &Ride, g: &Ride, s: &Selection, cal: &Calories) -> Result<Vec<u8
     let crc = wire::crc(&body);
     header.extend(body);
     header.extend(crc.to_le_bytes());
-    verify(&header, s, cal)?;
+    verify(&header, selected)?;
     Ok(header)
 }
-fn verify(bytes: &[u8], s: &Selection, cal: &Calories) -> Result<()> {
-    let mut points = s.points.iter();
+fn verify(bytes: &[u8], selected: &SelectedRide) -> Result<()> {
+    let mut points = selected.heart.points.iter().enumerate();
     let mut sessions = 0;
     for m in decode(bytes)?.messages {
         if m.num.0 == 20 {
-            let p = points
+            let (index, p) = points
                 .next()
                 .ok_or_else(|| Error::data("extra output record"))?;
+            for f in &selected.fields {
+                if crate::data_source::scalar(&m, f.id) != f.values[index] {
+                    return Err(Error::data(format!("{} read-back differs", f.name)));
+                }
+            }
             if number(&m, 253) != Some(p.time) || heart(&m) != p.hr {
                 return Err(Error::data("output timestamp or heart rate differs"));
             }
         } else if m.num.0 == 18 {
             sessions += 1;
-            for (id, value) in [(11, Some(cal.total)), (196, cal.metabolic)] {
+            let Some(cal) = &selected.calories else {
+                continue;
+            };
+            for (id, value, enabled) in [
+                (11, cal.total, selected.write_total),
+                (196, cal.metabolic, selected.write_metabolic),
+            ] {
                 let dev = m
                     .developer_fields
                     .iter()
                     .find(|f| f.developer_data_index == cal.dev && f.num == id);
-                if number(&m, id) != value.map(u32::from)
-                    || !dev.is_some_and(
-                        |f| matches!(f.value,Value::Uint16(x) if x==value.unwrap_or(u16::MAX)),
-                    )
+                if number(&m, id) != value.filter(|_| enabled).map(u32::from)
+                    || selected.write_total
+                        && !dev.is_some_and(
+                            |f| matches!(f.value,Value::Uint16(x) if x==value.unwrap_or(u16::MAX)),
+                        )
                 {
                     return Err(Error::data("output calorie read-back failed"));
                 }

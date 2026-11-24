@@ -49,7 +49,13 @@ PYTHONPATH=src/python python3 -m fit_fusion inspect --decoder wire \
 
 從根目錄執行 `python3 -m unittest discover -s src/tools/tests -p test_merger.py -v`。合成測試包含 M14 的逐秒讀回、M04 的備援失敗、developer 欄位同號及目的目錄防覆寫。這台 Mac 有六趟私人樣本時也會執行實檔測試，逐秒檢查 M01–M03 的選源、M05 的標準與 developer 熱量，並比較未修改的串流與私有訊息。缺少私人索引時 unittest 會明列跳過該測試。[自動化驗收](../../../src/tools/tests/test_merger.py)
 
-原有 Python 雙檔回歸持續驗證歷史輸出。新增測試用 [C# 產生器](../../../src/csharp/FitFixtures/Program.cs) 與 Garmin.FIT.Sdk 21.222.0 固定設備、六秒心率、踏頻及熱量。測試執行 config check、本機目錄列舉、指定雙檔合併，再以獨立 Python inspector CLI 的 raw 讀回 M14 的心率與熱量。日期與發佈流程待實作。若要重建測試檔，可從根目錄執行 `dotnet run --project src/csharp/FitFixtures -- <新的空目錄>`，再比對兩邊的檔案雜湊。
+原有 Python 雙檔回歸持續驗證歷史輸出。新增測試用 [C# 產生器](../../../src/csharp/FitFixtures/Program.cs) 與 Garmin.FIT.Sdk 21.222.0 固定設備、六秒心率、踏頻及熱量。測試執行 config check、本機目錄列舉、指定雙檔合併，再以獨立 Python inspector CLI 的 raw 讀回 M14 的心率與熱量。日期入口另有 M06–M08、M09 修訂部分與 M10 驗收。M14 直接以日期模式合併，再透過 Python inspector CLI 讀回。Strava 自動發佈列在 M2-4。若要重建測試檔，可從根目錄執行 `dotnet run --project src/csharp/FitFixtures -- <新的空目錄>`，再比對兩邊的檔案雜湊。
+
+### M2-3 日期與 Garmin 實測
+
+六趟出發日（10/09、10/14、10/28、11/01、11/08、11/21）分別透過正式 Garmin Personal API 取回原始 FIT，以相同設定與既有雙檔比對。六份合併檔逐位元組一致。另以本機目錄重跑這六趟，10/14 跨午夜的完整輸出與雙檔相同，10/15 回傳空清單。正式 API 驗證使用私人金鑰，日常自動化測試使用可控制的 Garmin 回應。
+
+合成測試使用 C# + Garmin SDK 產生的 FIT，驗證同日兩趟、缺備援後補齊、改名重跑、兩筆候選、兩個主檔共用候選、手動指定 ID 及改變 config 後另存修訂。可用 `dotnet run --project src/csharp/FitFixtures -- <新的空目錄> --scenarios` 重建日期配對情境檔。M09 的 Parquet 逐框還原留給 M2-5。
 
 ## Strava 網頁手動匯入實測
 

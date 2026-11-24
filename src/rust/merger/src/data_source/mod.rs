@@ -1,10 +1,12 @@
 //! Read-only activity sources. Timestamps in public metadata use Unix UTC seconds.
 mod directory;
+mod garmin;
+pub(crate) use garmin::GarminConnect;
 mod recording;
 use crate::{Error, Result};
 pub use directory::FitDirectory;
 pub use recording::{ActivityRecording, Sample, StreamKey, Summary, SummaryKey};
-pub(crate) use recording::{decode, number};
+pub(crate) use recording::{decode, number, scalar};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SourceKind {
@@ -68,20 +70,29 @@ impl ActivityMetadata {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ActivityQuery {
     All,
-    StartsWithin { start_utc: i64, end_utc: i64 },
-    Overlapping { start_utc: i64, end_utc: i64 },
+    StartsWithin {
+        start_utc: i64,
+        end_utc: i64,
+    },
+    Overlapping {
+        start_utc: i64,
+        end_utc: i64,
+        minimum_overlap: f64,
+    },
 }
 impl ActivityQuery {
-    fn matches(&self, activity: &ActivityMetadata) -> bool {
+    pub(crate) fn matches(&self, activity: &ActivityMetadata) -> bool {
         match *self {
             Self::All => true,
             Self::StartsWithin { start_utc, end_utc } => {
                 (start_utc..end_utc).contains(&activity.start_utc)
             }
-            Self::Overlapping { start_utc, end_utc } => {
+            Self::Overlapping {
+                start_utc, end_utc, ..
+            } => {
                 start_utc < end_utc && start_utc < activity.end_utc && activity.start_utc < end_utc
             }
         }
@@ -131,5 +142,10 @@ impl DataSource for DeferredSource {
     }
 }
 
+#[cfg(test)]
+thread_local! {
+    pub(crate) static SOURCE_READS:std::cell::Cell<usize>=const{std::cell::Cell::new(0)};
+    pub(crate) static PLATFORM_REQUESTS:std::cell::Cell<usize>=const{std::cell::Cell::new(0)};
+}
 #[cfg(test)]
 mod tests;

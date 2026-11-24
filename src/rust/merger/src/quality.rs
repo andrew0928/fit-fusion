@@ -93,8 +93,29 @@ fn scan(
     }
     s
 }
-pub fn select(b: &Ride, g: &Ride) -> Result<Selection> {
+pub fn select(
+    b: &Ride,
+    preferred: Option<&Ride>,
+    backup: Option<&Ride>,
+    enabled: bool,
+) -> Result<Selection> {
     let times: Vec<_> = b.samples.keys().copied().collect();
+    if !enabled {
+        let points = times
+            .into_iter()
+            .map(|time| Point {
+                time,
+                hr: None,
+                source: "missing",
+            })
+            .collect();
+        return Ok(Selection {
+            points,
+            report: json!({"mode":"disabled"}),
+            only_bryton: false,
+            only_garmin: false,
+        });
+    }
     // Unexplained recording gaps cannot be treated as adjacent valid seconds.
     for p in times.windows(2) {
         if p[1] - p[0] > 1 && b.boundaries.range(p[0] + 1..=p[1]).next().is_none() {
@@ -103,12 +124,18 @@ pub fn select(b: &Ride, g: &Ride) -> Result<Selection> {
             ));
         }
     }
-    let primary: Vec<_> = b.samples.values().copied().collect();
+    let primary: Vec<_> = times
+        .iter()
+        .map(|t| preferred?.samples.get(t).copied().flatten())
+        .collect();
     let second: Vec<_> = times
         .iter()
-        .map(|t| g.samples.get(t).copied().flatten())
+        .map(|t| backup?.samples.get(t).copied().flatten())
         .collect();
-    let boundaries = b.boundaries.union(&g.boundaries).copied().collect();
+    let mut boundaries = b.boundaries.clone();
+    for ride in [preferred, backup].into_iter().flatten() {
+        boundaries.extend(&ride.boundaries);
+    }
     let checks = scan(&times, &primary, &second, &boundaries);
     let switch = !checks.triggers.is_empty();
     let secondary = scan(&times, &second, &primary, &boundaries);
@@ -123,6 +150,12 @@ pub fn select(b: &Ride, g: &Ride) -> Result<Selection> {
         "triggers":checks.triggers,"plateaus_without_confirmation":checks.suspect,
         "affected_seconds":checks.affected.len(),"garmin_valid_affected":affected_valid,
         "garmin_triggers":secondary.triggers,"garmin_longest_constant_seconds":secondary.longest_flat});
+    if switch && backup.is_none() {
+        let mut e = Error::quality("missing heart-rate backup");
+        report["reason"] = json!("missing_backup");
+        e.details = report;
+        return Err(e);
+    }
     if switch
         && ((n - secondary.missing) * 100 < n * 95
             || affected_valid * 100 < checks.affected.len() * 95

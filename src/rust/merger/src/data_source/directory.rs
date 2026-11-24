@@ -43,6 +43,8 @@ impl FitDirectory {
         })
     }
     fn refresh(&self) -> Result<()> {
+        #[cfg(test)]
+        super::SOURCE_READS.with(|n| n.set(n.get() + 1));
         let mut index = BTreeMap::new();
         let mut dirs = vec![self.directory.clone()];
         while let Some(dir) = dirs.pop() {

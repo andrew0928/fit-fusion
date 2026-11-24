@@ -8,7 +8,6 @@ use crate::{
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
-    io::Read,
     path::{Component, Path, PathBuf},
     sync::LazyLock,
 };
@@ -49,7 +48,13 @@ fn normalized(path: PathBuf) -> Result<PathBuf> {
                 result.pop();
             }
             Component::CurDir => {}
-            _ => result.push(c.as_os_str()),
+            _ => {
+                result.push(c.as_os_str());
+                if result.is_symlink() {
+                    result = std::fs::canonicalize(&result)
+                        .map_err(|_| invalid("", "cannot resolve configured symbolic link"))?;
+                }
+            }
         }
     }
     Ok(result)
@@ -76,11 +81,17 @@ fn check_paths(v: &Value, base: &Path) -> Result<()> {
     }
     Ok(())
 }
+struct SourceContext<'a> {
+    pub base: &'a Path,
+    pub config_path: Option<&'a Path>,
+}
 type SourceFactory = fn(&str, &Value, &Path, &Registry) -> Result<Box<dyn DataSource>>;
+type ContextFactory =
+    dyn Fn(&str, &Value, &SourceContext<'_>, &Registry) -> Result<Box<dyn DataSource>>;
 type TargetFactory = fn(&str, &Value) -> Result<()>;
 pub struct Registry {
     devices: BTreeMap<String, Device>,
-    sources: BTreeMap<String, SourceFactory>,
+    sources: BTreeMap<String, Box<ContextFactory>>,
     targets: BTreeMap<String, TargetFactory>,
 }
 impl Default for Registry {
@@ -100,18 +111,24 @@ impl Default for Registry {
                 device,
             )))
         });
-        r.register_source("garmin_connect", |id, v, _, r| {
-            if r.device(id, v)?.manufacturer != Device::CIRQA.manufacturer {
-                return Err(invalid(
-                    &format!("/sources/{id}/device"),
-                    "incompatible Garmin device",
-                ));
-            }
-            Ok(Box::new(DeferredSource {
-                id: id.into(),
-                kind: SourceKind::GarminConnect,
-            }))
-        });
+        r.sources.insert(
+            "garmin_connect".into(),
+            Box::new(|id, v, context, r| {
+                if r.device(id, v)?.manufacturer != Device::CIRQA.manufacturer {
+                    return Err(invalid(
+                        &format!("/sources/{id}/device"),
+                        "incompatible Garmin device",
+                    ));
+                }
+                Ok(Box::new(crate::data_source::GarminConnect::new(
+                    id,
+                    r.device(id, v)?,
+                    resolve(context.base, v["cache_dir"].as_str().unwrap())?,
+                    context.config_path,
+                    &v["auth"],
+                )))
+            }),
+        );
         r.register_source("apple_health_export", |id, _, _, _| {
             Ok(Box::new(DeferredSource {
                 id: id.into(),
@@ -127,7 +144,10 @@ impl Registry {
         self.devices.insert(name.into(), device);
     }
     pub fn register_source(&mut self, kind: &str, create: SourceFactory) {
-        self.sources.insert(kind.into(), create);
+        self.sources.insert(
+            kind.into(),
+            Box::new(move |id, v, ctx, r| create(id, v, ctx.base, r)),
+        );
     }
     pub fn register_target(&mut self, kind: &str, validate: TargetFactory) {
         self.targets.insert(kind.into(), validate);
@@ -146,21 +166,52 @@ pub struct Target {
 pub struct Settings {
     sources: BTreeMap<String, Box<dyn DataSource>>,
     targets: Vec<Target>,
+    devices: BTreeMap<String, Device>,
     selection: Value,
+    pub timezone: String,
+    pub output_dir: PathBuf,
 }
 impl Settings {
+    /// Install the credential-free v1 example without replacing an existing config.
+    pub fn init(path: &Path) -> Result<bool> {
+        use std::{io::Write, os::unix::fs::DirBuilderExt};
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        std::fs::DirBuilder::new()
+            .recursive(true)
+            .mode(0o700)
+            .create(parent)?;
+        let mut tmp = tempfile::NamedTempFile::new_in(parent)?;
+        tmp.write_all(EXAMPLE.as_bytes())?;
+        tmp.as_file().sync_all()?;
+        match tmp.persist_noclobber(path) {
+            Ok(_) => Ok(true),
+            Err(e) if e.error.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+            Err(e) => Err(e.error.into()),
+        }
+    }
     pub fn load(path: &Path) -> Result<Self> {
         Self::load_with(path, &Registry::default())
     }
     pub fn load_with(path: &Path, registry: &Registry) -> Result<Self> {
         let text = std::fs::read_to_string(path)
             .map_err(|e| invalid("", &format!("{}: {e}", path.display())))?;
-        Self::parse(&text, path.parent().unwrap_or(Path::new(".")), registry)
+        Self::parse_at(
+            &text,
+            path.parent().unwrap_or(Path::new(".")),
+            Some(path),
+            registry,
+        )
     }
     pub(crate) fn embedded() -> Result<Self> {
         Self::parse(EXAMPLE, Path::new("."), &Registry::default())
     }
     fn parse(text: &str, base: &Path, r: &Registry) -> Result<Self> {
+        Self::parse_at(text, base, None, r)
+    }
+    fn parse_at(text: &str, base: &Path, config_path: Option<&Path>, r: &Registry) -> Result<Self> {
         let v = unique_json::parse(text).map_err(|e| {
             invalid(
                 "",
@@ -173,15 +224,8 @@ impl Settings {
                 "does not match config v1 schema",
             ));
         }
-        let zone = Path::new(v["timezone"].as_str().unwrap());
-        let valid_zone = zone.components().all(|c| matches!(c, Component::Normal(_)))
-            && std::fs::File::open(Path::new("/usr/share/zoneinfo").join(zone)).is_ok_and(
-                |mut f| {
-                    let mut magic = [0; 4];
-                    f.read_exact(&mut magic).is_ok() && &magic == b"TZif"
-                },
-            );
-        if !valid_zone {
+        let timezone = v["timezone"].as_str().unwrap();
+        if jiff::tz::TimeZone::get(timezone).is_err() {
             return Err(invalid("/timezone", "unknown IANA time zone"));
         }
         check_paths(&v, base)?;
@@ -191,7 +235,10 @@ impl Settings {
             let factory = r.sources.get(v["kind"].as_str().unwrap()).ok_or_else(|| {
                 invalid(&format!("/sources/{id}/kind"), "unregistered source kind")
             })?;
-            sources.insert(id.clone(), factory(id, v, base, r)?);
+            sources.insert(
+                id.clone(),
+                factory(id, v, &SourceContext { base, config_path }, r)?,
+            );
         }
         let mut targets = Vec::new();
         if let Some(items) = v["destinations"].as_object() {
@@ -261,8 +308,17 @@ impl Settings {
         Ok(Self {
             sources,
             targets,
+            devices: definitions
+                .iter()
+                .filter_map(|(id, v)| Some((id.clone(), *r.devices.get(v["device"].as_str()?)?)))
+                .collect(),
             selection: merge.clone(),
+            timezone: timezone.into(),
+            output_dir: resolve(base, v["output_dir"].as_str().unwrap())?,
         })
+    }
+    pub fn device(&self, id: &str) -> Option<Device> {
+        self.devices.get(id).copied()
     }
     pub fn sources(&self) -> impl Iterator<Item = &dyn DataSource> {
         self.sources.values().map(Box::as_ref)
@@ -293,12 +349,42 @@ impl Settings {
     pub(crate) fn selection(&self) -> &Value {
         &self.selection
     }
-    pub(crate) fn merge_policy(&self) -> MergePolicy {
-        MergePolicy {
-            minimum_overlap: self.selection["min_overlap_ratio"].as_f64().unwrap(),
+    pub(crate) fn merge_policy(&self) -> MergePolicy<'_> {
+        MergePolicy { settings: self }
+    }
+    pub fn minimum_overlap(&self) -> f64 {
+        self.selection["min_overlap_ratio"].as_f64().unwrap()
+    }
+    pub fn primary_query(&self, day: &str) -> Result<crate::data_source::ActivityQuery> {
+        use jiff::civil::Date;
+        let date: Date = day
+            .parse()
+            .map_err(|_| Error::usage("expected YYYY-MM-DD"))?;
+        if date.to_string() != day {
+            return Err(Error::usage("expected YYYY-MM-DD"));
+        }
+        let midnight = |date: Date| {
+            date.at(0, 0, 0, 0)
+                .in_tz(&self.timezone)
+                .map(|z| z.timestamp().as_second())
+                .map_err(|e| Error::usage(e.to_string()))
+        };
+        Ok(crate::data_source::ActivityQuery::StartsWithin {
+            start_utc: midnight(date)?,
+            end_utc: midnight(date.tomorrow().map_err(|e| Error::usage(e.to_string()))?)?,
+        })
+    }
+    pub fn candidate_query(
+        &self,
+        start_utc: i64,
+        end_utc: i64,
+    ) -> crate::data_source::ActivityQuery {
+        crate::data_source::ActivityQuery::Overlapping {
+            start_utc,
+            end_utc,
+            minimum_overlap: self.minimum_overlap(),
         }
     }
 }
-
 #[cfg(test)]
 mod tests;

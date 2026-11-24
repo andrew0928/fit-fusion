@@ -22,7 +22,7 @@
 | 2026-11-23 | [整趟騎乘的熱量消耗優先使用 Garmin](2026-11-23-ride-calorie-source.md)（發佈 CIRQA 總熱量並另存兩個原值） | accepted |
 | 2026-11-23 | [心率先判整趟品質，再決定逐點補缺或整趟改用 Garmin](2026-11-23-heart-rate-quality.md) | accepted |
 | 2026-11-23 | [M2 交付可供 agent 操作的 macOS 融合 CLI，M3 處理安全保管與發佈](2026-11-23-cli-milestones.md) | accepted |
-| 2026-11-23 | [個人設定檔分開定義來源與逐串流順位，依日期從主來源找活動](2026-11-23-date-driven-config.md) | accepted |
+| 2026-11-23 | [個人設定檔分開定義來源與逐串流順位，依日期從主來源找活動](2026-11-23-date-driven-config.md)（M2-3 六趟 API 與離線配對已驗收） | accepted |
 | 2026-11-23 | [專案以 docs、src、data 與 runtime 分開保存文件、程式及本機資料](2026-11-23-project-layout.md) | accepted |
 | 2026-11-23 | [多語言 FIT 檢查器與單一 Rust 合併器分別驗收](2026-11-23-inspector-and-merger.md) | accepted |
 | 2026-11-23 | [三種檢查器以解碼後的欄位重新編碼 FIT](2026-11-23-inspector-roundtrip.md)（已驗收並啟動 M2 離線合併） | accepted |

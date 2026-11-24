@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
 import subprocess
 import sys
@@ -95,6 +96,14 @@ class Merger(unittest.TestCase):
         self.assertEqual(fit.read_bytes(),b"existing")
 
     def test_configured_directory_and_sdk_fixture_merge(self):
+        fresh=self.dir/"private"/"config.json"
+        init=[self.cli,"--config",str(fresh),"config","init","--json"]
+        self.assertEqual(json.loads(subprocess.check_output(init))["code"],"created")
+        self.assertEqual(fresh.stat().st_mode & 0o777,0o600)
+        self.assertEqual(fresh.parent.stat().st_mode & 0o777,0o700)
+        fresh.write_text("existing config")
+        self.assertEqual(json.loads(subprocess.check_output(init))["code"],"already_exists")
+        self.assertEqual(fresh.read_text(),"existing config")
         config = ROOT / "docs/config/local-fit.example.json"
         command = [self.cli, "--config", str(config)]
         check = json.loads(subprocess.check_output(command + ["config", "check", "--json"], cwd=self.dir))
@@ -105,7 +114,14 @@ class Merger(unittest.TestCase):
                 command + ["activities", "list", "--source", source, "--json"], cwd=self.dir))
             self.assertEqual([a["id"] for a in result["activities"]],
                              [hashlib.sha256((fixtures / name).read_bytes()).hexdigest() for name in files])
-        fit, report, _ = self.merge(fixtures / "rider.fit", fixtures / "cirqa.fit")
+        self.date_setup()
+        shutil.copy(fixtures/"rider.fit", self.primary/"ride.FIT")
+        shutil.copy(fixtures/"cirqa.fit", self.secondary/"band.fit")
+        batch=self.configured("--date","2024-01-09")
+        self.assertEqual(len(batch["rides"]),1)
+        artifacts=batch["rides"][0]["artifacts"]
+        fit=Path(artifacts["fit"])
+        report=json.loads(Path(artifacts["report"]).read_text())
         raw = subprocess.check_output(
             [sys.executable, "-m", "fit_fusion", "raw", str(fit)], cwd=self.dir,
             env={**os.environ, "PYTHONPATH": str(ROOT / "src/python")}, text=True)
@@ -125,6 +141,98 @@ class Merger(unittest.TestCase):
         self.assertEqual(sessions, [(2, 1)])
         self.assertEqual(report["heart_rate"]["samples"], {"bryton": 5, "garmin": 1, "missing": 0})
 
+    def date_setup(self):
+        self.conf = self.dir / "config.json"
+        self.primary = self.dir / "bikes"
+        self.secondary = self.dir / "watches"
+        self.primary.mkdir()
+        self.secondary.mkdir()
+        v = json.loads((ROOT / "docs/config/config.example.json").read_text())
+        v["sources"]["bryton"]["directory"] = str(self.primary)
+        v["sources"]["garmin"] = {"kind": "fit_directory", "device": "garmin_cirqa", "directory": str(self.secondary)}
+        v["output_dir"] = str(self.dir / "dates")
+        self.conf.write_text(json.dumps(v))
+        return v
+
+    def configured(self, *args, expected=0):
+        result = subprocess.run([self.cli, "--config", str(self.conf), "merge", *map(str,args), "--json"],
+                                cwd=self.dir, text=True, capture_output=True)
+        self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+        return json.loads(result.stdout)
+
+    def test_date_pairing_partial_rerun_ambiguity_and_manual_id(self):
+        self.date_setup()
+        day = ("--date", "2024-01-09")
+        fixtures = ROOT / "src/rust/merger/tests/fixtures"
+        scenarios = fixtures.parent / "scenarios"
+        self.assertEqual(self.configured(*day)["status"], "no_activities")
+        shutil.copy(fixtures/"rider.fit", self.primary/"one.FIT")
+        shutil.copy(fixtures/"rider-later.fit", self.primary/"two.fit")
+        shutil.copy(fixtures/"cirqa.fit", self.secondary/"first.fit")
+        partial = self.configured(*day, expected=3)
+        self.assertEqual((partial["status"], [r["code"] for r in partial["rides"]]), ("partial", ["ok", "quality_review"]))
+        self.assertEqual(len(list((self.dir/"dates").rglob("merged.fit"))), 1)
+        self.assertEqual(Path(partial["rides"][0]["artifacts"]["fit"]).read_bytes(),
+                         self.merge(self.primary/"one.FIT", self.secondary/"first.fit")[0].read_bytes())
+        (self.primary/"one.FIT").rename(self.primary/"renamed.fit")
+        shutil.copy(scenarios/"cirqa-later.fit", self.secondary/"second.fit")
+        complete = self.configured(*day)
+        self.assertEqual([r["reused"] for r in complete["rides"]], [True, False])
+        self.assertEqual(len(list((self.dir/"dates").rglob("merged.fit"))), 2)
+        shutil.copy(scenarios/"cirqa-later-alt.fit", self.secondary/"alt.fit")
+        partial = self.configured(*day, expected=3)
+        good, bad = partial["rides"]
+        self.assertTrue(good["reused"])
+        self.assertEqual(bad["code"], "ambiguous_match")
+        self.assertEqual(len(bad["details"]["candidates"]), 2)
+        for item in bad["details"]["candidates"]:
+            self.assertEqual(item["session_ratios"], [1,1])
+            self.assertEqual(item["record_ratios"], [1,1])
+            self.assertGreater(item["end_utc"], item["start_utc"])
+        result = self.configured(self.primary/"two.fit", "--garmin-id", bad["details"]["candidates"][0]["activity_id"],
+                                 "--out", self.dir/"resolved")
+        self.assertTrue(Path(result["artifacts"]["fit"]).is_file())
+        self.configured(self.primary/"renamed.fit", "--garmin", "auto", "--out", self.dir/"auto")
+        shutil.copy(scenarios/"rider-gps.fit", self.primary/"overlapping.fit")
+        shared = self.configured(*day, expected=3)
+        self.assertTrue(all(r["code"] == "ambiguous_match" for r in shared["rides"]))
+
+    def test_date_config_changes_fit_and_keeps_original(self):
+        v = self.date_setup()
+        scenarios = ROOT / "src/rust/merger/tests/scenarios"
+        main = self.primary/"original.fit"
+        watch = self.secondary/"watch.fit"
+        shutil.copy(scenarios/"rider-gps.fit", main)
+        shutil.copy(scenarios/"cirqa-sensors.fit", watch)
+        day = ("--date", "2024-01-09")
+        initial = self.configured(*day)["rides"][0]
+        v["merge"]["streams"] = {"record.position_lat":["bryton"], "record.position_long":["bryton"],
+                                 "record.cadence": ["garmin","bryton"]}
+        self.conf.write_text(json.dumps(v))
+        new = self.configured(*day)["rides"][0]
+        self.assertNotEqual(new["revision_id"], initial["revision_id"])
+        report = json.loads(Path(new["artifacts"]["report"]).read_text())
+        self.assertEqual(report["stream_sources"]["record.cadence"][0]["source"], "garmin")
+        records = list(rows(Path(new["artifacts"]["fit"])))
+        for n, fields in records:
+            if n == 20:
+                self.assertNotIn((None,13), fields)
+                self.assertNotIn((None,3), fields)
+            if n == 18:
+                for key in [57,11,196]:
+                    self.assertNotIn((None,key), fields)
+        points = [f for n,f in records if n == 20]
+        self.assertEqual(len(points),6)
+        self.assertEqual((points[2][None,0],points[2][None,1]),(2**31-1,2**31-1))
+        self.assertEqual(points[0][None,4],0)
+        self.assertEqual(main.read_bytes(),(scenarios/"rider-gps.fit").read_bytes())
+        v["merge"]["streams"]={"record.cadence":["bryton"]}
+        self.conf.write_text(json.dumps(v))
+        watch.unlink()
+        self.secondary.rmdir()
+        only=self.configured(*day)["rides"][0]
+        self.assertEqual(list(json.loads(Path(only["artifacts"]["report"]).read_text())["inputs"]),["bryton"])
+
     def test_m04_insufficient_fallback_and_invalid_pair(self):
         self.b.write_bytes(fixture(True,[255]*600+[120]*400))
         self.g.write_bytes(fixture(False,[255]*100+[110]*900))
@@ -139,6 +247,12 @@ class Merger(unittest.TestCase):
     def test_six_real_rides(self):
         with (ROOT/"data/index/rides.csv").open() as f:
             rides = list(csv.DictReader(f))
+        config = self.date_setup()
+        config["sources"]["bryton"]["directory"]=str(ROOT/"data/sources/bryton/fit")
+        config["sources"]["garmin"]["directory"]=str(ROOT/"data/sources/garmin")
+        self.conf.write_text(json.dumps(config))
+        empty=self.configured("--date","2026-10-15")
+        self.assertEqual((empty["status"],empty["rides"]),("no_activities",[]))
         for r in rides:
             date=r["ride_date"]
             with self.subTest(date=date):
@@ -147,6 +261,9 @@ class Merger(unittest.TestCase):
                 garmin={x[None,253]:x.get((None,3)) for n,x in rows(g) if n==20}
                 mode,count=EXPECTED[date]
                 fit,report,_=self.merge(g,b,date)
+                batch=self.configured("--date",date)
+                self.assertEqual(len(batch["rides"]),1)
+                self.assertEqual(Path(batch["rides"][0]["artifacts"]["fit"]).read_bytes(),fit.read_bytes())
                 merged=list(rows(fit))
                 rec=[x for n,x in merged if n==20]
                 primary=[x for n,x in original if n==20]

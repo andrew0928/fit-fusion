@@ -80,7 +80,8 @@ M2 依逐欄表從同名 FIT 欄位擇值。session／lap 心率摘要要與選�
 | 4 | Strava 自動發佈 | 模擬處理中、成功、判重、429、送出後斷線及兩個程序同時重跑，核對 POST 次數與恢復結果。另用一趟獲授權且尚未上傳的騎乘實測，記下 upload ID、activity ID，讀回平台熱量並與 FIT 比對。模擬結果與實際匯入分別記錄。[Strava 上傳回應](https://developers.strava.com/docs/reference/#api-Uploads) |
 | 5 | 分析交付 | 加 `--parquet` 後能還原兩份原檔並追查每個選值。驗證主流程不需 Apple 全量匯出。 |
 
-第 1、2 項的手動雙檔合併已改經共用的 Settings、FIT 讀取與 MergePolicy 模組，沿用六趟實檔回歸基準。第 3 項已完成設定檢查與本機 FIT 目錄列舉。下一步先補 Config、本機來源與既有策略的逐列斷言，再接本機日期查詢、唯一配對與套用設定合併。各批的 Row ID 見[模組測試排程](../spec/testcases/module-test-coverage.md#剩餘測試的執行順序)。Garmin API 及 Apple Health ZIP 各保留獨立來源種類。第 4、5 項待開發。[建置與操作](../../README.md#本機雙檔合併) · [已實作的驗收案例](../spec/testcases/merger.md#目前可重跑的驗收)
+第 1–3 項已完成。本機實測六個出發日，日期模式從正式 Garmin Personal API 配對及取回 CIRQA FIT，六份輸出均與手動雙檔逐位元組相同。第 4 項接續開發 Strava 授權、上傳及恢復查詢，第 5 項為 Parquet。[模組測試與 76 個決策列](../spec/testcases/module-test-coverage.md) · [日期模式驗收](../spec/testcases/merger.md#目前可重跑的驗收)
+
 
 ## M3 需求與研究待辦
 

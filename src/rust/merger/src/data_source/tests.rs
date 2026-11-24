@@ -21,6 +21,7 @@ fn discovers_unique_cycling_files_by_content_in_time_order() {
     symlink(dir.path(), sub.join("cycle")).unwrap();
     let all = s.list_activities(&ActivityQuery::All).unwrap();
     assert_eq!(all.len(), 2);
+    assert_eq!(all[1].activity_id, crate::hash(LATER), "C1c");
     assert_eq!(all[0].activity_id, crate::hash(RIDER));
     assert_eq!(all[0].source_id, "bike");
     let metadata = s.metadata(&all[0].activity_id).unwrap();
@@ -40,7 +41,8 @@ fn discovers_unique_cycling_files_by_content_in_time_order() {
     assert!(
         s.list_activities(&ActivityQuery::Overlapping {
             start_utc: START + 6,
-            end_utc: START + 16
+            end_utc: START + 16,
+            minimum_overlap: 0.9
         })
         .unwrap()
         .is_empty()
@@ -48,7 +50,8 @@ fn discovers_unique_cycling_files_by_content_in_time_order() {
     assert_eq!(
         s.list_activities(&ActivityQuery::Overlapping {
             start_utc: START + 5,
-            end_utc: START + 7
+            end_utc: START + 7,
+            minimum_overlap: 0.9
         })
         .unwrap(),
         in_range
@@ -110,12 +113,33 @@ fn recovers_renames_and_never_opens_replacement_as_requested_activity() {
         s.list_activities(&ActivityQuery::All).unwrap()[0].activity_id,
         id
     );
+    let renamed = s
+        .list_activities(&ActivityQuery::All)
+        .unwrap()
+        .pop()
+        .unwrap();
+    let r = s.open_activity(&renamed.activity_id).unwrap();
+    assert_eq!(r.metadata().source_id, "bike", "C7");
+    assert_eq!(r.original_bytes(), RIDER, "C7");
+    assert_eq!(
+        r.read_stream(StreamKey::HeartRate).unwrap()[0].raw,
+        Some(110)
+    );
+    assert_eq!(
+        r.read_summary(SummaryKey::SessionTotalCalories).unwrap()[0].raw,
+        Some(6)
+    );
     fs::write(new, LATER).unwrap();
     assert_eq!(
         s.open_activity(&id).err().unwrap().code,
         "activity_not_found"
     );
     assert_eq!(s.metadata(&id).unwrap_err().code, "activity_not_found");
+    assert!(s.metadata(&id).unwrap_err().message.contains(&id), "C4b");
+    assert!(
+        s.open_activity(&id).err().unwrap().message.contains(&id),
+        "C4d"
+    );
 }
 #[test]
 fn missing_or_corrupt_source_is_not_a_successful_partial_list() {

@@ -8,7 +8,7 @@
 
 ## 執行方式
 
-**A–D 全部採 Rust 單元測試。** 由 `cargo test` 執行獨立的 Rust 測試碼，直接呼叫正式 CLI 共用的模組。測試碼可放在各模組的 `#[cfg(test)] mod tests`，透過與 CLI 相同的介面呼叫。每列使用固定輸入，斷言回傳值及必要的互動次數。測試過程不啟動 merger 或 inspector 程序。本機 FIT 來源與設定已可執行 Rust 單元測試，Connect 的模擬案例隨後端開發補上。[重現命令](../../../README.md#驗證本機-fit-目錄來源)
+**A–D 全部採 Rust 單元測試。** 由 `cargo test` 執行獨立的 Rust 測試碼，直接呼叫正式 CLI 共用的模組。測試碼可放在各模組的 `#[cfg(test)] mod tests`，透過與 CLI 相同的介面呼叫。每列使用固定輸入，斷言回傳值及必要的互動次數。測試過程不啟動 merger 或 inspector 程序。本機 FIT、設定、選源策略與 Connect 模擬案例均已可由 cargo test 重跑。[重現命令](../../../README.md#驗證本機-fit-目錄來源)
 
 - **A · Config** 使用小型 JSON、測試用的來源與目的地 factory。只有這張表展開設備、連線器與實例數量的組合。
 - **B · Query** 直接傳日期、時區和 UTC 區間，核對查詢端點與門檻。

@@ -17,7 +17,9 @@ pub struct Ride {
     pub bytes: Vec<u8>,
     pub hash: String,
     pub device: Device,
+    pub session_utc: (i64, i64),
     pub source_id: String,
+    pub records: BTreeMap<u32, Message>,
     pub samples: BTreeMap<u32, Option<u8>>,
     pub boundaries: BTreeSet<u32>,
     pub session: Message,
@@ -46,6 +48,7 @@ impl Ride {
             })
             .collect();
         let unknown_fields = native.difference(&known).copied().collect();
+        let mut records = BTreeMap::new();
         let mut samples = BTreeMap::new();
         let mut boundaries = BTreeSet::new();
         let mut session = None;
@@ -71,6 +74,7 @@ impl Ride {
                     }
                     prev = Some(ts);
                     samples.insert(ts, heart(&m));
+                    records.insert(ts, m);
                 }
                 21 if number(&m, 0) == Some(0) => {
                     if let (Some(ts), Some(ty)) = (number(&m, 253), number(&m, 1)) {
@@ -115,13 +119,15 @@ impl Ride {
                 stopped = Some(ts);
             }
         }
-        let hash = metadata.activity_id;
+        let hash = crate::hash(&bytes);
         Ok(Self {
             bytes,
             path,
             hash,
             device,
+            session_utc: (metadata.start_utc, metadata.end_utc),
             source_id: metadata.source_id,
+            records,
             samples,
             boundaries,
             session: session.ok_or_else(|| Error::data("missing cycling session"))?,

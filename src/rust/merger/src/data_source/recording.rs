@@ -170,7 +170,7 @@ pub struct Summary {
     pub raw: Option<i64>,
 }
 
-fn scalar(message: &Message, field: u8) -> Option<i64> {
+pub(crate) fn scalar(message: &Message, field: u8) -> Option<i64> {
     match &message.fields.iter().find(|f| f.num == field)?.value {
         Value::Uint8(x) if *x != u8::MAX => Some((*x).into()),
         Value::Uint16(x) if *x != u16::MAX => Some((*x).into()),
@@ -183,6 +183,8 @@ fn scalar(message: &Message, field: u8) -> Option<i64> {
 }
 impl ActivityRecording {
     pub(super) fn read(path: &Path, source: &str) -> Result<Self> {
+        #[cfg(test)]
+        super::SOURCE_READS.with(|n| n.set(n.get() + 1));
         let bytes = fs::read(path)
             .map_err(|e| Error::new("source_io", format!("{}: {e}", path.display()), 3))?;
         Self::from_fit_bytes(source, path, bytes)
@@ -266,7 +268,11 @@ impl ActivityRecording {
 pub(crate) fn number(m: &Message, id: u8) -> Option<u32> {
     u32::try_from(scalar(m, id)?).ok()
 }
+#[cfg(test)]
+thread_local! {pub(super) static DECODE_COUNT:std::cell::Cell<usize>=const{std::cell::Cell::new(0)};}
 pub(crate) fn decode(bytes: &[u8]) -> Result<rustyfit::proto::FIT> {
+    #[cfg(test)]
+    DECODE_COUNT.with(|c| c.set(c.get() + 1));
     Decoder::builder()
         .expand_components(false)
         .build()

@@ -1,80 +1,211 @@
 use crate::{
     Error, Result,
-    data_source::{ActivityRecording, Device},
+    config::Settings,
+    data_source::scalar,
     output::Calories,
     quality::{self, Selection},
     ride::Ride,
 };
-use serde_json::json;
-fn overlap((a, b): (u32, u32), (c, d): (u32, u32)) -> [f64; 2] {
-    let span = b.min(d).saturating_sub(a.max(c)) as f64;
-    [span / (b - a) as f64, span / (d - c) as f64]
-}
-fn session_span(r: &Ride) -> Result<(u32, u32)> {
-    let a = crate::data_source::number(&r.session, 2)
-        .ok_or_else(|| Error::quality("session start unavailable"))?;
-    let ms = crate::data_source::number(&r.session, 7)
-        .ok_or_else(|| Error::quality("session elapsed time unavailable"))?;
-    let end = a
-        .checked_add(ms.div_ceil(1000))
-        .filter(|&end| end > a)
-        .ok_or_else(|| Error::quality("invalid session duration"))?;
-    Ok((a, end))
-}
+use serde_json::{Value, json};
+use std::collections::BTreeMap;
 
-pub(crate) struct MatchedRide {
-    pub primary: Ride,
-    pub secondary: Ride,
+pub(crate) fn ratios((a, b): (i64, i64), (c, d): (i64, i64)) -> [f64; 2] {
+    if b <= a || d <= c {
+        return [0.0; 2];
+    }
+    let intersection = (b.min(d) - a.max(c)).max(0) as f64;
+    [intersection / (b - a) as f64, intersection / (d - c) as f64]
+}
+fn intervals(ride: &Ride) -> [(i64, i64); 2] {
+    let (first, last) = ride.span();
+    [(first.into(), last.into()), ride.session_utc]
+}
+pub fn overlap(primary: &Ride, candidate: &Ride) -> [[f64; 2]; 2] {
+    let [ar, asess] = intervals(primary);
+    let [br, bsess] = intervals(candidate);
+    [ratios(ar, br), ratios(asess, bsess)]
+}
+pub struct MatchedRide {
+    pub primary_id: String,
+    pub rides: BTreeMap<String, Ride>,
 }
 impl MatchedRide {
-    pub fn new(first: ActivityRecording, second: ActivityRecording) -> Result<Self> {
-        let a = Ride::from_recording(first)?;
-        let b = Ride::from_recording(second)?;
-        let (primary, secondary) = match (a.device, b.device) {
-            (Device::RIDER_460, Device::CIRQA) => (a, b),
-            (Device::CIRQA, Device::RIDER_460) => (b, a),
-            _ => return Err(Error::data("expected one Rider 460 and one CIRQA")),
-        };
-        Ok(Self { primary, secondary })
+    pub fn primary(&self) -> &Ride {
+        &self.rides[&self.primary_id]
     }
 }
 
-pub(crate) struct SelectedRide {
+// (config field, native record field number, FIT base type)
+pub const STREAMS: &[(&str, u8, u8)] = &[
+    ("record.position_lat", 0, 0x85),
+    ("record.position_long", 1, 0x85),
+    ("record.altitude", 2, 0x84),
+    ("record.cadence", 4, 2),
+    ("record.distance", 5, 0x86),
+    ("record.speed", 6, 0x84),
+    ("record.power", 7, 0x84),
+    ("record.temperature", 13, 1),
+    ("record.enhanced_speed", 73, 0x86),
+    ("record.enhanced_altitude", 78, 0x86),
+];
+pub struct FieldSelection {
+    pub name: &'static str,
+    pub id: u8,
+    pub base: u8,
+    pub values: Vec<Option<i64>>,
+    pub ranges: Vec<Value>,
+    pub primary_only: bool,
+}
+pub struct SelectedRide<'a> {
     pub heart: Selection,
-    pub calories: Calories,
-    pub record_overlap: [f64; 2],
-    pub session_overlap: [f64; 2],
+    pub heart_enabled: bool,
+    pub heart_source: Option<&'a Ride>,
+    pub fields: Vec<FieldSelection>,
+    pub calories: Option<Calories>,
+    pub calorie_source: Option<&'a Ride>,
+    pub write_total: bool,
+    pub write_metabolic: bool,
+    pub overlaps: BTreeMap<String, [[f64; 2]; 2]>,
 }
-
-pub(crate) struct MergePolicy {
-    pub minimum_overlap: f64,
+pub(crate) struct MergePolicy<'a> {
+    pub settings: &'a Settings,
 }
-impl MergePolicy {
-    pub fn select(&self, pair: &MatchedRide) -> Result<SelectedRide> {
-        let (b, g) = (&pair.primary, &pair.secondary);
-        let threshold = self.minimum_overlap;
-        let overlap_records = overlap(b.span(), g.span());
-        let overlap_sessions = overlap(session_span(b)?, session_span(g)?);
-        if overlap_records
-            .iter()
-            .chain(&overlap_sessions)
-            .any(|&r| r < threshold)
-        {
-            let mut e = Error::new(
-                "unmatched_activities",
-                "riding intervals do not meet the mutual overlap threshold",
-                3,
-            );
-            e.details =
-                json!({"records":overlap_records,"sessions":overlap_sessions,"minimum":threshold});
-            return Err(e);
+impl MergePolicy<'_> {
+    pub fn select<'a>(&self, pair: &'a MatchedRide) -> Result<SelectedRide<'a>> {
+        let primary = pair.primary();
+        let mut overlaps = BTreeMap::new();
+        for (id, ride) in &pair.rides {
+            if id == &pair.primary_id {
+                continue;
+            }
+            let checks = overlap(primary, ride);
+            if checks
+                .iter()
+                .flatten()
+                .any(|r| *r < self.settings.minimum_overlap())
+            {
+                let mut e = Error::new(
+                    "unmatched_activities",
+                    "riding intervals do not meet the mutual overlap threshold",
+                    3,
+                );
+                e.details = json!({"source":id,"records":checks[0],"sessions":checks[1],"minimum":self.settings.minimum_overlap()});
+                return Err(e);
+            }
+            overlaps.insert(id.clone(), checks);
         }
-
+        let priorities = |field| {
+            self.settings
+                .sources_for(field)
+                .map(|s| s.id())
+                .collect::<Vec<_>>()
+        };
+        let hr = priorities("record.heart_rate");
+        let lookup = |id: &&str| pair.rides.get(*id);
+        let heart = quality::select(
+            primary,
+            hr.first().and_then(lookup),
+            hr.get(1).and_then(lookup),
+            !hr.is_empty(),
+        )?;
+        let heart_source = if heart.only_garmin {
+            hr.get(1).and_then(lookup)
+        } else if heart.only_bryton {
+            hr.first().and_then(lookup)
+        } else {
+            None
+        };
+        let total = priorities("session.total_calories");
+        let metabolic = priorities("session.metabolic_calories");
+        let calorie_id = total.first().or(metabolic.first());
+        let calorie_source = calorie_id.and_then(lookup);
+        let calories = match calorie_id {
+            Some(_) => {
+                let source = calorie_source.ok_or_else(|| {
+                    Error::quality("missing Garmin session for requested calories")
+                })?;
+                Some(Calories::read(primary, source, !total.is_empty())?)
+            }
+            None => None,
+        };
+        let fields = STREAMS
+            .iter()
+            .filter_map(|&(name, id, base)| {
+                let sources = priorities(name);
+                if sources.is_empty() {
+                    return None;
+                }
+                Some(select_field(pair, name, id, base, &sources))
+            })
+            .collect();
         Ok(SelectedRide {
-            heart: quality::select(b, g)?,
-            calories: Calories::read(b, g)?,
-            record_overlap: overlap_records,
-            session_overlap: overlap_sessions,
+            heart,
+            heart_source,
+            heart_enabled: !hr.is_empty(),
+            fields,
+            calories,
+            calorie_source,
+            write_total: !total.is_empty(),
+            write_metabolic: !metabolic.is_empty(),
+            overlaps,
         })
     }
 }
+
+fn select_field(
+    pair: &MatchedRide,
+    name: &'static str,
+    id: u8,
+    base: u8,
+    order: &[&str],
+) -> FieldSelection {
+    let primary = pair.primary();
+    let sources: Vec<_> = order
+        .iter()
+        .filter_map(|source| Some((*source, pair.rides.get(*source)?)))
+        .collect();
+    let mut values = Vec::with_capacity(primary.samples.len());
+    let mut ranges = Vec::new();
+    let mut current: Option<(u32, u32, Option<&str>)> = None;
+    let mut primary_only = true;
+    let range = |(start, end, source): (u32, u32, Option<&str>)| json!({"start_fit_seconds":start,"end_fit_seconds":end,"source":source});
+    for &time in primary.samples.keys() {
+        let chosen = sources.iter().find_map(|&(source, ride)| {
+            let message = ride.records.get(&time)?;
+            if id <= 1 {
+                scalar(message, 1 - id)?;
+            }
+            Some((source, scalar(message, id)?))
+        });
+        let origin = chosen.map(|(source, _)| source);
+        let value = chosen.map(|(_, v)| v);
+        primary_only &= origin.is_none_or(|s| s == pair.primary_id)
+            && value == primary.records.get(&time).and_then(|m| scalar(m, id));
+        if let Some((_, last, previous)) = &mut current
+            && *previous == origin
+            && last.checked_add(1) == Some(time)
+        {
+            *last = time;
+        } else {
+            if let Some(previous) = current {
+                ranges.push(range(previous));
+            }
+            current = Some((time, time, origin));
+        }
+        values.push(value);
+    }
+    if let Some(previous) = current {
+        ranges.push(range(previous));
+    }
+    FieldSelection {
+        name,
+        id,
+        base,
+        values,
+        ranges,
+        primary_only,
+    }
+}
+
+#[cfg(test)]
+mod tests;

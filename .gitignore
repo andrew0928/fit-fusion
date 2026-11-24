@@ -11,3 +11,7 @@ __pycache__/
 !src/rust/merger/tests/fixtures/rider-later.fit
 !src/rust/merger/tests/fixtures/cirqa.fit
 .env
+!src/rust/merger/tests/scenarios/rider-gps.fit
+!src/rust/merger/tests/scenarios/cirqa-later.fit
+!src/rust/merger/tests/scenarios/cirqa-later-alt.fit
+!src/rust/merger/tests/scenarios/cirqa-sensors.fit

@@ -4,6 +4,7 @@ mod output;
 mod policy;
 mod quality;
 mod ride;
+pub mod workflow;
 use data_source::{ActivityRecording, FitDirectory};
 use policy::MatchedRide;
 use quality::Selection;
@@ -11,11 +12,12 @@ use ride::Ride;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::{
+    collections::BTreeMap,
     fs,
     io::Write,
     path::{Path, PathBuf},
 };
-const VERSION: &str = "offline-dual-fit-v1";
+const VERSION: &str = "configured-fit-v2";
 #[derive(Debug)]
 pub struct Error {
     pub code: &'static str,
@@ -126,28 +128,104 @@ pub fn merge_recordings(
     second: ActivityRecording,
     out: &Path,
 ) -> Result<Value> {
-    let settings = config::Settings::embedded()?;
-    let pair = MatchedRide::new(first, second)?;
-    let selected = settings.merge_policy().select(&pair)?;
-    let (b, g) = (&pair.primary, &pair.secondary);
-    let (s, c) = (&selected.heart, &selected.calories);
-    let bytes = output::build(b, g, s, c)?;
-    let source = |r: &Ride| {
-        let mut info = json!({"path":r.path,"sha256":r.hash,"record_interval_fit_seconds":r.span(),"unknown_native_message_field_pairs":r.unknown_fields});
-        if !r.source_id.is_empty() {
-            info["source_id"] = json!(r.source_id);
-        }
-        info
+    manual_pair(&config::Settings::embedded()?, first, second, out)
+}
+fn manual_pair(
+    settings: &config::Settings,
+    first: ActivityRecording,
+    second: ActivityRecording,
+    out: &Path,
+) -> Result<Value> {
+    use data_source::Device;
+    let (b, g) = match (first.metadata.device, second.metadata.device) {
+        (Device::RIDER_460, Device::CIRQA) => (first, second),
+        (Device::CIRQA, Device::RIDER_460) => (second, first),
+        _ => return Err(Error::data("expected one Rider 460 and one CIRQA")),
     };
-    let report = json!({"schema_version":1,"rules_version":VERSION,"inputs":{"bryton":source(b),"garmin":source(g)},
-        "selection":settings.selection(),"overlap":{"record_ratios":selected.record_overlap,"session_ratios":selected.session_overlap},
-        "heart_rate":s.report,"heart_rate_sources":provenance(s),"primary_timeline":"bryton",
-        "calories":{"source":"garmin","bryton_original":crate::data_source::number(&b.session,11),"total_calories":c.total,"metabolic_calories":c.metabolic,
-        "active_calories":c.metabolic.and_then(|v|c.total.checked_sub(v)),"developer_index":c.dev,"application_id":hex::encode(output::APP_ID)},
-        "output_sha256":hash(&bytes)});
-    let reused = write_result(out, &bytes, &report)?;
+    let primary_id = settings.primary_source().id().to_owned();
+    let mut rides = BTreeMap::from([(primary_id.clone(), Ride::from_recording(b)?)]);
+    let ids = workflow::required(settings);
+    if ids.len() > 1 {
+        return Err(Error::usage(
+            "use date mode to identify multiple configured secondary sources",
+        ));
+    }
+    if let Some(id) = ids.first() {
+        if settings.device(id) != Some(Device::CIRQA) {
+            return Err(Error::usage(
+                "second input must match the configured CIRQA source",
+            ));
+        }
+        rides.insert(id.clone(), Ride::from_recording(g)?);
+    }
+    export(settings, &MatchedRide { primary_id, rides }, out, false)
+}
+fn export(
+    settings: &config::Settings,
+    pair: &MatchedRide,
+    out: &Path,
+    revision_path: bool,
+) -> Result<Value> {
+    let selected = settings.merge_policy().select(pair)?;
+    let b = pair.primary();
+    let bytes = output::build(b, &selected)?;
+    let s = &selected.heart;
+    let mut inputs = BTreeMap::new();
+    for (id, r) in &pair.rides {
+        let mut info = json!({"sha256":r.hash,"device":{"manufacturer":r.device.manufacturer,"product":r.device.product},"record_interval_fit_seconds":r.span(),"unknown_native_message_field_pairs":r.unknown_fields});
+        if !revision_path {
+            info["path"] = json!(r.path);
+        }
+        info["source_id"] = json!(if r.source_id.is_empty() {
+            id
+        } else {
+            &r.source_id
+        });
+        inputs.insert(id, info);
+    }
+    let calories=selected.calories.as_ref().map(|c|json!({
+        "source":selected.calorie_source.and_then(|r|pair.rides.iter().find(|(_,v)|std::ptr::eq(*v,r)).map(|(id,_)|id)),
+        "bryton_original":data_source::number(&b.session,11),"total_calories":c.total,"metabolic_calories":c.metabolic,
+        "active_calories":c.active(),"developer_index":selected.write_total.then_some(c.dev),
+        "application_id":hex::encode(output::APP_ID)
+    }));
+    let hr_ids = settings
+        .sources_for("record.heart_rate")
+        .map(|s| s.id())
+        .collect::<Vec<_>>();
+    let mut hr_ranges = provenance(s);
+    for range in &mut hr_ranges {
+        let id = match range["source"].as_str() {
+            Some("bryton") => hr_ids.first(),
+            Some("garmin") => hr_ids.get(1),
+            _ => None,
+        };
+        if let Some(id) = id {
+            range["source"] = json!(id);
+        }
+    }
+    let field_sources: BTreeMap<_, _> = selected
+        .fields
+        .iter()
+        .map(|f| (f.name, &f.ranges))
+        .collect();
+    let first_overlap = selected.overlaps.values().next();
+    let report = json!({"schema_version":1,"rules_version":VERSION,"inputs":inputs,"primary_timeline":pair.primary_id,
+        "selection":settings.selection(),"overlap":{"record_ratios":first_overlap.map(|r|r[0]),"session_ratios":first_overlap.map(|r|r[1]),"by_source":selected.overlaps},
+        "heart_rate":s.report,"heart_rate_sources":hr_ranges,"stream_sources":field_sources,"calories":calories,"output_sha256":hash(&bytes)});
+    let hashes: BTreeMap<_, _> = pair.rides.iter().map(|(id, r)| (id, &r.hash)).collect();
+    let revision = hash(
+        &serde_json::to_vec(&(VERSION, hashes, settings.selection()))
+            .map_err(std::io::Error::other)?,
+    );
+    let out = if revision_path {
+        out.join(&b.hash).join(&revision)
+    } else {
+        out.to_owned()
+    };
+    let reused = write_result(&out, &bytes, &report)?;
     Ok(
-        json!({"schema_version":1,"status":"exported","code":"ok","reused":reused,"artifacts":{"fit":out.join("merged.fit"),
-        "report":out.join("merge-report.json")},"next_action":null}),
+        json!({"schema_version":1,"status":"exported","code":"ok","revision_id":revision,"reused":reused,
+        "artifacts":{"fit":out.join("merged.fit"),"report":out.join("merge-report.json")},"next_action":null}),
     )
 }

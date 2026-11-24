@@ -2,14 +2,14 @@
 
 2026-11-23 已確認此格式作為 M2 的實作依據。[決策紀錄](../decisions/2026-11-23-date-driven-config.md)
 
-設定一次資料來源與串流順位後，日常操作只需給騎乘出發日期。以下是 M2 的目標命令。預設輸出合併 FIT 與報告，加 `--publish strava` 才上傳。
+設定一次資料來源與串流順位後，日常操作只需給騎乘出發日期。M2-3 可按日期輸出合併 FIT 與報告；下列第二條為 M2-4 的發佈介面。
 
 ```sh
 fit-fusion merge --date 2026-11-21
 fit-fusion merge --date 2026-11-21 --publish strava --json
 ```
 
-預設檔案為 `~/.config/fit-fusion/config.json`。建議由 `fit-fusion config init` 寫出含完整預設順位的範本，再調整來源目錄與憑證。`fit-fusion config check` 可在離線狀態檢查結構與來源引用。`--config <path>` 可指定另一份設定。[完整 JSON 範例](config.example.json) · [JSON Schema](config-v1.schema.json)
+預設檔案為 `~/.config/fit-fusion/config.json`。執行 `fit-fusion config init` 可建立權限 0600、含完整預設順位的範本；已有設定會保留原檔，再調整來源目錄與憑證。`fit-fusion config check` 可在離線狀態檢查結構與來源引用。`--config <path>` 可指定另一份設定。[完整 JSON 範例](config.example.json) · [JSON Schema](config-v1.schema.json)
 
 ## 檔案結構
 
@@ -98,4 +98,4 @@ JSON Schema 驗證鍵名、資料型別、來源區段、可選 FIT 欄位與非
 - GPS 兩欄順位須相同。預設心率規則支援 Rider 460 首選與可選的 CIRQA 次選；已選整趟熱量時沿用已確認的 CIRQA 來源，兩個整趟熱量欄若皆啟用須取自同一份 session。來源 ID 改名並同步修改引用仍有效。
 - 檢查展開後的實際路徑，避免把輸出或快取當成主活動反覆讀入。缺少 token、設備未掛載、API 限流是執行時各自的狀態。靜態 `config check` 不讀取私人健康檔、不發網路請求。
 
-以現有索引的六筆 Bryton 與六筆 Garmin 時段交叉比對，`0.90` 門檻下六趟各有唯一候選。10/14、10/28 兩趟均在次日結束；11/21 的雙方較低重疊比為 96.97%。實作時另以同日兩趟、歧義候選、目錄遺失、跨午夜及重跑驗收日期命令。[六趟驗證資料說明](../research/2026-11-23-heart-rate-quality.md)
+以現有索引的六筆 Bryton 與六筆 Garmin 時段交叉比對，`0.90` 門檻下六趟各有唯一候選。10/14、10/28 兩趟均在次日結束；11/21 的雙方較低重疊比為 96.97%。M2-3 已驗同日兩趟、歧義候選、目錄遺失、跨午夜及重跑；六趟實際 Connect 輸出與本機雙檔逐位元組相同。[六趟驗證資料說明](../research/2026-11-23-heart-rate-quality.md)
