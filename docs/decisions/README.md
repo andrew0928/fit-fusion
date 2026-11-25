@@ -14,6 +14,7 @@
 
 | 日期 | 決策 | 狀態 |
 |---|---|---|
+| 2026-11-26 | [M5-5 使用單一 YAML，區分共用與工具設定](2026-11-26-single-yaml-config.md) | accepted |
 | 2026-11-25 | [M4 依用途拆分 CLI，移轉 M3 並廢除 M2-4](2026-11-25-cli-split.md)（合併入口與時程由同日後續決策取代） | accepted |
 | 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
 | 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |
@@ -25,6 +26,7 @@
 | 2026-11-25 | [Apple 轉製 FIT 的 Workout 識別、取樣與修訂](2026-11-25-apple-fit-revisions.md) | accepted |
 | 2026-11-25 | [透過 andrew0928/tools 安裝五支 Apple Silicon CLI](2026-11-25-homebrew-cli.md) | accepted |
 | 2026-11-25 | [M5 以 0.3.0 首次正式發佈為目標，承接五項發佈前工作](2026-11-25-first-stable-release.md)（0.2.x Homebrew 供測試，0.3.0 略過 Developer ID 簽章與公證） | accepted |
+| 2026-11-25 | [M5-5 查詢工具的設定檔命名與分檔](2026-11-25-query-config-layout.md) | superseded |
 | 2026-11-24 | [M2 設定與活動來源的模組邊界、介面簽名與驗收條件](2026-11-24-config-and-data-source.md) | accepted |
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |

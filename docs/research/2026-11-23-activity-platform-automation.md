@@ -42,6 +42,14 @@ Apple 的逐趟 FIT 匯出、資料權限、費用及免年費方案，見[Apple
 - **Bryton Active。** 手冊未說明原騎乘已同步時，網站會接受、略過或另建合併檔，也未承諾保留 developer fields。須用樣本驗證。[Rider 460 手冊](https://global.brytonsport.com/pages/support_downloadum_r460)
 - **Strava。** 自建 API App 需有 Strava 訂閱，新 App 預設可授權自己的帳號。若裝置已將同趟騎乘同步到 Strava，再上傳合併檔可能收到 duplicate。成功時以回傳的活動 ID 讀取心率等 streams，核對修復區段。平台 streams 只涵蓋其支援的欄位。[開發者資格](https://developers.strava.com/docs/getting-started/) · [上傳狀態與重複錯誤](https://developers.strava.com/docs/uploads/) · [活動 streams](https://developers.strava.com/docs/reference/#api-Streams-getActivityStreams)
 
+## Rider 460 騎後免接線取檔（2026-11-25 調查）
+
+Rider 460 手冊第 9 頁說明，將車錶與 iPhone 的 Bryton Active 配對，並開啟「Activity Auto Sync」後，新的騎乘紀錄會經 BLE 同步。Mac 可在活動進入 Bryton Active 雲端後下載。手冊將電腦直接讀取活動目錄的操作列在 USB 一節。本次未找到 Rider 460 讓 Mac 經藍牙直接列舉、下載 FIT 的公開協定或已驗證工具，也未找到此機型以家中 Wi-Fi 自行上傳的操作說明。[Rider 460 官方手冊](https://global.brytonsport.com/pages/support_downloadum_r460)
+
+核對 intervalssync v0.9.5 原始碼，標準 CLI 的 Bryton 同步固定開啟 intervals.icu 上傳。`--download-dir` 和 `--keep-files` 控制本機副本。底層 Bryton 模組則可用自己的 Bryton 帳號登入、列舉活動與按 ID 取得 FIT。將 `download_fit=True`、`upload_intervals=False`、`upload_dropbox=False`、`intervals_api_key=None` 傳入 `SyncConfig`，即可走純下載分支。這是第三方套件的內部介面，Bryton 雲端存取依賴非官方介面。[CLI 參數與組態](https://github.com/jorge-huxley/intervalssync/blob/v0.9.5/src/intervalssync/cli/main.py) · [Bryton 核心流程](https://github.com/jorge-huxley/intervalssync/blob/v0.9.5/src/intervalssync/bryton/core.py) · [FIT 下載實作](https://github.com/jorge-huxley/intervalssync/blob/v0.9.5/src/intervalssync/bryton/api.py)
+
+可行性驗證可先取一筆已有 USB 基準檔的活動，比對 SHA-256。下一趟保留 iPhone 鎖屏及平常的 App 狀態，記下車錶存檔、雲端出現活動、Mac 收到檔案的時間。Mac 可用 LaunchAgent 定期查詢，以活動 ID 跳過已完整下載的檔案，再將目錄交給現有的 `fit-query-files`。上游純下載分支預設取最近五筆，並不依本機檔案去重。這些結果來自手冊及原始碼，個人帳號、檔案一致性與背景同步仍待實測。
+
 ## 待實測項目
 
 1. 取得同趟 Garmin 與 Bryton 的雲端 FIT，解開 ZIP 後分別與已保存的裝置來源檔比對 SHA-256。若有差異，再逐框核對取樣時間、欄位值、私有訊息與 developer fields。

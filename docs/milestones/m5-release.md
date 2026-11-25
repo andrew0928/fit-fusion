@@ -10,6 +10,6 @@
 | M5-2 | 待確認費用方案 | GitHub Actions 建置 | 提案是在私有開發庫的標準 macOS arm64 runner 依 tag 與 Cargo.lock 建置五支 CLI，跑既有單元及 CLI 驗收，記錄來源 commit、產物與結果，再交付公開 tap。方案依帳號可用額度確認。[GitHub 計費](https://docs.github.com/en/billing/concepts/product-billing/github-actions) |
 | M5-3 | 本版略過 | Apple Developer ID 簽章與公證 | 使用者目前沒有 Apple Developer 帳號，已決定 0.3.0 略過簽章、公證及對應的瀏覽器下載啟動驗收。 |
 | M5-4 | 已確認，待辦 | Homebrew 跨版本升級 | 在測試用 tap 分支，從已安裝的 0.2.2 執行 `brew update`、`brew upgrade andrew0928/tools/fit-fusion` 升至候選版。核對五支工具，通過 `brew test`，以合成 FIT 合併並用安裝版檢查器讀回。 |
-| M5-5 | 已確認，待辦 | 共通設定與舊 CLI 退場 | 定義並驗收 `~/.fit-fusion/` 與 Garmin `--env-file` 的取用規則，保留 `fit-merge` 免設定檔即可執行。交付安裝、升級及退場指引，以合成檔走完查詢、匯出、合併與檢查，並說明如何手動上傳 Strava。 |
+| M5-5 | 設定格式已確認，待實作與驗收 | 共通設定與舊 CLI 退場 | 實作並驗收 [`~/.fit-fusion/config.yaml` 的共用與工具區段](../spec/cli-common.md)及 Garmin `--env-file` 規則，保留 `fit-merge` 免設定檔即可執行。交付安裝、升級及退場指引，以合成檔走完查詢、匯出、合併與檢查，並說明如何手動上傳 Strava。 |
 
 **完成里程碑的條件**　候選版演練保留來源 commit、附件 SHA-256 與驗收結果。正式發佈時核對 `v0.3.0` 來源 tag、公開 GitHub Release 附件與 tap 的 Formula；匿名下載取得相符的 0.3.0 套件。
