@@ -18,6 +18,9 @@
 | 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
 | 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |
 | 2026-11-25 | [本機 FIT 依出發日期查詢，按原始內容匯出](2026-11-25-local-fit-query.md) | accepted |
+| 2026-11-25 | [Garmin 獨立查詢使用個人 API 金鑰，保留本機原始 FIT](2026-11-25-garmin-query-credentials.md) | accepted |
+| 2026-11-25 | [三支查詢的名稱與文字輸出、檢查器的取樣介面](2026-11-25-query-display-and-inspector-streams.md) | accepted |
+| 2026-11-25 | [v0.2.1 發佈與 M4 開發順序](2026-11-25-v021-roadmap.md) | accepted |
 | 2026-11-24 | [M2 設定與活動來源的模組邊界、介面簽名與驗收條件](2026-11-24-config-and-data-source.md) | accepted |
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |

@@ -2,12 +2,16 @@ mod catalog;
 #[path = "../../cli_help.rs"]
 mod cli_help;
 mod export;
+#[path = "../../query_output.rs"]
+mod query_output;
 
 use catalog::{FileError, Listing, Query};
 use clap::builder::TypedValueParser;
-use clap::{Args, FromArgMatches, Parser, Subcommand, ValueEnum, error::ErrorKind};
-use fit_inspector::activity::Device;
-use jiff::{civil::Date, tz::TimeZone};
+use clap::{FromArgMatches, Parser, Subcommand, ValueEnum, error::ErrorKind};
+#[path = "../../query_filters.rs"]
+mod query_filters;
+use jiff::tz::TimeZone;
+use query_filters::{Filters, parse_zone};
 use serde_json::{Value, json};
 use std::{
     path::{Path, PathBuf},
@@ -27,11 +31,10 @@ struct Cli {
     /// IANA zone for the ride's departure date
     #[arg(long, global=true, default_value="Asia/Taipei", value_parser=parse_zone, value_name="ZONE")]
     timezone: TimeZone,
-    /// Print compact JSON for automation
-    #[arg(long, global = true)]
-    json: bool,
+    #[command(flatten)]
+    output: query_output::Output,
     /// Read an offline agent guide
-    #[arg(long, num_args=0..=1, default_missing_value="index", value_name="TOPIC", conflicts_with_all=["dir","json"])]
+    #[arg(long, num_args=0..=1, default_missing_value="index", value_name="TOPIC", conflicts_with_all=["dir","json","text"])]
     skill: Option<Skill>,
     #[command(subcommand)]
     action: Option<Action>,
@@ -77,39 +80,6 @@ enum Action {
     },
 }
 
-#[derive(Args, Default)]
-struct Filters {
-    /// Local departure date (YYYY-MM-DD)
-    #[arg(long, value_parser=parse_date, conflicts_with_all=["from","until"])]
-    date: Option<Date>,
-    /// First departure date to include
-    #[arg(long, value_parser=parse_date, requires="until")]
-    from: Option<Date>,
-    /// First departure date to exclude
-    #[arg(long, value_parser=parse_date, requires="from")]
-    until: Option<Date>,
-    /// Filter the recording device by numeric FIT IDs, e.g. 267/2205
-    #[arg(long, value_parser=parse_device, value_name="MANUFACTURER/PRODUCT")]
-    device: Option<Device>,
-}
-fn parse_date(text: &str) -> Result<Date, String> {
-    let date: Date = text.parse().map_err(|_| "expected YYYY-MM-DD")?;
-    if date.to_string() != text {
-        return Err("expected YYYY-MM-DD".into());
-    }
-    Ok(date)
-}
-fn parse_zone(text: &str) -> Result<TimeZone, String> {
-    TimeZone::get(text).map_err(|e| e.to_string())
-}
-fn parse_device(text: &str) -> Result<Device, String> {
-    let error = "expected numeric FIT manufacturer/product, e.g. 267/2205";
-    let (maker, product) = text.split_once('/').ok_or(error)?;
-    Ok(Device {
-        manufacturer: maker.parse().map_err(|_| error)?,
-        product: product.parse().map_err(|_| error)?,
-    })
-}
 fn parse_id(text: &str) -> Result<String, String> {
     if text.len() == 64 && text.bytes().all(|b| b.is_ascii_hexdigit()) {
         Ok(text.to_ascii_lowercase())
@@ -119,16 +89,7 @@ fn parse_id(text: &str) -> Result<String, String> {
 }
 impl Filters {
     fn query(&self, zone: TimeZone, id: Option<String>) -> Result<Query, String> {
-        let days = if let Some(date) = self.date {
-            Some(date..date.tomorrow().map_err(|e| e.to_string())?)
-        } else if let (Some(from), Some(until)) = (self.from, self.until) {
-            if until <= from {
-                return Err("--until must be after --from".into());
-            }
-            Some(from..until)
-        } else {
-            None
-        };
+        let days = self.days()?;
         Ok(Query {
             days,
             timezone: zone,
@@ -215,6 +176,7 @@ fn run(dir: &Path, action: &Action, zone: TimeZone) -> Value {
 fn main() -> ExitCode {
     let mut matches = cli_help::command::<Cli>("FIT wire reader", "").get_matches();
     let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    cli.output.validate().unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         if cli.action.is_some() {
             usage("--skill must be used on its own");
@@ -234,12 +196,8 @@ fn main() -> ExitCode {
         .action
         .unwrap_or_else(|| usage("expected list, read or export"));
     let dir = cli.dir.unwrap_or_else(|| usage("provide --dir DIR"));
-    let result = run(&dir, &action, cli.timezone);
-    if cli.json {
-        println!("{result}");
-    } else {
-        println!("{result:#}");
-    }
+    let result = run(&dir, &action, cli.timezone.clone());
+    cli.output.print(&result, &cli.timezone);
     if result["status"] == "ok" {
         ExitCode::SUCCESS
     } else {

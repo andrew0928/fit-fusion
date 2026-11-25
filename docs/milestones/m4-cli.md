@@ -8,8 +8,8 @@
 |---|---|---|
 | 0.1.0（M1、M2） | 已發佈 | 多語言檢查器、舊合併器、Garmin 日期配對與 Parquet；舊設備以 M15、M18 驗收。M2-4 已廢除，使用者手動上傳 Strava。 |
 | M3 | 已廢除 | 安全保管、發佈、整合與 rename 分派至下方工作項目。 |
-| 0.2.0（M4 起點） | M4-1 已實作，待使用者驗證 | 首項交付為僅靠 CLI 參數的 `fit-merge`。可直接拿兩份本機 FIT 驗收。 |
-| 0.2.x | M4-2 已通過本機驗收 | 已完成 `fit-query-files` 的查詢、讀取與原檔匯出。下一項為 M4-3 `fit-query-garmin`，其後為 `fit-query-apple` 與 `fit-inspector` 取樣分析。各工具有自己的 help、skill 與獨立驗收。 |
+| 0.2.0（M4 起點） | 已發佈 | `fit-merge`、`fit-query-files`、既有 `fit-fusion` 與 `fit-inspector` 的 macOS arm64 套件及 SHA-256。[GitHub Release v0.2.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.0) |
+| 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功；個人登入鑰匙圈解鎖待排除。依確認順序先做 M4-5，再做 M4-4。 |
 | 0.3.0 起 | 已定方向 | 開始讓 `fit-fusion` 退場。交付退場說明與新工具使用範例；從 0.2.0 起即以未安裝舊執行檔的環境設計與驗收。 |
 
 ## M4 執行順序與完成條件
@@ -20,12 +20,12 @@
 |---|---|---|
 | **M4-1** | **0.2.0 首項：`fit-merge`** | 給主 FIT、附加 FIT、待覆寫的同名欄位和輸出路徑，即可離線合併。一次恰好兩份輸入，選定串流完全採用附檔，在附檔缺樣時保留缺值。以多次呼叫串接第三份檔。 |
 | M4-2 | `fit-query-files` 與查詢介面（已實作，R08 通過） | 掃描指定 FIT 目錄，依條件 list、read 或 export 至指定目錄。匯出副本與原 FIT 的 SHA-256 相同，重跑可重用，發生衝突可定位。 |
-| M4-3 | `fit-query-garmin` | 查詢 Garmin Connect 或按 ID 下載原始 FIT。測跨日、分頁、授權到期及快取。Garmin 憑證由此來源負責。 |
-| M4-4 | `fit-query-apple` | 讀本機 Apple Health ZIP，查詢 Workout、取樣與關聯路線；每趟匯出一份**標明來源的轉製 FIT**。以同時段 Watch 與 Connect 活動驗證來源辨識、缺項與重跑。 |
-| M4-5 | `fit-inspector` 取樣分析 | 唯讀列出各串流的有效樣本數、缺樣數、缺樣百分比與分母；可點名檔內完全沒有的串流。使用者可先檢查附檔，再決定是否覆寫。既有三個非 Rust 檢查器入口同項追蹤 clap 遷移。 |
-| M4-6 | rename（後續擴充，待排） | 設計顯式來源欄 → 目標欄的參數、單位／型別與衝突驗證。首版 `fit-merge` 只接受同名覆寫。 |
+| M4-3 | `fit-query-garmin`（已實作，R09 通過） | 查詢 Garmin Connect 或按 ID 下載原始 FIT。測跨日、分頁、授權到期及快取。Garmin 憑證由此來源負責。 |
+| M4-5 | `fit-inspector` 取樣分析 | 已確認介面 `inspect FILE [--stream NAME]…`，待實作。唯讀列出各串流的有效樣本數、缺樣數、缺樣百分比與分母；可點名檔內完全沒有的串流。使用者可先檢查附檔，再決定是否覆寫。既有三個非 Rust 檢查器入口同項追蹤 clap 遷移。 |
+| M4-4 | `fit-query-apple` | 讀本機 Apple Health ZIP，查詢 Workout、取樣與關聯路線；每趟匯出一份**標明來源的轉製 FIT**。以同時段 Watch 與 Connect 活動驗證來源辨識、缺項與重跑。納入三支 query 共通的活動／設備名稱及文字輸出。 |
+| M4-6 | rename（已取消） | 設計顯式來源欄 → 目標欄的參數、單位／型別與衝突驗證。首版 `fit-merge` 只接受同名覆寫。 |
 | M4-7 | 分發與退場 | 各新 CLI 隨對應版本獨立建置驗收。0.3.0 起啟動舊 CLI 退場；正式安裝管道、簽章、公證與升級可另排。 |
-| M4-8 | 其他平台研究（待排） | 分別驗證 Bryton 雲端取檔與其他目的地之授權、原始檔取得或上傳收據及去重。Strava 的交付流程到本機 FIT 為止。 |
+| M4-8 | 其他平台研究（已取消） | 分別驗證 Bryton 雲端取檔與其他目的地之授權、原始檔取得或上傳收據及去重。Strava 的交付流程到本機 FIT 為止。 |
 
 ## 原 M3 工作移轉
 
@@ -34,8 +34,8 @@
 | Keychain／安全硬體 | M4-3，Garmin 來源 | 評估 Garmin 憑證遷移、輪替、鎖定與復原；另研究 Secure Enclave 適用的金鑰。合併器無憑證需求。 |
 | 正式發佈管道 | M4-7 | 延續 GitHub Release 與 SHA-256，驗證乾淨 macOS 安裝，再評估 Homebrew 與簽章。 |
 | Apple 漸進匯入 | M4-4、M4-2 | 逐趟匯出 ZIP 中新增或變更的活動；若已有 HealthFit 同步的 FIT，交由 files 查詢。手機端持續到檔另行評估。 |
-| 其他來源與目的地 | M4-8 | Bryton Active 雲端原檔與其他平台寫入分開研究。 |
-| 跨欄位映射 | M4-6 | 保留後續需求，不影響 0.2.0 雙檔覆寫的驗收。 |
+| 其他來源與目的地 | M4-8（已取消） | Bryton Active 雲端原檔與其他平台寫入分開研究。 |
+| 跨欄位映射 | M4-6（已取消） | 合併維持同名欄位覆寫。 |
 
 ## 程式碼共用邊界
 

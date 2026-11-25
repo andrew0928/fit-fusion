@@ -9,12 +9,15 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 
 ## 下載 macOS Apple Silicon 版
 
-從 [GitHub Release v0.1.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.1.0) 下載 `fit-fusion-v0.1.0-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
+從 [GitHub Release v0.2.1](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.1) 下載 `fit-fusion-v0.2.1-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-tar -xzf fit-fusion-v0.1.0-macos-arm64.tar.gz
-cd fit-fusion-v0.1.0-macos-arm64
+tar -xzf fit-fusion-v0.2.1-macos-arm64.tar.gz
+cd fit-fusion-v0.2.1-macos-arm64
+./fit-query-garmin --skill index
+./fit-query-files --version
+./fit-merge --help
 ./fit-fusion --version
 ./fit-fusion --help
 ./fit-inspector --help
@@ -33,13 +36,14 @@ cd fit-fusion-v0.1.0-macos-arm64
 | [src/rust/inspector/](src/rust/inspector/) | Rust 檢查器與 RustyFIT 讀寫驗證。 |
 | [src/rust/merger/](src/rust/merger/) | Rust 日期與雙檔合併 CLI。 |
 | [src/rust/query-files/](src/rust/query-files/) | 獨立的本機 FIT 活動查詢與原檔匯出 CLI。 |
+| [src/rust/query-garmin/](src/rust/query-garmin/) | Garmin Connect 查詢、原生 FIT 匯出與快取。 |
 | [src/tools/](src/tools/) | 跨語言逐框比對與原檔雜湊驗證工具。 |
 | `data/` | 本機唯讀輸入。原始 FIT、Apple 健康匯出與騎乘索引由 Git 忽略。 |
 | `runtime/` | 本機產物。建置快取在 `build/`，驗證結果在 `reports/`，開發用 Python 虛擬環境可放在 `venv/`。 |
 
-## 開發版 fit-merge 0.2.0
+## fit-merge 0.2.0
 
-從專案根目錄建置後，直接指定主檔、附檔、要整條覆寫的欄位與新輸出檔。GitHub v0.1.0 的發佈內容見上方下載說明。[M4 覆寫規格](docs/spec/m4-cli.md) · [CLI 的 help 與 skill 契約](docs/spec/cli-common.md)
+從專案根目錄建置後，直接指定主檔、附檔、要整條覆寫的欄位與新輸出檔。GitHub v0.2.0 的發佈內容見上方下載說明。[M4 覆寫規格](docs/spec/m4-cli.md) · [CLI 的 help 與 skill 契約](docs/spec/cli-common.md)
 
 ```sh
 cargo build --locked --release --manifest-path src/rust/pair-merge/Cargo.toml
@@ -50,7 +54,7 @@ runtime/build/rust/release/fit-merge --primary src/rust/merger/tests/fixtures/ri
   --stream session.total_calories --out runtime/ride.fit
 ```
 
-## 開發版 fit-query-files
+## fit-query-files
 
 從專案根目錄建置後，可用隨 repo 提供的 Garmin SDK 樣本走完查詢和匯出。下例清單有三趟，設備篩選後會匯出兩份 Bryton FIT。再次執行最後一行，可在回傳的 `exports[].status` 看到 `reused`。[本機查詢規格與實騎範例](docs/spec/m4-cli.md#本機-fit-目錄)
 
@@ -63,6 +67,21 @@ rides=src/rust/merger/tests/fixtures
 id=$("$cli" --dir "$rides" list --device 267/2205 --json | jq -er '.activities[0].id')
 "$cli" --dir "$rides" read --id "$id" --json
 "$cli" --dir "$rides" export --date 2024-01-09 --device 267/2205 --out runtime/selected/bryton --json
+```
+
+0.2.1 可加 `--text` 顯示人讀版活動、設備、串流及匯出結果。預設維持縮排 JSON，`--json` 是單行 JSON。
+
+## fit-query-garmin 0.2.1
+
+從 repo 根目錄建置。現行本機流程以 `--env-file .env` 讀取 Garmin 個人 API 金鑰，可在不開啟登入鑰匙圈的情況下完成。既有快取可離線按 Garmin 活動 ID 重用。[命令規格](docs/spec/m4-cli.md#garmin-connect-個人活動)
+
+```sh
+cargo build --release --locked --manifest-path src/rust/query-garmin/Cargo.toml
+cli=./runtime/build/rust/release/fit-query-garmin
+"$cli" --skill index
+"$cli" --env-file .env list --date 2026-11-21 --text
+"$cli" --env-file .env --cache-dir data/cache/garmin-query export --id 25149578721 --out runtime/selected/garmin --json
+"$cli" --cache-dir data/cache/garmin-query read --id 25149578721 --offline --json
 ```
 
 ## 從專案根目錄執行

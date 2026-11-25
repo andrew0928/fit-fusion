@@ -14,6 +14,10 @@
 
 每個可交付的執行檔均須在乾淨目錄測試頂層 help、各子命令 help、兩種索引、每個已列主題、未知主題及錯誤旗標。依指引在隔離的輸入／輸出目錄執行至少一條正常流程，核對結束碼及產物。clap 的採用另從實際對外入口與建置依賴核對；只通過文字輸出的比對仍需核對解析器。
 
+### 三支 fit-query 的輸出
+
+`fit-query-files`、`fit-query-garmin`、`fit-query-apple` 的資料命令預設印出縮排 JSON。`--json` 和 `--text` 分別指定單行 JSON 與人讀版，兩者互斥。顯示格式不改變活動的選取、匯出內容或結束碼。[名稱與輸出契約](m4-cli.md#查詢結果的共通欄位與輸出格式)
+
 ## 目前採用情形
 
 | 對外入口 | clap | help／skill | 歸屬 |
@@ -21,7 +25,8 @@
 | Rust `fit-inspector`、舊 `fit-fusion` | 已採用 | 已有索引與主題 | 0.1.0 已交付，舊合併器自 0.3.0 起退場。 |
 | `fit-merge` | 已採用 | `index`、`merge` | M4-1。 |
 | `fit-query-files` | 已採用 | `index`、`list`、`read`、`export` | M4-2。 |
-| `fit-query-garmin`、`fit-query-apple` | 開發時必備 | 各自須提供 | M4-3 與 M4-4 的交付條件。 |
+| `fit-query-garmin` | 已採用 | `index`、`list`、`read`、`export`、`auth` | M4-3。 |
+| `fit-query-apple` | 開發時必備 | 查詢與匯出指引 | M4-4 的交付條件。 |
 | Python、C#、Node.js 檢查器 CLI | 待遷移；Python 目前用 argparse，C#、Node.js 目前自行解析 | 已有索引與主題 | M4-5 需讓對外語法經 clap 解析，保留各自獨立的 FIT 解碼與可重跑範例。 |
 
 各工具可重用命令列程式碼或套件。新執行檔獨立提供操作指引，執行時不呼叫舊的 `fit-fusion`。

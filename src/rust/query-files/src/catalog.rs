@@ -5,7 +5,7 @@ use fit_inspector::{
 };
 use jiff::{Timestamp, civil::Date, tz::TimeZone};
 use serde::Serialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{
     collections::HashSet,
@@ -31,6 +31,8 @@ pub struct Activity {
     pub id: String,
     pub path: PathBuf,
     pub device: Option<Recorder>,
+    pub activity_name: Option<String>,
+    pub device_name: Option<String>,
     pub sport: &'static str,
     pub start_utc: Timestamp,
     pub end_utc: Timestamp,
@@ -103,6 +105,8 @@ impl Activity {
             id,
             path: path.into(),
             device,
+            activity_name: None, // Plain activity FIT has no standard activity title.
+            device_name: file.device_name(),
             sport: "cycling",
             start_utc,
             end_utc,
@@ -121,28 +125,7 @@ impl Activity {
 
     /// Use the same validity, developer definitions and compressed clock as fit-inspector.
     pub fn streams(&self) -> io::Result<Vec<Value>> {
-        let report =
-            inventory::inspect(&self.original()?, &self.path.display().to_string(), false)?;
-        let messages = report["members"][0]["messages"]
-            .as_array()
-            .expect("inspector message list");
-        let Some(records) = messages.iter().find(|m| m["number"] == 20) else {
-            return Ok(vec![]);
-        };
-        Ok(records["fields"]
-            .as_array()
-            .expect("inspector field list")
-            .iter()
-            .filter(|f| f["number"] != 253 || !f["developer_data_index"].is_null())
-            .map(|f| {
-                json!({
-                    "name":format!("record.{}", f["name"].as_str().expect("inspector field name")),
-                    "number":f["number"], "developer_data_index":f["developer_data_index"],
-                    "start_utc":f["timing"]["start_utc"], "end_utc":f["timing"]["end_utc"],
-                    "sample_count":f["sample_count"]
-                })
-            })
-            .collect())
+        inventory::record_streams(&self.original()?, &self.path.display().to_string())
     }
 }
 

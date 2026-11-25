@@ -31,7 +31,7 @@ fit-merge --primary ride.fit --overlay power-meter.fit \
 
 ### 取樣分析交給 fit-inspector
 
-`fit-inspector inspect FILE.fit` 已提供每種訊息的 `message_count`，以及實際欄位的 `sample_count` 和 `coverage_pct`。M4-5 擬補上「哪些欄完全沒有、總共幾筆、有效幾筆、缺幾筆、缺多少百分比」。可提案用 `fit-inspector inspect band.fit --stream record.heart_rate` 點名預期欄位；未指定時盤點實際欄位。[現行盤點格式](inspector.md) · [Rust 計數實作](../../src/rust/inspector/src/inventory.rs)
+`fit-inspector inspect FILE.fit` 已提供每種訊息的 `message_count`，以及實際欄位的 `sample_count` 和 `coverage_pct`。M4-5 已確認要補上「哪些欄完全沒有、總共幾筆、有效幾筆、缺幾筆、缺多少百分比」。使用 `fit-inspector inspect band.fit --stream record.heart_rate --stream session.total_calories` 點名一或多個預期欄位。未指定時盤點實際欄位。輸出沿用 inspect 的 JSON；agent 用 `--skill inspect` 查閱。[現行盤點格式](inspector.md) · [Rust 計數實作](../../src/rust/inspector/src/inventory.rs)
 
 | 欄位 | 計算方式（每個 FIT member、每種訊息分開） |
 |---|---|
@@ -44,7 +44,7 @@ fit-merge --primary ride.fit --overlay power-meter.fit \
 
 ## 資料來源 CLI
 
-三支 query 使用一致的 list、read、export 操作，各自處理來源參數。建議本機直接指定目錄或 ZIP；Garmin 授權由 `fit-query-garmin` 自行取得或讀取。files 的命令可在本機執行，Garmin 與 Apple 命令保留為後續規格。匯出的 FIT 路徑可交給支援 FIT 的工具。
+三支 query 使用一致的 list、read、export 操作，各自處理來源參數。建議本機直接指定目錄或 ZIP；Garmin 授權由 `fit-query-garmin` 自行取得或讀取。files 與 Garmin 的命令可在本機執行，Apple 命令保留為後續規格。匯出的 FIT 路徑可交給支援 FIT 的工具。
 
 ```sh
 fit-query-files --dir inbox/bike list --date 2026-11-21 --json
@@ -63,6 +63,18 @@ fit-query-apple --archive apple-health-export.zip export --date 2026-11-21 --out
 - **files** 按 FIT 內容辨識活動及設備，保留原始位元組。檔名變更應能找到同一份內容，目錄混放裝置時可用既有數字設備篩選。
 - **garmin** 以 Connect 活動 ID 查詢或下載，沿用分頁、授權換發及原檔快取。核對 SHA-256 的對象是下載的原始 FIT；若 API 回傳封裝檔，先識別對應 FIT 成員。正式帳戶測試與模擬限流／失效測試分別記錄。
 - **apple** 先支援本機完整匯出 ZIP 內的 Workout XML、關聯 GPX 及同一來源和時段的健康樣本。用來源／設備區別同時段的 Apple Watch 與 Connect 重複活動。穩定 ID 優先使用來源可提供的識別，否則以可重現的 Workout 身分推導並檢測碰撞。同一活動補到路線後，以新路徑另存修訂並保留舊檔。FIT 標示為轉製，保留原始取樣時間與已知單位，缺路線或缺心率時標出缺項，不補造數值。PoC 須確認實際 FIT metadata 能由現有讀取器接受。[既有三趟 XML／GPX 樣本](../research/rides/2026-11-three-device-comparison.md)
+
+### 查詢結果的共通欄位與輸出格式
+
+三支工具的 `activities[]`、`activity`、`exports[]` 都含兩個可空字串。ID 仍用於選取；多筆活動可以同名。[決策紀錄](../decisions/2026-11-25-query-display-and-inspector-streams.md)
+
+| 來源 | `activity_name`（活動標題） | `device_name`（記錄設備的可讀名稱） |
+|---|---|---|
+| 本機 FIT | 一般活動 FIT 缺少活動標題時為 `null`，原檔名另見 `path`。 | 依序用 FIT 產品名稱、creator 產品名稱、廠商與產品 ID 的型號表。只有未知代碼時為 `null`，代碼仍在 `device`。 |
+| Garmin Connect | 取清單的 `activityName`。查詢過的標題可存在指定快取，供後續按 ID 及離線操作使用。只有 FIT 且未取得標題時為 `null`。 | 優先用本機原檔的設備識別，否則取摘要中可用的設備名稱。一般清單不額外下載 FIT，選用數字 `--device` 時才為篩選下載。 |
+| Apple Health（M4-4） | 採 Workout 明確提供的標題。只有類型或寫入來源時為 `null`。 | 採 Workout 內可辨識的設備型號及對照表。11/21 的 `Watch7,1` 對應 Apple Watch Series 9，同時段的 Connect Workout 缺設備資料即為 `null`。`--source-name` 按寫入來源篩選，例如 `AndrewWatch`。 |
+
+預設為縮排 JSON；`--json` 為相同內容的單行 JSON。`--text` 以查詢時區顯示時間；清單顯示標題、設備與可直接拿去 read/export 的 ID，read 顯示串流，export 列出每筆狀態與目的路徑。未知名稱顯示 `—`。空清單、部分成功與錯誤沿用各工具既有的結束碼。兩個格式旗標互斥，用法錯誤回傳 2。
 
 ### 本機 FIT 目錄
 
@@ -83,6 +95,20 @@ fit-query-files --dir "$rides" export --from 2026-11-01 --until 2026-12-01 --out
 | `activity`、`streams[]` | `read --id` 回傳活動及各 record 欄位的有效樣本數、最早／最晚有效樣本時間。時間戳用於對齊；串流另帶 FIT 欄號與 developer index，保留未知欄。無有效取樣時間時為 `null`。 |
 | `exports[]` | 每筆含 `source_id`、`id`、`sha256`（原檔雜湊）、目的 `path`、`format: original` 和 `status`。沿用輸入檔名，以暫存檔完整寫入後建立新檔。`exported` 表新建、`reused` 表相同副本、`conflict` 表目的名稱已占用且無法重用、`error` 表讀寫失敗。位於來源樹內的目的子目錄會在該次匯出掃描中略過。 |
 | `status`、`errors[]` | 回傳 0 表示查詢完成（含空清單）。命令用法錯誤回傳 2。來源或匯出失敗回傳 3，列出路徑及原因；同批仍有成功項目時標為 `partial`。 |
+
+### Garmin Connect 個人活動
+
+`fit-query-garmin` 使用 Garmin Connect Personal API。活動 ID 是 Connect 的正十進位整數，在查詢結果以字串回傳。來源 ID 為 `garmin_connect`。目前操作使用 `--env-file .env`。未指定檔案時，依序採程序環境變數與使用者 Keychain。明確指定的檔案若無法使用，會回報授權錯誤。[憑證決策](../decisions/2026-11-25-garmin-query-credentials.md)
+
+| 操作 | 輸出與副作用 |
+|---|---|
+| `list --date DAY` 或 `--from DAY --until DAY` | 逐頁取得騎乘、按活動 ID 去重，再依查詢時區的出發日篩選。預設台北時區、迄日不含當天；省略日期可查全部。一般清單有經雜湊核對的本機原檔時可帶出設備，無資料時為空。選用 `--device 1/5019` 時，會按需下載原始 FIT 核對錄製設備。 |
+| `read --id ID` | 從 FIT 讀回騎乘的起訖、設備、串流、有效取樣數及時間。回傳 `sha256`、`path` 與 `cache_hit`。支援單一騎乘 session 的摘要。 |
+| `export --id ID --out DIR` 或按日期／期間／設備匯出 | 直接 FIT 或 ZIP 中唯一的 FIT 會保留原始位元組。每筆使用 `ID.fit`，同內容回報 `reused`、同名異內容回報 `conflict`。批次報告保留成功與失敗 ID。發生平台授權、限流或服務錯誤後，餘項標示 `not_attempted`。 |
+| `--cache-dir DIR`、`read/export --id ID --offline` | 預設快取為 `~/Library/Caches/fit-query-garmin`。按 ID 與 SHA-256 儲存，寫入以每 ID 的鎖與暫存檔保護。離線命中可在無憑證時使用，雜湊失敗或未下載的 ID 回報 `cache_miss`。不同帳號可指定不同的快取目錄。 |
+| `auth import`、`auth status` | 選用的 macOS Keychain 匯入／輪替及讀回。可指定現存的 `--keychain FILE`。本機登入鑰匙圈待排除期間，使用上述 `.env` 路徑。 |
+
+結束碼 0 表成功（含零筆）；2 表語法或日期組合錯誤；3 表活動、快取或輸出問題；4 表應檢查金鑰或 Keychain；5 表限流，`retry_after` 保留服務端給的等待資訊；6 表服務或回應異常。短效 bearer 過期時重換；若 Garmin 拒絕現有 bearer，至多換發並重試一次。個人 key 到期後需至 Garmin Connect 重新核發。[Garmin 官方說明](https://support.garmin.com/en-US/?faq=HfTwLfw1Gn2A7WS1GdAMH8)
 
 ## 執行與建置邊界
 

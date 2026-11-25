@@ -70,3 +70,40 @@ pub fn definition(local: usize, n: u16, big: bool, cells: &[Cell]) -> io::Result
     }
     Ok(buf)
 }
+
+/// Publish an exact original, reusing only an identical regular file.
+pub fn copy_original(bytes: &[u8], dest: &std::path::Path) -> std::io::Result<&'static str> {
+    use std::{
+        fs,
+        io::{self, ErrorKind, Write},
+        path::Path,
+    };
+    let directory = dest
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    fs::create_dir_all(directory)?;
+    let existing = || -> io::Result<&'static str> {
+        if dest.symlink_metadata()?.is_file() && fs::read(dest)? == bytes {
+            Ok("reused")
+        } else {
+            Err(io::Error::new(
+                ErrorKind::AlreadyExists,
+                "destination already exists with different contents or file type",
+            ))
+        }
+    };
+    match existing() {
+        Err(e) if e.kind() == ErrorKind::NotFound => {}
+        result => return result,
+    }
+    // Publish a complete sibling file exactly once, including competing exporters.
+    let mut staged = tempfile::NamedTempFile::new_in(directory)?;
+    staged.write_all(bytes)?;
+    staged.as_file().sync_all()?;
+    match staged.persist_noclobber(dest) {
+        Ok(_) => Ok("exported"),
+        Err(e) if e.error.kind() == ErrorKind::AlreadyExists => existing(),
+        Err(e) => Err(e.error),
+    }
+}

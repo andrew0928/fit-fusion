@@ -1,5 +1,7 @@
 use super::*;
 use crate::catalog::{digest, list};
+use crate::query_filters::parse_date;
+use fit_inspector::activity::Device;
 use std::{fs, os::unix::fs::symlink, thread};
 
 const RIDER: &[u8] = include_bytes!("../../merger/tests/fixtures/rider.fit");

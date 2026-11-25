@@ -25,6 +25,7 @@ Rust 檢查器由 clap 解析參數。`inspect --decoder wire ride.fit` 與將 `
 |---|---|
 | `--version`、`-V` | 四種實作都在總覽與子命令 help 首行顯示 CLI 版本。`--version` 首行使用相同識別，下方列出編譯器或執行環境、目標或平台，以及 FIT 引擎。查詢版本可離線執行。 |
 | `inspect FILE.fit` | 檢查 FIT 完整性，成功時 stdout 恰有一份 JSON。頂層的 `file` 標示來源，`members[]` 按檔案順序各自列出協定版本、profile 版本及 `messages[]`。檔內串接的多個 member 各自統計。 |
+| `inspect FILE.fit --stream record.heart_rate --stream session.total_calories` | M4-5 已確認的語法。可重複點名預期欄位，含整份未出現的欄位；報告每一種訊息的總數、有效數、缺樣數、缺樣率與欄位狀態。無訊息時缺樣率為 `null`。 |
 | `raw FILE.fit` | stdout 每行一個 JSON frame，保留檔案順序、byte offset 與原始 `hex`。依 frame 類型列出 header、欄位定義、資料值及 CRC。依序還原 `hex` 所得 SHA-256 必須等於輸入。 |
 | `--help`、`--skill [topic]` | 四種檢查器都有總覽與子命令 help。單獨使用 `--skill` 或指定 `index` 可讀取任務索引，從中取得該語言的完整呼叫方式。共用主題為 `inspect`、`raw`、`roundtrip`，Node.js 另有 `sdk-check`。各主題說明輸入、輸出、結束碼與失敗處置。離線即可查閱。 |
 | `roundtrip FILE.fit --out NEW.fit` | 解碼後按欄位重新序列化，驗 CRC 並讀回。只發布新的檔案。成功輸出 JSON，含 backend、路徑、member／訊息數、兩份 SHA-256、`byte_equal` 與 `semantic_equal`。語義差異、無效來源或目的已存在時以非零結束。 |

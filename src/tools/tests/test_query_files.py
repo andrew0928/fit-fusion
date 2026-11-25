@@ -41,7 +41,7 @@ class QueryFiles(unittest.TestCase):
         return json.loads(self.invoke("--dir", source, *args, "--json", code=code))
 
     def test_offline_help_skills_and_syntax(self):
-        self.assertIn("fit-query-files 0.2.0", self.invoke("--help"))
+        self.assertIn("fit-query-files 0.2.1", self.invoke("--help"))
         self.assertIn("Compiler", self.invoke("--version"))
         index = self.invoke("--skill")
         self.assertEqual(index, self.invoke("--skill", "index"))
@@ -58,6 +58,23 @@ class QueryFiles(unittest.TestCase):
                      ("list", "--from", "2026-12-01", "--until", "2026-11-01")]:
             self.invoke("--dir", missing, *args, code=2)
         self.assertFalse(self.out.exists())
+
+    def test_display_formats_preserve_identity_and_outcomes(self):
+        args = ["--dir", FIXTURES, "list", "--device", "267/2205"]
+        pretty = self.invoke(*args)
+        compact = self.invoke(*args, "--json")
+        self.assertEqual(json.loads(pretty), json.loads(compact))
+        self.assertGreater(len(pretty.splitlines()), 1)
+        self.assertEqual(len(compact.splitlines()), 1)
+        self.invoke("--json", *args, "--text", code=2)
+        listing = self.invoke(*args, "--text")
+        for row in json.loads(pretty)["activities"]:
+            self.assertIsNone(row["activity_name"])
+            self.assertEqual(row["device_name"], "Bryton Rider 460")
+            self.assertIn(row["id"], listing)
+        self.assertIn("Bryton Rider 460", listing)
+        self.assertIn("Activities  0", self.invoke("--dir", FIXTURES, "list", "--date", "2000-01-01", "--text"))
+        self.assertIn("Status  error", self.invoke("--dir", self.tmp / "missing", "list", "--text", code=3))
 
     def test_list_read_and_export_one_renamed_recording(self):
         source = self.tmp / "rides"

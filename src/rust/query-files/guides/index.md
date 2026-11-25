@@ -6,4 +6,4 @@ Use a local FIT directory. Commands run offline. Start with list for activity ID
 - `fit-query-files --skill read` — inspect one activity's metadata and available record streams.
 - `fit-query-files --skill export` — copy original FIT files and verify or reuse the copies.
 
-Add `--json` for compact JSON. Check status and the process exit code.
+Default output is indented JSON. Use `--json` for compact JSON or `--text` for a human-readable report. Check status and the process exit code.

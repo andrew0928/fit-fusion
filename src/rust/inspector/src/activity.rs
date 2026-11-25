@@ -58,6 +58,19 @@ pub struct ActivityFile {
 }
 
 impl ActivityFile {
+    /// A source or model-table name suitable for display, even if numeric FIT IDs are absent.
+    pub fn device_name(&self) -> Option<String> {
+        match &self.product_name {
+            Some(FitProductName::FileId(name) | FitProductName::Creator(name)) => {
+                Some(name.clone())
+            }
+            None => {
+                let (name, origin) = self.device?.name(None);
+                (origin == "model_lookup").then_some(name)
+            }
+        }
+    }
+
     /// Start in FIT epoch seconds, elapsed time in milliseconds.
     pub fn cycling_session(&self) -> io::Result<Option<(u32, u32)>> {
         if self.sessions.is_empty() {

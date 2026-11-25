@@ -273,3 +273,28 @@ pub fn inspect(input: &[u8], file: &str, use_sdk: bool) -> Result<Value> {
     })?;
     Ok(json!({"file":file,"members":members}))
 }
+
+/// Describe available record streams and valid UTC samples using the wire reader.
+pub fn record_streams(input: &[u8], file: &str) -> Result<Vec<Value>> {
+    let report = inspect(input, file, false)?;
+    let messages = report["members"][0]["messages"]
+        .as_array()
+        .expect("inspector message list");
+    let Some(records) = messages.iter().find(|m| m["number"] == 20) else {
+        return Ok(vec![]);
+    };
+    Ok(records["fields"]
+        .as_array()
+        .expect("inspector field list")
+        .iter()
+        .filter(|f| f["number"] != 253 || !f["developer_data_index"].is_null())
+        .map(|f| {
+            json!({
+                "name":format!("record.{}", f["name"].as_str().expect("inspector field name")),
+                "number":f["number"], "developer_data_index":f["developer_data_index"],
+                "start_utc":f["timing"]["start_utc"], "end_utc":f["timing"]["end_utc"],
+                "sample_count":f["sample_count"]
+            })
+        })
+        .collect())
+}
