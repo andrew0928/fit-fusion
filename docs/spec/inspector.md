@@ -1,6 +1,6 @@
 # FIT 檢查器 CLI 規格
 
-檢查器回答「指定的解碼器從這一份 FIT 讀到了什麼」。它唯讀開啟單一檔案，盤點實際編碼的訊息、欄位與取樣情況。不同實作各自讀取**相同位元組**，比對工具才有條件驗證 SDK 的讀取能力。例如 `record.heart_rate` 是逐點串流，`session.total_calories` 是整趟摘要，兩者都要盤點。0.1.0 的跨裝置心率選源屬於[舊合併器規格](merger.md)。M4-5 將在檢查器補上可指定預期串流的缺樣分析，列出總筆數、有效取樣、缺樣數與百分比；覆寫哪些欄位由使用者決定。[0.2.x 取樣分析契約](m4-cli.md#取樣分析交給-fit-inspector)
+檢查器回答「指定的解碼器從這一份 FIT 讀到了什麼」。它唯讀開啟單一檔案，盤點實際編碼的訊息、欄位與取樣情況。不同實作各自讀取**相同位元組**，比對工具才有條件驗證 SDK 的讀取能力。例如 `record.heart_rate` 是逐點串流，`session.total_calories` 是整趟摘要，兩者都要盤點。0.1.0 的跨裝置心率選源屬於[舊合併器規格](merger.md)。0.2.2 提供可指定預期串流的缺樣分析，列出總筆數、有效取樣、缺樣數與百分比；覆寫哪些欄位由使用者決定。[0.2.x 取樣分析契約](m4-cli.md#取樣分析交給-fit-inspector)
 
 ## 語言與解碼器
 
@@ -25,7 +25,7 @@ Rust 檢查器由 clap 解析參數。`inspect --decoder wire ride.fit` 與將 `
 |---|---|
 | `--version`、`-V` | 四種實作都在總覽與子命令 help 首行顯示 CLI 版本。`--version` 首行使用相同識別，下方列出編譯器或執行環境、目標或平台，以及 FIT 引擎。查詢版本可離線執行。 |
 | `inspect FILE.fit` | 檢查 FIT 完整性，成功時 stdout 恰有一份 JSON。頂層的 `file` 標示來源，`members[]` 按檔案順序各自列出協定版本、profile 版本及 `messages[]`。檔內串接的多個 member 各自統計。 |
-| `inspect FILE.fit --stream record.heart_rate --stream session.total_calories` | M4-5 已確認的語法。可重複點名預期欄位，含整份未出現的欄位；報告每一種訊息的總數、有效數、缺樣數、缺樣率與欄位狀態。無訊息時缺樣率為 `null`。 |
+| `inspect FILE.fit --stream record.heart_rate --stream session.total_calories` | 0.2.2 支援。可重複點名預期欄位，含整份未出現的欄位；報告每一種訊息的總數、有效數、缺樣數、缺樣率與欄位狀態。無訊息時缺樣率為 `null`。 |
 | `raw FILE.fit` | stdout 每行一個 JSON frame，保留檔案順序、byte offset 與原始 `hex`。依 frame 類型列出 header、欄位定義、資料值及 CRC。依序還原 `hex` 所得 SHA-256 必須等於輸入。 |
 | `--help`、`--skill [topic]` | 四種檢查器都有總覽與子命令 help。單獨使用 `--skill` 或指定 `index` 可讀取任務索引，從中取得該語言的完整呼叫方式。共用主題為 `inspect`、`raw`、`roundtrip`，Node.js 另有 `sdk-check`。各主題說明輸入、輸出、結束碼與失敗處置。離線即可查閱。 |
 | `roundtrip FILE.fit --out NEW.fit` | 解碼後按欄位重新序列化，驗 CRC 並讀回。只發布新的檔案。成功輸出 JSON，含 backend、路徑、member／訊息數、兩份 SHA-256、`byte_equal` 與 `semantic_equal`。語義差異、無效來源或目的已存在時以非零結束。 |

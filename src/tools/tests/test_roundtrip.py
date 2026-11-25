@@ -210,6 +210,30 @@ class RoundTripTests(unittest.TestCase):
                     self.assertEqual(help_page.returncode, 0, help_page.stderr)
                     self.assertTrue(help_page.stdout.splitlines()[0].startswith(identity + " — "))
 
+    def test_stream_coverage_per_member_all_backends(self):
+        layout = message_definition(0, 20, [(253, 4, 0x86), (7, 2, 0x84), (3, 1, 2)])
+        body = layout + b"".join(struct.pack("<BIHB", 0, START + dt, power, 255)
+                                for dt, power in [(0, 0), (2, 10), (4, 40), (5, 50), (9, 65535)])
+        body += message_definition(1, 20, [(253, 4, 0x86)]) + struct.pack("<BI", 1, START+15)
+        empty = message_definition(0, 18, [(11, 2, 0x84)]) + bytes([0, 2, 0])
+        original = fit_member(body) + fit_member(empty)
+        self.source.write_bytes(original)
+        for lang in self.commands:
+            with self.subTest(language=lang):
+                run = self.invoke(lang, "inspect", self.source, "--stream", "record.heart_rate",
+                                  "--stream", "record.power", "--stream", "record.cadence")
+                self.assertEqual(run.returncode, 0, run.stderr)
+                first, second = json.loads(run.stdout)["members"]
+                rows = {r["name"]: r for r in first["sampling"]}
+                power = rows["record.power"]
+                self.assertEqual((power["message_count"], power["sample_count"], power["missing_count"]), (6, 4, 2))
+                self.assertAlmostEqual(power["missing_pct"], 100/3)
+                self.assertEqual(rows["record.heart_rate"]["state"], "no_valid_samples")
+                self.assertEqual(rows["record.cadence"]["state"], "absent")
+                self.assertTrue(all(r["missing_pct"] is None and r["message_count"] == 0 for r in second["sampling"]))
+                self.assertEqual(self.source.read_bytes(), original)
+                self.assertEqual(self.invoke(lang, "inspect", "missing.fit", "--stream", "invalid").returncode, 2)
+
     def test_rust_parser_validates_flags_before_opening_files(self):
         invalid = self.invoke("rust", "inspect", "--bogus")
         self.assertEqual(invalid.returncode, 2, invalid.stderr)

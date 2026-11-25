@@ -26,7 +26,7 @@
 | `fit-merge` | 已採用 | `index`、`merge` | M4-1。 |
 | `fit-query-files` | 已採用 | `index`、`list`、`read`、`export` | M4-2。 |
 | `fit-query-garmin` | 已採用 | `index`、`list`、`read`、`export`、`auth` | M4-3。 |
-| `fit-query-apple` | 開發時必備 | 查詢與匯出指引 | M4-4 的交付條件。 |
-| Python、C#、Node.js 檢查器 CLI | 待遷移；Python 目前用 argparse，C#、Node.js 目前自行解析 | 已有索引與主題 | M4-5 需讓對外語法經 clap 解析，保留各自獨立的 FIT 解碼與可重跑範例。 |
+| `fit-query-apple` | 已採用 | `index`、`list`、`read`、`export` | M4-4 於 0.2.2 通過 R10。 |
+| Python、C#、Node.js 檢查器 CLI | 已採用；三支入口透過 fit-inspector-bridge 的 clap 命令樹解析 | 已有索引與主題 | M4-5 完成。各後端獨立解碼，Rust 只依後端盤點結果計算缺樣。 |
 
 各工具可重用命令列程式碼或套件。新執行檔獨立提供操作指引，執行時不呼叫舊的 `fit-fusion`。

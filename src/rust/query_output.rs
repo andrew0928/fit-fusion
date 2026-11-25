@@ -75,6 +75,20 @@ fn activity(a: &Value, zone: &TimeZone) {
     }
 }
 
+fn coverage(info: &Value) {
+    if let Some(count) = info.get("route_points") {
+        println!("  Route points  {}", label(count));
+    }
+    if let Some(items) = info["missing"].as_array()
+        && !items.is_empty()
+    {
+        println!(
+            "  Missing  {}",
+            items.iter().map(label).collect::<Vec<_>>().join(", ")
+        );
+    }
+}
+
 fn diagnostic(e: &Value) {
     let subject = e.get("path").or_else(|| e.get("code"));
     if let Some(subject) = subject {
@@ -101,6 +115,7 @@ fn print_text(report: &Value, zone: &TimeZone) {
     if let Some(a) = report.get("activity") {
         activity(a, zone);
         println!("  End      {}", local_time(&a["end_utc"], zone));
+        coverage(&report["coverage"]);
     }
     if let Some(streams) = report["streams"].as_array() {
         println!("Streams  {}  (samples · first · last)", streams.len());
@@ -128,6 +143,7 @@ fn print_text(report: &Value, zone: &TimeZone) {
                 label(&item["activity_name"]),
                 label(&item["device_name"])
             );
+            coverage(&item["coverage"]);
             if let Some(e) = item.get("error") {
                 diagnostic(e);
             }

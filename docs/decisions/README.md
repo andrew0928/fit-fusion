@@ -22,6 +22,7 @@
 | 2026-11-25 | [三支查詢的名稱與文字輸出、檢查器的取樣介面](2026-11-25-query-display-and-inspector-streams.md) | accepted |
 | 2026-11-25 | [v0.2.1 發佈與 M4 開發順序](2026-11-25-v021-roadmap.md) | accepted |
 | 2026-11-25 | [Garmin 僅讀 dotenv，0.3.0 規劃共通設定](2026-11-25-garmin-dotenv.md) | accepted |
+| 2026-11-25 | [Apple 轉製 FIT 的 Workout 識別、取樣與修訂](2026-11-25-apple-fit-revisions.md) | accepted |
 | 2026-11-24 | [M2 設定與活動來源的模組邊界、介面簽名與驗收條件](2026-11-24-config-and-data-source.md) | accepted |
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |

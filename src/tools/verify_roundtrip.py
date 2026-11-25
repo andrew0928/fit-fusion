@@ -119,7 +119,7 @@ def build_commands(work):
     subprocess.run(["dotnet","build",str(PROJECT),"-o",str(work/"dotnet"),"--nologo","-v:q"], check=True)
     build = subprocess.check_output(["cargo","build","--locked","--release","--manifest-path",str(MANIFEST),
                                      "--message-format=json"], cwd=ROOT, text=True)
-    binary = next(m["executable"] for m in map(json.loads,build.splitlines()) if m.get("executable"))
+    binary = next(m["executable"] for m in map(json.loads,build.splitlines()) if m.get("executable") and m["target"]["name"] == "fit-inspector")
     return {"python": [sys.executable, "-m", "fit_fusion"], "csharp": ["dotnet", str(work/"dotnet/FitFusion.dll")],
                 "node": ["node", str(SRC/"node/inspector/cli.mjs")], "rust": [binary]}
 

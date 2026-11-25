@@ -48,3 +48,11 @@ M4-1 已通過 R01–R07 的本機驗收，另以六趟實騎的附檔心率與�
 - [Rust 單元測試](../../../src/rust/query-garmin/src/tests.rs) 以可預期的頁面、HTTP 狀態及既有 Garmin SDK FIT 核對跨午夜、跨頁去重、重複頁、第二頁失敗、bearer 過期／拒絕、429 的等待資訊、離線命中、雜湊失效與歧義 ZIP。
 - [獨立 CLI 端對端測試](../../../src/tools/tests/test_query_garmin.py) 核對 help／skill、無效參數、明確指定的憑證檔、離線讀回、重跑及同名衝突。缺少 .env 時即使程序已有同名變數也須回報授權錯誤。
 - 正式帳號以 `--env-file .env` 查到 2026-11-21 的 `25149578721`。新下載 FIT 與既存 CIRQA 原檔逐位元組相同；離線讀回 9 個串流，按 ID／日期再匯出均回報重用。10/28 跨午夜的活動只歸在出發日。正式金鑰、原始 FIT 與驗收產物留在本機。
+
+### M4-5 檢查器 R11、R12
+
+四個語言入口以同一個串接兩個 member 的 FIT 驗證有效零、invalid、單筆缺欄、整檔未定義欄位及零分母。成功或失敗均保存輸入。另執行各後端既有 help、skill、wire、SDK 與 roundtrip 驗收。[跨語言測試](../../../src/tools/tests/test_roundtrip.py)
+
+### M4-4 Apple Health R10
+
+[Apple CLI 驗收](../../../src/tools/tests/test_query_apple.py) 產生含 Watch、Connect 同時段騎乘及跑步的 ZIP，驗證跨日、來源及硬體過濾、轉製標記、秒以下樣本、缺 GPX、補入 GPX 產生修訂、重用與衝突時保護既有檔案。獨立 Python wire reader 核對實際 FIT 值。另以本機 11/21 的完整 ZIP 分出兩筆活動，Watch FIT 有 13,821 個路線點、3,069 筆心率與 11,259 筆距離增量，重跑回報 reused。

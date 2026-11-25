@@ -40,6 +40,9 @@ enum Action {
         /// Input recording
         #[arg(value_name = "FILE.fit")]
         file: PathBuf,
+        /// Report coverage for MESSAGE.FIELD (repeatable; default: all actual fields)
+        #[arg(long="stream",value_name="NAME",value_parser=fit_inspector::sampling::selector)]
+        streams: Vec<String>,
         /// Inventory decoder
         #[arg(long, value_enum, default_value = "rustyfit")]
         decoder: Decoder,
@@ -75,12 +78,15 @@ fn run(action: &Action) -> io::Result<()> {
                 serde_json::to_writer(&mut stdout, &frame.raw())?;
                 writeln!(stdout)
             })?,
-            Action::Inspect { decoder, .. } => {
-                let report = inventory::inspect(
+            Action::Inspect {
+                decoder, streams, ..
+            } => {
+                let mut report = inventory::inspect(
                     &data,
                     &file.to_string_lossy(),
                     matches!(decoder, Decoder::Rustyfit),
                 )?;
+                fit_inspector::sampling::annotate(&mut report, streams);
                 serde_json::to_writer(&mut stdout, &report)?;
                 writeln!(stdout)?;
             }

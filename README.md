@@ -9,12 +9,13 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 
 ## 下載 macOS Apple Silicon 版
 
-從 [GitHub Release v0.2.1](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.1) 下載 `fit-fusion-v0.2.1-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
+從 [GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) 下載 `fit-fusion-v0.2.2-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-tar -xzf fit-fusion-v0.2.1-macos-arm64.tar.gz
-cd fit-fusion-v0.2.1-macos-arm64
+tar -xzf fit-fusion-v0.2.2-macos-arm64.tar.gz
+cd fit-fusion-v0.2.2-macos-arm64
+./fit-query-apple --skill index
 ./fit-query-garmin --skill index
 ./fit-query-files --version
 ./fit-merge --help
@@ -36,6 +37,7 @@ cd fit-fusion-v0.2.1-macos-arm64
 | [src/rust/inspector/](src/rust/inspector/) | Rust 檢查器與 RustyFIT 讀寫驗證。 |
 | [src/rust/merger/](src/rust/merger/) | Rust 日期與雙檔合併 CLI。 |
 | [src/rust/query-files/](src/rust/query-files/) | 獨立的本機 FIT 活動查詢與原檔匯出 CLI。 |
+| [src/rust/query-apple/](src/rust/query-apple/) | 本機 Apple Health ZIP 查詢與轉製 FIT。 |
 | [src/rust/query-garmin/](src/rust/query-garmin/) | Garmin Connect 查詢、原生 FIT 匯出與快取。 |
 | [src/tools/](src/tools/) | 跨語言逐框比對與原檔雜湊驗證工具。 |
 | `data/` | 本機唯讀輸入。原始 FIT、Apple 健康匯出與騎乘索引由 Git 忽略。 |
@@ -84,11 +86,24 @@ cli=./runtime/build/rust/release/fit-query-garmin
 "$cli" --cache-dir data/cache/garmin-query read --id 25149578721 --offline --json
 ```
 
-## 從專案根目錄執行
-
-Python 3.9 以上可用標準函式庫執行離線檢查。C# 檢查器使用 .NET 10 SDK。將下列 `path/to/ride.fit` 換成自己的檔案。
+## Apple Health 查詢與取樣檢查（0.2.2）
 
 ```sh
+cargo build --release --locked --manifest-path src/rust/query-apple/Cargo.toml
+cargo build --release --locked --manifest-path src/rust/inspector/Cargo.toml
+bin=runtime/build/rust/release
+archive=data/sources/apple-health/apple-health-export.zip
+"$bin/fit-query-apple" --archive "$archive" list --date 2026-11-21 --text
+"$bin/fit-query-apple" --archive "$archive" export --date 2026-11-21 --source-name AndrewWatch --out data/exports/apple-watch --json
+"$bin/fit-inspector" inspect src/rust/merger/tests/fixtures/rider.fit --stream record.heart_rate --stream record.power
+```
+
+## 從專案根目錄執行
+
+Python 3.9 以上可用標準函式庫執行離線檢查。Python 和 Node.js 的入口會從 repo 的 release 建置目錄或 PATH 找到共用的 `fit-inspector-bridge`。macOS arm64 壓縮檔已附上這個執行檔。C# 檢查器使用 .NET 10 SDK，建置時會以 Cargo 編譯並複製 bridge。將下列 `path/to/ride.fit` 換成自己的檔案。
+
+```sh
+cargo build --release --locked --manifest-path src/rust/inspector/Cargo.toml
 PYTHONPATH=src/python python3 -m fit_fusion inspect --decoder wire path/to/ride.fit
 dotnet build src/csharp/FitFusion
 dotnet run --no-build --project src/csharp/FitFusion -- inspect path/to/ride.fit

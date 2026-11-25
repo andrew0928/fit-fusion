@@ -4,6 +4,17 @@
 
 需求、裝置辨識與資訊流盤點見[處理規格](specification.md)。三台設備的樣本、來源選擇及驗證結果見[11 月 21 日騎乘處理紀錄](research/rides/2026-11-21-ride.md)。
 
+## Development CLI prerequisites (M4-5)
+
+Build the clap frontend from the repository root before running the Python or Node source launchers:
+
+```sh
+cargo build --release --locked --manifest-path src/rust/inspector/Cargo.toml
+runtime/build/rust/release/fit-inspector inspect src/rust/merger/tests/fixtures/rider.fit --stream record.heart_rate --stream record.power
+```
+
+The launchers use the sibling build or a `fit-inspector-bridge` on PATH. The C# build copies the frontend alongside FitFusion.dll. Each language still decodes the original bytes itself. Each member's `sampling` contains coverage and missing counts from that decoder's inventory.
+
 ## Run the inspector
 
 From the repository root, with Python 3.9 or later, run

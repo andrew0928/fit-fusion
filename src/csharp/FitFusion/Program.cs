@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Runtime.InteropServices;
@@ -21,7 +22,20 @@ string Guide(string file)
         .Replace("{sdk_row}", "").Replace("{sdk_topic}", "");
 }
 
-if (args is ["--version" or "-V"])
+if (args is not ["--worker", _])
+{
+    var bridge = new ProcessStartInfo(Path.Combine(AppContext.BaseDirectory, "fit-inspector-bridge")) { UseShellExecute = false };
+    foreach (var item in new[] { "csharp", identity, "dotnet", assembly.Location, "--worker", "--" }.Concat(args))
+        bridge.ArgumentList.Add(item);
+    using var process = Process.Start(bridge)!;
+    process.WaitForExit();
+    return process.ExitCode;
+}
+using var document = JsonDocument.Parse(args[1]);
+var request = document.RootElement;
+string Get(string key) => request.GetProperty(key).GetString()!;
+var command = Get("action");
+if (command == "version")
 {
     Console.WriteLine(identity);
     Console.WriteLine($"Runtime   {RuntimeInformation.FrameworkDescription}");
@@ -30,53 +44,34 @@ if (args is ["--version" or "-V"])
     Console.WriteLine("FIT       C# WireReader");
     return 0;
 }
-if (args is ["--help" or "-h"])
+if (command == "skill")
 {
-    Console.Write(Guide("help.txt"));
+    Console.Write(Guide(Get("topic") + ".md"));
     return 0;
 }
-if (args is ["raw" or "inspect" or "roundtrip", "--help" or "-h"])
-{
-    Console.Write(Guide(args[0] + ".txt"));
-    return 0;
-}
-if (args is ["--skill", ..])
-{
-    if (args is ["--skill"] or ["--skill", "index" or "raw" or "inspect" or "roundtrip"])
-    {
-        Console.Write(Guide((args.Length == 1 ? "index" : args[1]) + ".md"));
-        return 0;
-    }
-    Console.Error.WriteLine("Use --skill index for available topics (inspect, raw, roundtrip).");
-    return 2;
-}
-if (args is not (["raw" or "inspect", _] or ["roundtrip", _, "--out", _]))
-{
-    Console.Error.Write(Guide("help.txt"));
-    return 2;
-}
+var file = Get("file");
 try
 {
-    var data = File.ReadAllBytes(args[1]);
-    if (args[0] == "roundtrip")
+    var data = File.ReadAllBytes(file);
+    if (command == "roundtrip")
     {
-        Console.WriteLine(JsonSerializer.Serialize(RoundTrip.Export(data, args[3])));
+        Console.WriteLine(JsonSerializer.Serialize(RoundTrip.Export(data, Get("out"))));
         return 0;
     }
     var reader = new WireReader(data);
-    if (args[0] == "raw")
+    if (command == "raw")
         reader.Read(frame => Console.WriteLine(JsonSerializer.Serialize(frame.Raw())));
     else
     {
         var inventory = new Inventory();
         reader.Read(inventory.Observe);
-        var report = new { file = args[1], members = inventory.Members };
+        var report = new { file = file, members = inventory.Members };
         Console.WriteLine(JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true }));
     }
     return 0;
 }
 catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException)
 {
-    Console.Error.WriteLine($"FitFusion: {args[1]}: {ex.Message}");
+    Console.Error.WriteLine($"FitFusion: {file}: {ex.Message}");
     return 1;
 }

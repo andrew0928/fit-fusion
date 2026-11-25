@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Version>0.1.0</Version>
+    <Version>0.2.2</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -11,4 +11,12 @@
     <EmbeddedResource Include="../../python/fit_fusion/profile.tsv" LogicalName="profile.tsv" />
     <EmbeddedResource Include="../../python/fit_fusion/guides/*.md;../../python/fit_fusion/guides/*.txt" Exclude="../../python/fit_fusion/guides/sdk-check.*" LogicalName="guides.%(Filename)%(Extension)" />
   </ItemGroup>
+  <Target Name="BuildClapFrontend" AfterTargets="Build">
+    <PropertyGroup>
+      <RepoRoot>$(MSBuildProjectDirectory)/../../..</RepoRoot>
+      <RustBuild>$(RepoRoot)/runtime/build/rust</RustBuild>
+    </PropertyGroup>
+    <Exec WorkingDirectory="$(RepoRoot)" Command="cargo build --locked --release --bin fit-inspector-bridge --manifest-path src/rust/inspector/Cargo.toml --target-dir &quot;$(RustBuild)&quot;" />
+    <Copy SourceFiles="$(RustBuild)/release/fit-inspector-bridge" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
 </Project>

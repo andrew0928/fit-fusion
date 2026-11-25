@@ -38,6 +38,10 @@ class CSharpTests(unittest.TestCase):
         inspection = self.invoke("inspect", path)
         self.assertEqual(inspection.returncode, 0, inspection.stderr)
         actual = json.loads(inspection.stdout)
+        for member in actual["members"]:
+            sampling = member.pop("sampling")
+            for row in sampling:
+                self.assertEqual(row["missing_count"], row["message_count"] - row["sample_count"])
         self.assertEqual(actual, inspect_wire(path))
         self.assertEqual(path.read_bytes(), data)
         return actual["members"]
