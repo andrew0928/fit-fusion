@@ -1,6 +1,6 @@
-use crate::inventory::{Developers, timestamp};
 use crate::wire::{self, Record, invalid, width};
 use embedded_io_adapters::std::FromStd;
+use fit_inspector::{inventory::Developers, wire::timestamp};
 use rustyfit::{Decoder, Encoder};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};

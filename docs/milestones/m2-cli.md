@@ -1,6 +1,6 @@
 # M2 設計　從同趟騎乘產出 FIT 與來源分析
 
-M2 交付一支在 macOS 本機執行的 Rust CLI。騎士指定日期，由 CLI 到已設定的主來源找出當日騎乘、配對 CIRQA，再按逐串流順位合併。CLI 交付已驗證的 FIT，由騎士手動上傳 Strava。M2-4 自動發佈為 **pending**，本版另以 M2-5 交付 Parquet。Agent 能從執行檔取得操作指引，依輸出和結束碼判斷下一步。里程碑範圍、熱量來源與設定檔 v1 已確認。以下列出目標介面及實作計畫。[設定檔 v1](../config/README.md) · [里程碑決策](../decisions/2026-11-23-cli-milestones.md) · [本版發佈方式](../decisions/2026-11-24-manual-strava-export.md) · [合併規格](../specification.md)
+M2 交付一支在 macOS 本機執行的 Rust CLI。騎士指定日期，由 CLI 到已設定的主來源找出當日騎乘、配對 CIRQA，再按逐串流順位合併。CLI 交付已驗證的 FIT，由騎士手動上傳 Strava。M2-4 自動發佈已於 2026-11-25 廢除，M2-5 已交付 Parquet。現行開發規劃與原 M3 各項去向見 [M4 計畫](m4-cli.md)。Agent 能從執行檔取得操作指引，依輸出和結束碼判斷下一步。里程碑範圍、熱量來源與設定檔 v1 已確認。以下列出目標介面及實作計畫。[設定檔 v1](../config/README.md) · [里程碑決策](../decisions/2026-11-23-cli-milestones.md) · [本版發佈方式](../decisions/2026-11-24-manual-strava-export.md) · [合併規格](../specification.md)
 
 ## 騎完一趟如何使用
 
@@ -17,7 +17,7 @@ fit-fusion merge ride-bryton.fit ride-garmin.fit --out ./rides/local --json
 fit-fusion merge ride-bryton.fit --auto-match --out ./rides/analysis --parquet --json
 ```
 
-以下保留原設計中的 `auth strava`、`--publish`、`publish`、上傳狀態和恢復流程，均屬已延後的 M2-4。可用命令以 `--help` 為準。
+以下保留原設計中的 `auth strava`、`--publish`、`publish`、上傳狀態和恢復流程，均為已廢除的 M2-4 歷史設計，包含下方命令表、Strava 憑證、送出與續查範例。可用命令以 `--help` 為準。
 
 | 入口 | 行為與結果 |
 |---|---|
@@ -76,10 +76,10 @@ M2 依逐欄表從同名 FIT 欄位擇值。session／lap 心率摘要要與選�
 | 1 | AX 入口與一趟離線合併 | 在乾淨 macOS 環境從原始碼建置 Rust／RustyFIT CLI。清空設定、斷網仍可用 help 與 skill 完成一趟雙檔合併。執行文件內範例，解析 stdout 的 JSON、結束碼與產物。 |
 | 2 | 六趟實檔選值與 FIT 保存 | 10/09、10/14、11/01 只補短缺口；10/28、11/08、11/21 改用整趟 Garmin。11/21 須產出 14,149 個 Garmin 心率樣本。獨立 Python 或 C# 讀回冷水坑的標準熱量與 Garmin 保留值，逐欄比較未修改訊息；另用含同號開發者欄位的樣本驗證沒有碰撞。六趟來源 SHA-256 前後一致。[六趟回放](../research/2026-11-23-heart-rate-quality.md) |
 | 3 | 只給日期完成取檔與配對 | 用六趟已有對照檔的騎乘，核對日期模式、Garmin API 與雙檔離線結果。測同日零／多趟、跨午夜、改檔名、候選不足／歧義、部分成功重跑與權杖到期。已知 ID 能解歧義。 |
-| 4（pending） | Strava 自動發佈 | 模擬處理中、成功、判重、429、送出後斷線及兩個程序同時重跑，核對 POST 次數與恢復結果。另用一趟獲授權且尚未上傳的騎乘實測，記下 upload ID、activity ID，讀回平台熱量並與 FIT 比對。模擬結果與實際匯入分別記錄。[Strava 上傳回應](https://developers.strava.com/docs/reference/#api-Uploads) |
+| 4（廢除） | Strava API 自動發佈 | M11–M13 結案；使用者手動上傳已驗證的本機 FIT。 |
 | 5（完成） | Parquet 分析匯出 | 加 `--parquet` 後能還原兩份原檔並追查每個選值。驗證主流程不需 Apple 全量匯出。 |
 
-第 1–3 項已完成。本機實測六個出發日，日期模式從正式 Garmin Personal API 配對及取回 CIRQA FIT，六份輸出均與手動雙檔逐位元組相同。第 4 項為 pending。騎士使用免費帳號，繼續從網頁上傳合併 FIT。第 5 項已用 DuckDB 獨立讀回六趟 Parquet 並逐位元組還原 12 份原始 FIT。[分析檔契約與查詢](../spec/merger.md#parquet-分析檔-v2) · [模組測試與 76 個決策列](../spec/testcases/module-test-coverage.md) · [日期模式驗收](../spec/testcases/merger.md#目前可重跑的驗收)
+第 1–3 項已完成。本機實測六個出發日，日期模式從正式 Garmin Personal API 配對及取回 CIRQA FIT，六份輸出均與手動雙檔逐位元組相同。第 4 項已廢除。騎士使用免費帳號，繼續從網頁上傳合併 FIT。第 5 項已用 DuckDB 獨立讀回六趟 Parquet 並逐位元組還原 12 份原始 FIT。[分析檔契約與查詢](../spec/merger.md#parquet-分析檔-v2) · [模組測試與 76 個決策列](../spec/testcases/module-test-coverage.md) · [日期模式驗收](../spec/testcases/merger.md#目前可重跑的驗收)
 
 
 ### 追加驗收　舊車錶與跨廠牌 E2E
@@ -91,7 +91,7 @@ M2 依逐欄表從同名 FIT 欄位擇值。session／lap 心率摘要要與選�
 
 ## M3 需求與研究待辦
 
-以下項目全部為 **pending**。v0.1.0 先由 GitHub Release 交付 macOS 執行檔。[發版決策](../decisions/2026-11-24-v0.1.0-release.md)
+**M3 已廢除。** 下表為 v0.1.0 的原始待辦，現行排程以 [M4 任務移轉表](m4-cli.md#原-m3-工作移轉) 為準。v0.1.0 已由 GitHub Release 交付 macOS 執行檔。[發版決策](../decisions/2026-11-24-v0.1.0-release.md)
 
 | 項目 | 待研究或驗證的問題 |
 |---|---|

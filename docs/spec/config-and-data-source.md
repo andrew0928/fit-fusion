@@ -74,7 +74,7 @@ impl MergePolicy {
 - **順位。** `sources()` 列舉已設定來源，列舉順序沒有選值含義。`primary_source()` 回傳發現活動及建立時間軸的主設備（預設 Bryton）。`selected_fields()` 列舉顯式覆寫的逐點欄位與整趟摘要；`sources_for(field)` 才有優先順序。預設心率為 Bryton → CIRQA、總熱量為 CIRQA。未覆寫的 record 欄位回傳主來源。CLI 只對啟用欄位所需的來源取檔，Apple Watch 留供分析。[逐欄選源表](../specification.md#strava-fit-逐欄選源表)
 - **日期與配對。** `primary_query(date)` 依設定時區取得出發日的 UTC 半開區間，查詢起點落入該區間的騎乘。`candidate_query(primary_ride)` 查詢可與主活動重疊的騎乘，帶入雙向重疊門檻（預設 90%），容許提早開錄與跨日。來源負責找齊可能合格的候選。合併器以原檔時段核實雙向比例，跨當日各主活動檢查唯一性，再建立 `MatchedRide`。手動雙檔入口略過列舉，仍驗證設備與時段，並使用相同的選值策略。[日期及歧義契約](../config/README.md#只給日期時的處理契約)
 - **選值。** `MatchedRide` 包含主時間軸、暫停邊界與按來源 ID 配對的唯讀紀錄。`select` 在本機對同一組輸入及有效規則產生一致結果。`SelectedRide` 可依欄位讀取有效值、缺值及來源，另提供品質判定、觸發區段與規則版本；每個選值可追到來源檔、原始欄位和取樣時間。`heart_rate()` 是讀取心率串流的例子。備援品質不足等情況回傳 `QualityReview`，保留診斷並停止該趟自動發佈。
-- **目的地。** `GetTargets()`／`targets()` 依設定列舉零個以上的目的地，與 `GetSources()`／`sources()` 一樣按實例建立集合。C# 以 `IDataTarget.Id`、Rust 以 `DataTarget::id(&self) -> &TargetId` 取得設定中的目的地 ID。CLI 可據此選取指定的 target；同時列出多個目的地時仍只發佈到明確指定的一個。M2 的實際發佈驗收目標為 Strava。[發佈與重跑](merger.md#合併與交付)
+- **目的地。** `GetTargets()`／`targets()` 依設定列舉零個以上的目的地，與 `GetSources()`／`sources()` 一樣按實例建立集合。C# 以 `IDataTarget.Id`、Rust 以 `DataTarget::id(&self) -> &TargetId` 取得設定中的目的地 ID。CLI 可據此選取指定的 target；同時列出多個目的地時仍只發佈到明確指定的一個。M2 的 Strava 交付為本機 FIT，由使用者手動上傳。[發佈與重跑](merger.md#合併與交付)
 
 ## data_source　從一個來源取得一趟記錄
 

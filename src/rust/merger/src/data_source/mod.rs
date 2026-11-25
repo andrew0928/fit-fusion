@@ -28,21 +28,7 @@ impl SourceKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Device {
-    pub manufacturer: u16,
-    pub product: u16,
-}
-impl Device {
-    pub const RIDER_460: Self = Self {
-        manufacturer: 267,
-        product: 2205,
-    };
-    pub const CIRQA: Self = Self {
-        manufacturer: 1,
-        product: 5019,
-    };
-}
+pub use fit_inspector::activity::{Device, FitProductName};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct RecorderIdentity {
@@ -50,12 +36,6 @@ pub struct RecorderIdentity {
     pub product: u16,
     pub name: String,
     pub name_source: &'static str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FitProductName {
-    FileId(String),
-    Creator(String),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,26 +59,10 @@ pub struct ActivitySummary {
 }
 impl ActivityMetadata {
     pub fn recorder(&self) -> RecorderIdentity {
-        let Device {
-            manufacturer,
-            product,
-        } = self.device;
-        let (name, name_source) = match &self.product_name {
-            Some(FitProductName::FileId(s)) => (s.clone(), "file_id.product_name"),
-            Some(FitProductName::Creator(s)) => (s.clone(), "device_info.product_name"),
-            None => match self.device {
-                Device {
-                    manufacturer: 267,
-                    product: 2004,
-                } => ("Bryton Rider 15 Neo".into(), "model_lookup"),
-                Device::RIDER_460 => ("Bryton Rider 460".into(), "model_lookup"),
-                Device::CIRQA => ("Garmin CIRQA".into(), "model_lookup"),
-                _ => (format!("FIT {manufacturer}/{product}"), "fit_ids"),
-            },
-        };
+        let (name, name_source) = self.device.name(self.product_name.as_ref());
         RecorderIdentity {
-            manufacturer,
-            product,
+            manufacturer: self.device.manufacturer,
+            product: self.device.product,
             name,
             name_source,
         }

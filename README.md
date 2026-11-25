@@ -32,9 +32,38 @@ cd fit-fusion-v0.1.0-macos-arm64
 | [src/node/inspector/](src/node/inspector/) | Node.js FIT 檢查器與 Garmin JavaScript SDK 驗證。 |
 | [src/rust/inspector/](src/rust/inspector/) | Rust 檢查器與 RustyFIT 讀寫驗證。 |
 | [src/rust/merger/](src/rust/merger/) | Rust 日期與雙檔合併 CLI。 |
+| [src/rust/query-files/](src/rust/query-files/) | 獨立的本機 FIT 活動查詢與原檔匯出 CLI。 |
 | [src/tools/](src/tools/) | 跨語言逐框比對與原檔雜湊驗證工具。 |
 | `data/` | 本機唯讀輸入。原始 FIT、Apple 健康匯出與騎乘索引由 Git 忽略。 |
 | `runtime/` | 本機產物。建置快取在 `build/`，驗證結果在 `reports/`，開發用 Python 虛擬環境可放在 `venv/`。 |
+
+## 開發版 fit-merge 0.2.0
+
+從專案根目錄建置後，直接指定主檔、附檔、要整條覆寫的欄位與新輸出檔。GitHub v0.1.0 的發佈內容見上方下載說明。[M4 覆寫規格](docs/spec/m4-cli.md) · [CLI 的 help 與 skill 契約](docs/spec/cli-common.md)
+
+```sh
+cargo build --locked --release --manifest-path src/rust/pair-merge/Cargo.toml
+runtime/build/rust/release/fit-merge --help
+runtime/build/rust/release/fit-merge --skill index
+runtime/build/rust/release/fit-merge --primary src/rust/merger/tests/fixtures/rider.fit \
+  --overlay src/rust/merger/tests/fixtures/cirqa.fit --stream record.heart_rate \
+  --stream session.total_calories --out runtime/ride.fit
+```
+
+## 開發版 fit-query-files
+
+從專案根目錄建置後，可用隨 repo 提供的 Garmin SDK 樣本走完查詢和匯出。下例清單有三趟，設備篩選後會匯出兩份 Bryton FIT。再次執行最後一行，可在回傳的 `exports[].status` 看到 `reused`。[本機查詢規格與實騎範例](docs/spec/m4-cli.md#本機-fit-目錄)
+
+```sh
+cargo build --locked --release --manifest-path src/rust/query-files/Cargo.toml
+cli=./runtime/build/rust/release/fit-query-files
+rides=src/rust/merger/tests/fixtures
+"$cli" --skill index
+"$cli" --dir "$rides" list --date 2024-01-09 --json
+id=$("$cli" --dir "$rides" list --device 267/2205 --json | jq -er '.activities[0].id')
+"$cli" --dir "$rides" read --id "$id" --json
+"$cli" --dir "$rides" export --date 2024-01-09 --device 267/2205 --out runtime/selected/bryton --json
+```
 
 ## 從專案根目錄執行
 

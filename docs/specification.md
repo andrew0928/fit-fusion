@@ -170,4 +170,4 @@ FIT 的 `file_id.manufacturer` 使用 Garmin 配發的製造商編號，`file_id
 3. **正式 CLI 技術選型已確認。** 2026-11-23 使用者選定 Rust、RustyFIT（Cargo 套件 `rustyfit`）與 macOS。合成檔案的讀寫已通過逐欄比對。實騎原檔的未知欄位保存與 Strava 匯入仍待驗證。[技術選型決策](decisions/2026-11-21-production-fit-sdk.md)
 4. **融合規則與機讀格式。** 心率先依整趟品質決定選源模式，其餘依逐欄順位補缺。已確認的設定檔 v1 明列來源與順位，跨裝置時鐘偏移、插值、未指定的備援裝置及未知裝置辨識仍待驗證。[設定檔 v1](config/README.md)
 5. **未解決：私有欄位與來源歸屬。** Garmin `record` 的 135、136、143 保留原值。136 在本檔每筆等於標準心率欄位 3；先前討論的腕式心率（136）及 Body Battery（143）屬非官方線索，143 在樣本中由 57 降至 30。三者均缺已確認的官方語義，135 的用途未定。Garmin 訊息 233 共 14,604 筆且無獨立時間戳，22、288 只有零星記錄。Bryton 的 65282、65286 亦保留。Apple 的體力消耗強度、運動分鐘與日照只確認同手錶同時段，缺逐筆運動歸屬。
-6. **M2 正式需求。** 交付可離線合併並輸出 FIT 的 macOS Rust CLI，由騎士手動上傳至 Strava。用 `--help` 與 `--skill <topic>` 說明操作。M2-5 提供可選的 Parquet 分析檔，M2-4 自動發佈延後。[本版範圍決策](decisions/2026-11-24-manual-strava-export.md)M3 收錄憑證安全保管、正式發佈與其他整合。[M2 流程、驗收與 M3 待辦](milestones/m2-cli.md)
+6. **M2 與 M4。** M2 已交付 macOS Rust 合併器、可供手動上傳的 FIT 與可選的 Parquet。M2-4 自動上傳已廢除。原 M3 的憑證保管、發佈、整合與映射需求移入 M4。0.2.0 首項是獨立的雙檔覆寫工具，本文的跨來源補缺與設備順位屬於舊版；0.3.0 起舊 CLI 退場。[已發佈的 M2](milestones/m2-cli.md) · [M4 開發計畫](milestones/m4-cli.md)

@@ -15,7 +15,7 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | `target_registration_is_independent_of_readers`、`a_config_loads_named_instances_and_priorities_offline` | A4a–f、A6f、A6g | 空目的地、預設 Strava、兩個獨立 Strava、擴充種類、讀取與發佈方向分開，以及未知選項定位。 |
 | `invalid_config_is_diagnosed_offline` | A6b–d | 版本、座標順位、Apple 心率備援被拒絕；另驗時區、路徑重疊與重複鍵。 |
 
-測試經由設定檔載入，檢查來源讀取與平台請求計數為零。M2-3 的目的地 factory 僅驗證設定，發佈 transport 的互動測試隨 M2-4 實作。[Config 測試](../../../src/rust/merger/src/config/tests.rs)
+測試經由設定檔載入，檢查來源讀取與平台請求計數為零。M2-3 的目的地 factory 僅驗證設定，Strava 發佈 transport 與互動測試已隨 M2-4 廢除。[Config 測試](../../../src/rust/merger/src/config/tests.rs)
 
 ## B　Query（5 列）
 

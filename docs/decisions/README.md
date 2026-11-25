@@ -14,11 +14,15 @@
 
 | 日期 | 決策 | 狀態 |
 |---|---|---|
+| 2026-11-25 | [M4 依用途拆分 CLI，移轉 M3 並廢除 M2-4](2026-11-25-cli-split.md)（合併入口與時程由同日後續決策取代） | accepted |
+| 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
+| 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |
+| 2026-11-25 | [本機 FIT 依出發日期查詢，按原始內容匯出](2026-11-25-local-fit-query.md) | accepted |
 | 2026-11-24 | [M2 設定與活動來源的模組邊界、介面簽名與驗收條件](2026-11-24-config-and-data-source.md) | accepted |
 | 2026-11-24 | [以具名實例擴充設定中的設備與發佈目的地](2026-11-24-config-extensions.md) | accepted |
 | 2026-11-24 | [Rust 模組以單元測試驗證，主要 CLI 流程以獨立檢查器驗收](2026-11-24-module-test-strategy.md) | accepted |
 | 2026-11-24 | [先實作本機 FIT 目錄，Garmin API 與 Apple Health ZIP 分型保留](2026-11-24-local-fit-source.md) | accepted |
-| 2026-11-24 | [本版手動上傳 Strava，M2-4 維持 pending](2026-11-24-manual-strava-export.md) | accepted |
+| 2026-11-24 | [本版手動上傳 Strava，曾將 M2-4 暫緩](2026-11-24-manual-strava-export.md) | superseded |
 | 2026-11-24 | [config v1 沿用主 FIT，streams 選填，只列覆寫或追加欄位](2026-11-24-config-primary-inheritance.md) | accepted |
 | 2026-11-24 | [用用途命名來源，從 FIT 識別實際設備](2026-11-24-source-roles.md) | accepted |
 | 2026-11-24 | [以 M15、M18 代表舊設備驗收，透過 GitHub Release 發佈 v0.1.0](2026-11-24-v0.1.0-release.md) | accepted |
@@ -26,7 +30,7 @@
 | 2026-11-23 | [Apple Watch 騎乘資料的漸進式匯出](2026-11-23-apple-health-incremental-export.md) | proposed |
 | 2026-11-23 | [整趟騎乘的熱量消耗優先使用 Garmin](2026-11-23-ride-calorie-source.md)（發佈 CIRQA 總熱量並另存兩個原值） | accepted |
 | 2026-11-23 | [心率先判整趟品質，再決定逐點補缺或整趟改用 Garmin](2026-11-23-heart-rate-quality.md) | accepted |
-| 2026-11-23 | [M2 交付可供 agent 操作的 macOS 融合 CLI，M3 處理安全保管與發佈](2026-11-23-cli-milestones.md)（11/24 補充 CLI 版本顯示與診斷資訊） | accepted |
+| 2026-11-23 | [M2 交付可供 agent 操作的 macOS 融合 CLI，M3 處理安全保管與發佈](2026-11-23-cli-milestones.md)（M2 已交付，M3 排程由 [M4](2026-11-25-cli-split.md) 取代） | accepted |
 | 2026-11-23 | [個人設定檔分開定義來源與逐串流順位，依日期從主來源找活動](2026-11-23-date-driven-config.md)（M2-3 六趟 API 與離線配對已驗收，11/24 確認單檔自動配對旗標 `--auto-match`） | accepted |
 | 2026-11-23 | [專案以 docs、src、data 與 runtime 分開保存文件、程式及本機資料](2026-11-23-project-layout.md) | accepted |
 | 2026-11-23 | [多語言 FIT 檢查器與單一 Rust 合併器分別驗收](2026-11-23-inspector-and-merger.md) | accepted |

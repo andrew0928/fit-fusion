@@ -307,3 +307,30 @@ impl Frame<'_> {
         result
     }
 }
+
+pub fn native(layout: &Layout, values: &[&[u8]], id: u8) -> Option<Value> {
+    let i = layout
+        .fields
+        .iter()
+        .rposition(|f| f.developer.is_none() && f.id == id)?;
+    Some(decoded(values[i], layout.fields[i].base, layout.big))
+}
+
+pub fn timestamp(
+    layout: &Layout,
+    values: &[&[u8]],
+    offset: Option<u8>,
+    clock: &mut Option<i64>,
+) -> Option<i64> {
+    let full = native(layout, values, 253)
+        .and_then(|v| v.as_i64())
+        .filter(|v| (0..0xffffffff).contains(v));
+    let t = match (*clock, offset) {
+        (Some(prev), Some(s)) => Some(prev + (i64::from(s) - prev).rem_euclid(32)),
+        _ => full,
+    };
+    if t.is_some() {
+        *clock = t;
+    }
+    t
+}

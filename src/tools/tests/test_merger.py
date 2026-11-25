@@ -27,7 +27,7 @@ EXPECTED = {
 }
 
 
-def fixture(bryton, rates, start=START, extra_sensor=42):
+def fixture(bryton, rates, start=START, extra_sensor=42, metabolic=1):
     n = len(rates)
     maker, product = (267, 2205) if bryton else (1, 5019)
     body = message_definition(0, 0, [(0, 1, 0), (1, 2, 0x84), (2, 2, 0x84)])
@@ -41,7 +41,7 @@ def fixture(bryton, rates, start=START, extra_sensor=42):
         body += struct.pack("<BIBBB", 2, start+i, hr, 0, extra_sensor)
     body += message_definition(3, 18, [(253, 4, 0x86), (2, 4, 0x86), (5, 1, 0), (7, 4, 0x86),
                                         (11, 2, 0x84), (196, 2, 0x84)], [(11, 1, 0)])
-    body += struct.pack("<BIIBIHHB", 3, start+n-1, start, 2, n*1000, 6 if bryton else 2, 1, 77)
+    body += struct.pack("<BIIBIHHB", 3, start+n-1, start, 2, n*1000, 6 if bryton else 2, metabolic, 77)
     return fit_member(body)
 
 

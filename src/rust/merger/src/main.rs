@@ -166,8 +166,10 @@ fn fail(error: Error, json_output: bool) -> ExitCode {
 }
 
 fn main() -> ExitCode {
-    let mut command =
-        cli_help::command::<Cli>(&format!("\nRules     {}", fit_fusion::RULES_VERSION));
+    let mut command = cli_help::command::<Cli>(
+        "RustyFIT and wire reader",
+        &format!("\nRules     {}", fit_fusion::RULES_VERSION),
+    );
     let cli = match command
         .try_get_matches_from_mut(std::env::args_os())
         .and_then(|mut matches| Cli::from_arg_matches_mut(&mut matches))

@@ -1,6 +1,6 @@
-use super::{ActivityMetadata, Device, FitProductName};
+use super::{ActivityMetadata, Device};
 use crate::{Error, Result, hash};
-use fit_inspector::wire::{self, Record};
+use fit_inspector::activity::{self, FIT_EPOCH_UNIX};
 use rustyfit::Decoder;
 use rustyfit::proto::{FIT, Message, Value};
 use std::{
@@ -8,8 +8,6 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-
-const FIT_EPOCH_UNIX: i64 = 631065600;
 
 #[derive(Default)]
 pub(super) struct Inventory {
@@ -23,129 +21,34 @@ pub(super) fn inventory(
     path: &Path,
     filter: Option<Device>,
 ) -> Result<Inventory> {
-    let mut found = Inventory::default();
-    let mut members = 0;
-    let mut device = None;
-    let mut file_name = None;
-    let mut creator_names = Vec::new();
-    let mut activity_file = false;
-    let mut file_ids = 0;
-    let mut sessions = Vec::new();
-    wire::walk(bytes, |frame| {
-        match frame.record {
-            Record::Header { .. } => members += 1,
-            Record::Definition { layout, .. } => {
-                for f in &layout.fields {
-                    if let Some(id) = f.developer {
-                        found.developers.insert(id);
-                    } else {
-                        found.native.insert((layout.number, f.id));
-                    }
-                }
-            }
-            Record::Data { layout, values, .. } if matches!(layout.number, 0 | 18 | 23) => {
-                let uint = |id| {
-                    let (field, bytes) = layout
-                        .fields
-                        .iter()
-                        .zip(values.iter())
-                        .find(|(f, _)| f.developer.is_none() && f.id == id)?;
-                    let width = wire::width(field.base?)?;
-                    if width != bytes.len() || width > 4 || bytes.iter().all(|&b| b == 255) {
-                        return None;
-                    }
-                    Some(wire::unsigned(bytes, layout.big) as u32)
-                };
-                let text = |id| {
-                    let (_, raw) =
-                        layout.fields.iter().zip(&values).find(|(f, _)| {
-                            f.developer.is_none() && f.id == id && f.base == Some(7)
-                        })?;
-                    let value = std::str::from_utf8(raw.split(|b| *b == 0).next()?)
-                        .ok()?
-                        .trim();
-                    (!value.is_empty()).then(|| value.to_owned())
-                };
-                if layout.number == 23
-                    && uint(0) == Some(0)
-                    && let Some(name) = text(27)
-                {
-                    creator_names.push((uint(2), uint(4), name));
-                }
-                if layout.number == 0 {
-                    file_ids += 1;
-                }
-                if layout.number == 0 && uint(0) == Some(4) {
-                    activity_file = true;
-                    file_name = text(8);
-                    device = uint(1).zip(uint(2)).and_then(|(maker, product)| {
-                        Some(Device {
-                            manufacturer: u16::try_from(maker).ok()?,
-                            product: u16::try_from(product).ok()?,
-                        })
-                    });
-                } else if layout.number == 18 {
-                    sessions.push((uint(5), uint(2), uint(7)));
-                }
-            }
-            _ => {}
-        }
-        Ok(())
-    })
-    .map_err(|e| Error::data(format!("{}: {e}", path.display())))?;
-    if members != 1 || file_ids != 1 {
-        return Err(Error::data(format!(
-            "{}: expected one FIT member and file_id",
-            path.display()
-        )));
-    }
-    if !activity_file {
+    let fail = |error| Error::data(format!("{}: {error}", path.display()));
+    let mut file = activity::scan(bytes).map_err(fail)?;
+    let mut found = Inventory {
+        metadata: None,
+        native: std::mem::take(&mut file.native),
+        developers: std::mem::take(&mut file.developers),
+    };
+    if !file.is_activity {
         return Ok(found);
     }
-    let device = device.ok_or_else(|| {
+    let device = file.device.ok_or_else(|| {
         Error::data(format!(
             "{}: missing activity device identity",
             path.display()
         ))
     })?;
-    if filter.is_some_and(|wanted| device != wanted) {
+    if filter.is_some_and(|wanted| wanted != device) {
         return Ok(found);
     }
-    if sessions.is_empty() {
-        return Err(Error::data(format!(
-            "{}: missing activity session",
-            path.display()
-        )));
-    }
-    if !sessions.iter().any(|s| s.0 == Some(2)) {
+    let Some((start, elapsed)) = file.cycling_session().map_err(fail)? else {
         return Ok(found);
-    }
-    let [(Some(2), Some(start), Some(elapsed))] = sessions.as_slice() else {
-        return Err(Error::data(format!(
-            "{}: expected one cycling session with start and elapsed time",
-            path.display()
-        )));
     };
-    if *elapsed == 0 {
-        return Err(Error::data(format!(
-            "{}: expected one activity with a positive duration",
-            path.display()
-        )));
-    }
-    let start_utc = FIT_EPOCH_UNIX + i64::from(*start);
+    let start_utc = FIT_EPOCH_UNIX + i64::from(start);
     found.metadata = Some(ActivityMetadata {
         source_id: source.into(),
         activity_id: hash(bytes),
         device,
-        product_name: file_name.map(FitProductName::FileId).or_else(|| {
-            creator_names
-                .into_iter()
-                .find(|(maker, product, _)| {
-                    maker.is_none_or(|n| n == u32::from(device.manufacturer))
-                        && product.is_none_or(|n| n == u32::from(device.product))
-                })
-                .map(|(_, _, s)| FitProductName::Creator(s))
-        }),
+        product_name: file.product_name,
         sport: 2,
         start_utc,
         end_utc: start_utc + i64::from(elapsed.div_ceil(1000)),

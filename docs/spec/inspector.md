@@ -1,6 +1,6 @@
 # FIT 檢查器 CLI 規格
 
-檢查器回答「指定的解碼器從這一份 FIT 讀到了什麼」。它唯讀開啟單一檔案，盤點實際編碼的訊息、欄位與取樣情況。不同實作各自讀取**相同位元組**，比對工具才有條件驗證 SDK 的讀取能力。例如 `record.heart_rate` 是逐點串流，`session.total_calories` 是整趟摘要，兩者都要盤點。跨裝置判斷心率品質與選源由合併器負責。[合併器規格](merger.md)
+檢查器回答「指定的解碼器從這一份 FIT 讀到了什麼」。它唯讀開啟單一檔案，盤點實際編碼的訊息、欄位與取樣情況。不同實作各自讀取**相同位元組**，比對工具才有條件驗證 SDK 的讀取能力。例如 `record.heart_rate` 是逐點串流，`session.total_calories` 是整趟摘要，兩者都要盤點。0.1.0 的跨裝置心率選源屬於[舊合併器規格](merger.md)。M4-5 將在檢查器補上可指定預期串流的缺樣分析，列出總筆數、有效取樣、缺樣數與百分比；覆寫哪些欄位由使用者決定。[0.2.x 取樣分析契約](m4-cli.md#取樣分析交給-fit-inspector)
 
 ## 語言與解碼器
 
@@ -14,6 +14,8 @@
 這四種語言是首批目標。日後新增語言或同語言的其他 SDK，沿用同一份輸入、輸出契約與案例。每個後端要能獨立讀檔。若某項輸出由另一個 wire reader 補足，驗收紀錄標出實際提供者。[兩個既有實作的決策](../decisions/2026-11-21-csharp-inspection-control.md) · [SDK 試驗紀錄](../research/2026-11-23-rust-fit-cli.md)
 
 ## 命令契約
+
+所有對外入口適用 [clap、help 與 skill 共同契約](cli-common.md)；各語言採用狀態見該表。
 
 Rust 檢查器由 clap 解析參數。`inspect --decoder wire ride.fit` 與將 `--decoder` 放在檔名後方的寫法等價。`inspect ride.fit --help` 顯示 inspect 的 help。未知旗標回傳結束碼 2、將用法診斷送至 stderr，並在讀取檔案前結束。要傳入以連字號開頭的檔名，可使用位置參數分隔符號，例如 `inspect -- -ride.fit`。
 

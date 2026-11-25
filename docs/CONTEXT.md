@@ -1,7 +1,7 @@
 # FIT Sensor Data Fusion
 
 ## Goal
-Maintain two CLI families with independent acceptance criteria.
+Version 0.1.0 delivers the two CLI families below. The [M4 plan](milestones/m4-cli.md) starts with independent tools at 0.2.0. Retirement of the legacy `fit-fusion` CLI starts at 0.3.0.
 
 - The [inspector](spec/inspector.md) inventories a single FIT and compares
   independent decoding paths across Python, C#, Rust, and Node.js, with room
@@ -22,7 +22,9 @@ This is stream merging, NOT concatenating routes or activities.
 - Garmin CIRQA: activity and wellness data
 - iPhone 16 Pro: HealthKit data source and export interface
 
-## Requirements
+## Requirements for the 0.1.0 fusion workflow
+
+These source priorities and quality rules describe the legacy merger. The [0.2.x pair-merge contract](spec/m4-cli.md) uses explicit whole-stream replacement.
 1. Use Bryton FIT as primary activity and timeline.
 2. Prefer heart rate recorded by Bryton (normally from the chest strap). Use
    Garmin CIRQA to fill small gaps. If the ride has prolonged missing or stale
@@ -71,10 +73,10 @@ Deliver a Rust CLI with human-readable `--help` and self-contained agent
 instructions via `--skill <topic>`. Use the preset source and stream priorities
 to select same-name fields and export a validated FIT for manual upload to Strava.
 Optional `merge --parquet` preserves the complete input files and selected values.
-Automated Strava publishing (M2-4) is **pending** under the [scope decision](decisions/2026-11-24-manual-strava-export.md). The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
+M2-4 was **retired** on 2026-11-25. Riders upload the exported FIT to Strava manually. [Scope decision](decisions/2026-11-25-cli-split.md). The [field-by-field specification](specification.md#strava-fit-逐欄選源表)
 lists the source for each entry in Strava's public FIT table. Mapping a
 different source field into a destination field is planned for a later release.
-Keep personal Garmin and Strava credentials together in a local config file.
+Config v1 supports local Garmin credentials. Manual Strava upload requires only the exported FIT.
 Configure each data source independently and list the ordered sources for
 each selected stream. A date-only merge discovers all rides that started on
 that day in the primary source and matches secondary recordings per ride.
@@ -82,11 +84,10 @@ See the [v1 configuration contract and example](config/README.md).
 The [M2 design](milestones/m2-cli.md) describes the commands, inputs,
 outputs, recovery behavior, and end-to-end acceptance cases.
 
-## Milestone 3 — credential storage, distribution, and other integrations
+## Milestone 3 — retired
 
-All M3 work is pending. Version 0.1.0 ships the M2 CLI through a tagged GitHub Release. M15 and M18 represent legacy device acceptance for this version. M16 and M17 are skipped because no more original FIT recordings are available. See the [release decision](decisions/2026-11-24-v0.1.0-release.md).
+Its credential storage, distribution, integration and field-mapping tasks are assigned to specific M4 work items. The [v0.1.0 release decision](decisions/2026-11-24-v0.1.0-release.md) records the earlier scope, including M15 and M18 as the legacy acceptance cases and M16 and M17 as skipped.
 
-Research macOS Keychain and hardware-backed key protection, formal release
-channels including Homebrew and GitHub, and further integrations. The
-[M3 backlog](milestones/m2-cli.md#m3-需求與研究待辦) records the questions
-and proposed proofs of concept.
+## Milestone 4 — independent CLIs by purpose
+
+0.2.0 starts with `fit-merge`: one local primary FIT, one overlay FIT, explicit stream names and a new output path, all supplied on the command line. Selected streams retain gaps in the overlay. Repeat the command for further inputs. `fit-inspector` owns sampling and missing-data analysis. The three independent query CLIs handle local FIT directories, Apple Health exports and Garmin Connect. New tools run independently of `fit-fusion`, whose retirement begins at 0.3.0. See the [development plan](milestones/m4-cli.md), [CLI contract](spec/m4-cli.md) and [acceptance cases](spec/testcases/m4-cli.md).

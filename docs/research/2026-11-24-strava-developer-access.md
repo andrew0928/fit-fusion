@@ -18,4 +18,4 @@
 - 現行專案是個人使用。依已公開的條件，尚無理由預期可直接取得 Extended Access。以將來的服務構想申請是否獲准，只有 Strava 能確認。可以向 `developers@strava.com` 說明目前規模、預期人數與產品功能，詢問個案資格。[官方申請窗口](https://partners.strava.com/undefined/developers-faqs)若僅需為合併檔上傳，Standard 的公開端點已足夠。
 - 穿戴設備的既有同步不受這次分級更新影響，送出的是裝置記錄。Garmin 說明它不會將從第三方網站收到的活動再轉送給另一個第三方網站。這些文件未證實能將本專案的合併 FIT 自動原樣發佈。[Strava 公告](https://communityhub.strava.com/insider-journal-9/an-update-to-our-developer-program-13428) · [Garmin 同步說明](https://support.garmin.com/en-HK/?faq=8L3Z4gEmTk6sXV7ido1Uz6)
 
-M2-4 狀態為 pending。現階段的交付方式為 CLI 輸出 FIT，騎士在網頁上傳。[決策紀錄](../decisions/2026-11-24-manual-strava-export.md)
+調查當日先將 M2-4 暫緩，2026-11-25 已廢除。交付方式為 CLI 輸出 FIT，騎士在網頁上傳。[原決策](../decisions/2026-11-24-manual-strava-export.md) · [現行範圍](../decisions/2026-11-25-cli-split.md)

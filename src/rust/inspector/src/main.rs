@@ -1,12 +1,10 @@
 #[path = "../../cli_help.rs"]
 mod cli_help;
 mod guidance;
-mod inventory;
 mod roundtrip;
-mod sdk;
 
 use clap::{FromArgMatches, Parser, Subcommand, ValueEnum};
-use fit_inspector::wire;
+use fit_inspector::{inventory, wire};
 use std::{
     fs,
     io::{self, Write},
@@ -97,7 +95,7 @@ fn run(action: &Action) -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
-    let mut matches = cli_help::command::<Cli>("").get_matches();
+    let mut matches = cli_help::command::<Cli>("RustyFIT and wire reader", "").get_matches();
     let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         print!("{}", topic.page());
