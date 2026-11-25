@@ -75,7 +75,7 @@ fn id(s: &str) -> std::result::Result<String, String> {
 enum Action {
     /// List cycling workouts, including overlapping recordings from different sources
     #[command(
-        after_help = "Example\n  fit-query-apple --archive export.zip list --source-name AndrewWatch --text"
+        after_help = "Example\n  fit-query-apple --archive export.zip list --source-name MyWatch --text"
     )]
     List(Select),
     /// Read workout metadata, source sample ranges and route coverage

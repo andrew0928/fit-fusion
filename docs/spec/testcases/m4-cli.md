@@ -24,7 +24,7 @@
 | R11／M4-5 | 6 筆 record 中，指定欄位只有 4 筆有效（含有效零）、1 筆 invalid、1 筆未帶此欄。時間間隔不規則。 | 報總筆數 6、有效 4、缺 2、缺樣率約 33.33%。時間間隔另列，分析前後來源 FIT 雜湊相同。 |
 | R12／M4-5 | 分別點名未記錄的心率、已記錄但整段 invalid 的心率，以及完全無 record 的活動。 | 前兩者在 6 筆 record 時都是 0 有效、缺 6、100%，各自標明欄位狀態。無 record 時總數、有效及缺數皆 0，百分比為 `null`。 |
 | R13／M4-6（已取消） | 後續顯式欄位映射，含不相容單位、型別及目標衝突。 | 映射來源與生效值可查；衝突有診斷。保留原案例供歷史追溯。 |
-| R14／M4-7 | 於無舊 CLI 的乾淨 macOS 安裝新工具，各自執行 help、skill 與主要操作。0.3.0 起檢查退場說明及安裝指引。 | 下載校驗與版本可核對；各工具獨立完成任務。使用指引及驗收均無依賴舊 CLI 的步驟。 |
+| R14／M4-7（review 通過） | 在未安裝舊 CLI 的乾淨 macOS 安裝五支工具，各自執行 help、skill 與主要操作。 | 下載校驗與版本可核對，各工具可獨立完成任務。2026-11-25 使用者確認通過。[驗收紀錄](#r14review) |
 | R15／M4-8（已取消） | 以候選平台的一筆活動研究雲端原檔或其他上傳目的地。 | 記錄授權、原檔或收據與去重能力，再決定是否實作。Strava 維持手動上傳。 |
 
 M4-1 已通過 R01–R07 的本機驗收，另以六趟實騎的附檔心率與總熱量逐欄核對輸出。相關測試為 [Rust 核心測試](../../../src/rust/pair-merge/src/merge.rs) 與 [CLI 端對端測試](../../../src/tools/tests/test_pair_merge.py)。R10 起依對應任務驗收。各入口另須通過 [clap／help／skill 共通案例](../cli-common.md)。
@@ -56,3 +56,21 @@ M4-1 已通過 R01–R07 的本機驗收，另以六趟實騎的附檔心率與�
 ### M4-4 Apple Health R10
 
 [Apple CLI 驗收](../../../src/tools/tests/test_query_apple.py) 產生含 Watch、Connect 同時段騎乘及跑步的 ZIP，驗證跨日、來源及硬體過濾、轉製標記、秒以下樣本、缺 GPX、補入 GPX 產生修訂、重用與衝突時保護既有檔案。獨立 Python wire reader 核對實際 FIT 值。另以本機 11/21 的完整 ZIP 分出兩筆活動，Watch FIT 有 13,821 個路線點、3,069 筆心率與 11,259 筆距離增量，重跑回報 reused。
+
+<a id="r14review"></a>
+### M4-7 乾淨環境驗收 R14
+
+**通過。** 2026-11-25 使用者回報已完成乾淨環境驗收，確認 M4-7 R14 通過 review。驗收基準為 0.2.2 的 Apple Silicon Homebrew 測試套件。發佈端的匿名下載、SHA-256 及合成 FIT 讀回另有[分發驗證紀錄](../../decisions/2026-11-25-homebrew-cli.md)。
+
+前置條件為已安裝 Homebrew 的 Apple Silicon Mac，PATH 中沒有舊 `fit-fusion` 執行檔。重現這次驗收時使用指向 0.2.2 的 Formula。下表列出操作、預期結果及各項紀錄的依據。
+
+| 情境 | 操作 | 預期結果 | 核對依據 |
+|---|---|---|---|
+| 匿名取得套件 | 從公開 tap 的 0.2.2 Release 下載壓縮檔及校驗檔，比對 SHA-256。 | 免登入可下載，檔案雜湊與校驗檔、Formula 一致。 | 已記錄匿名下載與校驗。 |
+| 乾淨環境首次安裝 | 執行 `brew install andrew0928/tools/fit-fusion`，核對套件版本及安裝目錄。 | 套件版本為 0.2.2，bin 目錄恰有 merge、inspector 與三支 query 工具。各工具可在沒有舊 CLI 的環境啟動。 | 使用者 R14 review 通過；Formula 測試另核對五支執行檔清單。 |
+| 人與 agent 找到用法 | 對五支 CLI 各執行 `--help`、`--skill index`、`--version`。 | 可讀到該工具的命令、可查閱的 skill 主題與元件版本。 | R14 共通介面。Formula 的自動測試涵蓋五支工具的 `--help`。 |
+| 查詢本機 FIT | 以空目錄執行 `fit-query-files --dir rides list --json`。 | 正常結束，`status` 為 `ok`，`activities` 為空陣列。 | 安裝版 `brew test` 的案例。 |
+| 查詢 Apple 與 Garmin 活動 | Apple 準備含已知騎乘的 Health 匯出 ZIP，以 `fit-query-apple --archive FILE.zip list --date YYYY-MM-DD` 查詢騎乘日。Garmin 準備有效的本機 dotenv，以 `fit-query-garmin --env-file .env list --date YYYY-MM-DD` 查詢。 | 各工具可獨立列出對應來源的活動及 ID。 | 主要操作的參考範例，來源功能實測分列於 R10、R09。 |
+| 合併後用檢查器讀回 | 以 `fit-merge` 指定同趟兩份合成 FIT，覆寫 `record.heart_rate` 並另存。執行 `fit-inspector inspect merged.fit --stream record.heart_rate`。 | 合併檔可獨立讀回，這組樣本有 **6 筆有效心率**。 | 0.2.2 已用 Homebrew 安裝版走完並記錄筆數。 |
+
+R14 驗證首次安裝。從 0.2.2 升級至候選版由 [M5-4](../../milestones/m5-release.md) 驗收。

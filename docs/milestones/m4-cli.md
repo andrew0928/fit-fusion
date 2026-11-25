@@ -10,8 +10,8 @@
 | M3 | 已廢除 | 安全保管、發佈、整合與 rename 分派至下方工作項目。 |
 | 0.2.0（M4 起點） | 已發佈 | `fit-merge`、`fit-query-files`、既有 `fit-fusion` 與 `fit-inspector` 的 macOS arm64 套件及 SHA-256。[GitHub Release v0.2.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.0) |
 | 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功。依確認順序先做 M4-5，再做 M4-4。 |
-| 0.2.2 | 已發佈 | M4-5 四語言檢查器提供逐串流缺樣統計，M4-4 提供 Apple Health ZIP 查詢與 FIT 匯出。通過 R10、R11、R12。[GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) |
-| 0.3.0 起 | 已定方向 | 開始讓 `fit-fusion` 退場。規劃於 `~/.fit-fusion/` 下放置各工具共通設定檔，交付退場說明與新工具使用範例；從 0.2.0 起即以未安裝舊執行檔的環境設計與驗收。 |
+| 0.2.2 | 已發佈，Homebrew 供測試 | M4-5 四語言檢查器提供逐串流缺樣統計，M4-4 提供 Apple Health ZIP 查詢與 FIT 匯出。R10、R11、R12 通過。使用者已完成 Homebrew 乾淨環境驗收，R14 review 通過。[GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) |
+| 0.3.0（M5） | 首次正式發佈，待完成 | 五支獨立 CLI 的正式分發、共通設定與舊 `fit-fusion` 退場指引由 [M5](m5-release.md) 承接。 |
 
 ## M4 執行順序與完成條件
 
@@ -25,15 +25,15 @@
 | M4-5 | `fit-inspector` 取樣分析 | 0.2.2 提供 `inspect FILE [--stream NAME]…`，R11、R12 通過。唯讀列出各串流的有效樣本數、缺樣數、缺樣百分比與分母；可點名檔內完全沒有的串流。使用者可先檢查附檔，再決定是否覆寫。Python、C#、Node.js 入口亦已遷移至共用 clap 前端。 |
 | M4-4 | `fit-query-apple`（0.2.2，R10 通過） | 讀本機 Apple Health ZIP，查詢 Workout、取樣與關聯路線；每趟匯出一份**標明來源的轉製 FIT**。以同時段 Watch 與 Connect 活動驗證來源辨識、缺項與重跑。納入三支 query 共通的活動／設備名稱及文字輸出。 |
 | M4-6 | rename（已取消） | 設計顯式來源欄 → 目標欄的參數、單位／型別與衝突驗證。首版 `fit-merge` 只接受同名覆寫。 |
-| M4-7 | 分發與退場 | 各新 CLI 隨對應版本獨立建置驗收。0.3.0 起啟動舊 CLI 退場；正式安裝管道、簽章、公證與升級可另排。 |
+| M4-7 | 0.2.2 Homebrew 測試分發（完成，R14 通過） | 已驗證匿名下載與首次安裝。2026-11-25 使用者確認乾淨環境 R14 review 通過。正式分發、升級與舊 CLI 退場移交 M5。[R14 案例](../spec/testcases/m4-cli.md#r14review) · [M5 任務](m5-release.md) |
 | M4-8 | 其他平台研究（已取消） | 分別驗證 Bryton 雲端取檔與其他目的地之授權、原始檔取得或上傳收據及去重。Strava 的交付流程到本機 FIT 為止。 |
 
 ## 原 M3 工作移轉
 
 | 原需求 | 承接項目 | 範圍 |
 |---|---|---|
-| Garmin 憑證 | M4-3、0.3.0 共通設定 | v0.2.1 僅用 .env，0.3.0 再設計 ~/.fit-fusion/ 下的共通設定檔。 |
-| 正式發佈管道 | M4-7 | 延續 GitHub Release 與 SHA-256，驗證乾淨 macOS 安裝，再評估 Homebrew 與簽章。 |
+| Garmin 憑證 | M4-3、M5-5 | v0.2.1 僅用 .env，M5-5 定義 ~/.fit-fusion/ 下的共通設定檔。 |
+| 正式發佈管道 | M4-7、M5 | 0.2.2 公開附件、SHA-256、Homebrew 首次安裝與乾淨環境 R14 已驗收。後續升級與首次正式發佈由 [M5](m5-release.md) 追蹤。 |
 | Apple 漸進匯入 | M4-4、M4-2 | 逐趟匯出 ZIP 中新增或變更的活動；若已有 HealthFit 同步的 FIT，交由 files 查詢。手機端持續到檔另行評估。 |
 | 其他來源與目的地 | M4-8（已取消） | Bryton Active 雲端原檔與其他平台寫入分開研究。 |
 | 跨欄位映射 | M4-6（已取消） | 合併維持同名欄位覆寫。 |

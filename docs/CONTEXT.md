@@ -1,7 +1,7 @@
 # FIT Sensor Data Fusion
 
 ## Goal
-Version 0.1.0 delivers the two CLI families below. The [M4 plan](milestones/m4-cli.md) starts with independent tools at 0.2.0. Retirement of the legacy `fit-fusion` CLI starts at 0.3.0.
+Version 0.1.0 delivers the two CLI families below. [M4](milestones/m4-cli.md) delivers independent tools starting at 0.2.0. The 0.2.x Homebrew packages are for testing. [M5](milestones/m5-release.md) owns the first production release at 0.3.0 and starts retirement of the legacy `fit-fusion` CLI.
 
 - The [inspector](spec/inspector.md) inventories a single FIT and compares
   independent decoding paths across Python, C#, Rust, and Node.js, with room
@@ -91,3 +91,7 @@ Its credential storage, distribution, integration and field-mapping tasks are as
 ## Milestone 4 — independent CLIs by purpose
 
 0.2.0 starts with `fit-merge`: one local primary FIT, one overlay FIT, explicit stream names and a new output path, all supplied on the command line. Selected streams retain gaps in the overlay. Repeat the command for further inputs. `fit-inspector` owns sampling and missing-data analysis. The three independent query CLIs handle local FIT directories, Apple Health exports and Garmin Connect. New tools run independently of `fit-fusion`, whose retirement begins at 0.3.0. See the [development plan](milestones/m4-cli.md), [CLI contract](spec/m4-cli.md) and [acceptance cases](spec/testcases/m4-cli.md).
+
+## Milestone 5 — 0.3.0 production release
+
+M4-7 closed with the [R14 clean-install review](spec/testcases/m4-cli.md#r14review) of 0.2.2. The [M5 tasks](milestones/m5-release.md) track publication, build costs, the upgrade from 0.2.2, shared configuration and legacy CLI retirement. Developer ID signing and notarization are skipped for this release.

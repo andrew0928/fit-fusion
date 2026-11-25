@@ -76,7 +76,7 @@ impl From<std::io::Error> for Error {
 #[command(
     about = "Query Garmin Connect cycling activities and export original FIT files",
     arg_required_else_help = true,
-    after_help = "Examples\n  fit-query-garmin --env-file .env list --date 2026-11-21 --json\n  fit-query-garmin --env-file .env export --id 25149578721 --out selected --json\n  fit-query-garmin --skill"
+    after_help = "Examples\n  fit-query-garmin --env-file .env list --date 2026-11-21 --json\n  fit-query-garmin --env-file .env export --id 123456789 --out selected --json\n  fit-query-garmin --skill"
 )]
 struct Cli {
     /// Read the personal key from GARMIN_PERSONAL_ACCESS_TOKEN in this dotenv file
@@ -113,7 +113,7 @@ enum Action {
     List(Filters),
     /// Read one original's metadata and record-stream inventory
     #[command(
-        after_help = "Example\n  fit-query-garmin --env-file .env read --id 25149578721 --json"
+        after_help = "Example\n  fit-query-garmin --env-file .env read --id 123456789 --json"
     )]
     Read {
         /// Decimal Garmin activity ID from list
