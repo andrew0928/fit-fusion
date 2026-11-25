@@ -41,10 +41,7 @@ fn client(root: &Path, steps: Vec<Step>) -> Client<Mock> {
     .unwrap();
     Client::new(
         Mock(RefCell::new(steps.into())),
-        Credentials {
-            env_file: Some(file),
-            keychain: None,
-        },
+        Credentials { env_file: file },
     )
 }
 fn reply(value: Value) -> Result<Vec<u8>> {

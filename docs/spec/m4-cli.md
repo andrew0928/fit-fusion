@@ -98,7 +98,7 @@ fit-query-files --dir "$rides" export --from 2026-11-01 --until 2026-12-01 --out
 
 ### Garmin Connect 個人活動
 
-`fit-query-garmin` 使用 Garmin Connect Personal API。活動 ID 是 Connect 的正十進位整數，在查詢結果以字串回傳。來源 ID 為 `garmin_connect`。目前操作使用 `--env-file .env`。未指定檔案時，依序採程序環境變數與使用者 Keychain。明確指定的檔案若無法使用，會回報授權錯誤。[憑證決策](../decisions/2026-11-25-garmin-query-credentials.md)
+`fit-query-garmin` 使用 Garmin Connect Personal API。活動 ID 是 Connect 的正十進位整數，在查詢結果以字串回傳。來源 ID 為 `garmin_connect`。目前操作使用 `--env-file .env`。預設讀工作目錄的 .env。明確指定的檔案若無法使用，會回報授權錯誤。[憑證決策](../decisions/2026-11-25-garmin-dotenv.md)
 
 | 操作 | 輸出與副作用 |
 |---|---|
@@ -106,9 +106,8 @@ fit-query-files --dir "$rides" export --from 2026-11-01 --until 2026-12-01 --out
 | `read --id ID` | 從 FIT 讀回騎乘的起訖、設備、串流、有效取樣數及時間。回傳 `sha256`、`path` 與 `cache_hit`。支援單一騎乘 session 的摘要。 |
 | `export --id ID --out DIR` 或按日期／期間／設備匯出 | 直接 FIT 或 ZIP 中唯一的 FIT 會保留原始位元組。每筆使用 `ID.fit`，同內容回報 `reused`、同名異內容回報 `conflict`。批次報告保留成功與失敗 ID。發生平台授權、限流或服務錯誤後，餘項標示 `not_attempted`。 |
 | `--cache-dir DIR`、`read/export --id ID --offline` | 預設快取為 `~/Library/Caches/fit-query-garmin`。按 ID 與 SHA-256 儲存，寫入以每 ID 的鎖與暫存檔保護。離線命中可在無憑證時使用，雜湊失敗或未下載的 ID 回報 `cache_miss`。不同帳號可指定不同的快取目錄。 |
-| `auth import`、`auth status` | 選用的 macOS Keychain 匯入／輪替及讀回。可指定現存的 `--keychain FILE`。本機登入鑰匙圈待排除期間，使用上述 `.env` 路徑。 |
 
-結束碼 0 表成功（含零筆）；2 表語法或日期組合錯誤；3 表活動、快取或輸出問題；4 表應檢查金鑰或 Keychain；5 表限流，`retry_after` 保留服務端給的等待資訊；6 表服務或回應異常。短效 bearer 過期時重換；若 Garmin 拒絕現有 bearer，至多換發並重試一次。個人 key 到期後需至 Garmin Connect 重新核發。[Garmin 官方說明](https://support.garmin.com/en-US/?faq=HfTwLfw1Gn2A7WS1GdAMH8)
+結束碼 0 表成功（含零筆）；2 表語法或日期組合錯誤；3 表活動、快取或輸出問題；4 表應檢查 .env 與金鑰；5 表限流，`retry_after` 保留服務端給的等待資訊；6 表服務或回應異常。短效 bearer 過期時重換；若 Garmin 拒絕現有 bearer，至多換發並重試一次。個人 key 到期後需至 Garmin Connect 重新核發。[Garmin 官方說明](https://support.garmin.com/en-US/?faq=HfTwLfw1Gn2A7WS1GdAMH8)
 
 ## 執行與建置邊界
 

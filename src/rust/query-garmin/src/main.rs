@@ -80,14 +80,11 @@ impl From<std::io::Error> for Error {
 )]
 struct Cli {
     /// Read the personal key from GARMIN_PERSONAL_ACCESS_TOKEN in this dotenv file
-    #[arg(long, global = true, value_name = "FILE")]
-    env_file: Option<PathBuf>,
+    #[arg(long, global = true, value_name = "FILE", default_value = ".env")]
+    env_file: PathBuf,
     /// Original FIT cache (default: ~/Library/Caches/fit-query-garmin)
     #[arg(long, global = true, value_name = "DIR")]
     cache_dir: Option<PathBuf>,
-    /// Use this existing macOS keychain instead of the user's default keychain
-    #[arg(long, global = true, value_name = "FILE")]
-    keychain: Option<PathBuf>,
     /// Zone for interpreting departure dates
     #[arg(long,global=true,default_value="Asia/Taipei",value_parser=parse_zone)]
     timezone: TimeZone,
@@ -143,21 +140,6 @@ enum Action {
         #[arg(long, requires = "id", conflicts_with_all=["date","from","until","device"])]
         offline: bool,
     },
-    /// Manage the personal API key in macOS Keychain
-    #[command(after_help = "Example\n  fit-query-garmin --env-file .env auth import")]
-    Auth {
-        #[command(subcommand)]
-        command: Auth,
-    },
-}
-#[derive(Subcommand)]
-enum Auth {
-    /// Store or rotate the personal key from --env-file or the environment
-    #[command(after_help = "Example\n  fit-query-garmin --env-file .env auth import")]
-    Import,
-    /// Check readability of the Keychain item without displaying its value
-    #[command(after_help = "Example\n  fit-query-garmin auth status --json")]
-    Status,
 }
 fn id(s: &str) -> std::result::Result<u64, String> {
     s.parse::<u64>()
@@ -238,13 +220,6 @@ fn run<T: Transport>(
     timezone: TimeZone,
 ) -> Result<(Value, u8)> {
     let reply = match action {
-        Action::Auth { command } => {
-            match command {
-                Auth::Import => client.credentials.import()?,
-                Auth::Status => client.credentials.status()?,
-            }
-            json!({"status":"ok","credential_store":"macos_keychain"})
-        }
         Action::List(filters) => {
             json!({"status":"ok","activities":selected(client,cache,&filters,timezone)?})
         }
@@ -348,7 +323,7 @@ fn main() -> ExitCode {
     }
     let action = cli
         .action
-        .unwrap_or_else(|| usage("expected list, read, export or auth"));
+        .unwrap_or_else(|| usage("expected list, read or export"));
     let cache = cli.cache_dir.or_else(|| {
         env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Caches/fit-query-garmin"))
     });
@@ -356,7 +331,6 @@ fn main() -> ExitCode {
         Https::new(),
         Credentials {
             env_file: cli.env_file,
-            keychain: cli.keychain,
         },
     );
     let (result, exit) = match cache

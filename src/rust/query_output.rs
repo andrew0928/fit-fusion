@@ -133,9 +133,6 @@ fn print_text(report: &Value, zone: &TimeZone) {
             }
         }
     }
-    if let Some(store) = report.get("credential_store") {
-        println!("Credential store  {}", label(store));
-    }
     if let Some(errors) = report["errors"].as_array() {
         for e in errors {
             diagnostic(e);

@@ -73,7 +73,7 @@ id=$("$cli" --dir "$rides" list --device 267/2205 --json | jq -er '.activities[0
 
 ## fit-query-garmin 0.2.1
 
-從 repo 根目錄建置。現行本機流程以 `--env-file .env` 讀取 Garmin 個人 API 金鑰，可在不開啟登入鑰匙圈的情況下完成。既有快取可離線按 Garmin 活動 ID 重用。[命令規格](docs/spec/m4-cli.md#garmin-connect-個人活動)
+從 repo 根目錄建置。現行本機流程以 `--env-file .env` 讀取 Garmin 個人 API 金鑰，預設讀取工作目錄的 .env。既有快取可離線按 Garmin 活動 ID 重用。[命令規格](docs/spec/m4-cli.md#garmin-connect-個人活動)
 
 ```sh
 cargo build --release --locked --manifest-path src/rust/query-garmin/Cargo.toml

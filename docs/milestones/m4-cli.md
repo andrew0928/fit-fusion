@@ -9,8 +9,8 @@
 | 0.1.0（M1、M2） | 已發佈 | 多語言檢查器、舊合併器、Garmin 日期配對與 Parquet；舊設備以 M15、M18 驗收。M2-4 已廢除，使用者手動上傳 Strava。 |
 | M3 | 已廢除 | 安全保管、發佈、整合與 rename 分派至下方工作項目。 |
 | 0.2.0（M4 起點） | 已發佈 | `fit-merge`、`fit-query-files`、既有 `fit-fusion` 與 `fit-inspector` 的 macOS arm64 套件及 SHA-256。[GitHub Release v0.2.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.0) |
-| 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功；個人登入鑰匙圈解鎖待排除。依確認順序先做 M4-5，再做 M4-4。 |
-| 0.3.0 起 | 已定方向 | 開始讓 `fit-fusion` 退場。交付退場說明與新工具使用範例；從 0.2.0 起即以未安裝舊執行檔的環境設計與驗收。 |
+| 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功。依確認順序先做 M4-5，再做 M4-4。 |
+| 0.3.0 起 | 已定方向 | 開始讓 `fit-fusion` 退場。規劃於 `~/.fit-fusion/` 下放置各工具共通設定檔，交付退場說明與新工具使用範例；從 0.2.0 起即以未安裝舊執行檔的環境設計與驗收。 |
 
 ## M4 執行順序與完成條件
 
@@ -31,7 +31,7 @@
 
 | 原需求 | 承接項目 | 範圍 |
 |---|---|---|
-| Keychain／安全硬體 | M4-3，Garmin 來源 | 評估 Garmin 憑證遷移、輪替、鎖定與復原；另研究 Secure Enclave 適用的金鑰。合併器無憑證需求。 |
+| Garmin 憑證 | M4-3、0.3.0 共通設定 | v0.2.1 僅用 .env，0.3.0 再設計 ~/.fit-fusion/ 下的共通設定檔。 |
 | 正式發佈管道 | M4-7 | 延續 GitHub Release 與 SHA-256，驗證乾淨 macOS 安裝，再評估 Homebrew 與簽章。 |
 | Apple 漸進匯入 | M4-4、M4-2 | 逐趟匯出 ZIP 中新增或變更的活動；若已有 HealthFit 同步的 FIT，交由 files 查詢。手機端持續到檔另行評估。 |
 | 其他來源與目的地 | M4-8（已取消） | Bryton Active 雲端原檔與其他平台寫入分開研究。 |

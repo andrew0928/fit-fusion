@@ -1,11 +1,8 @@
 """Standalone Garmin CLI acceptance. Device and wire expectations use the existing SDK fixture."""
 import hashlib
 import json
-import os
 from pathlib import Path
-import secrets
 import subprocess
-import sys
 import tempfile
 import unittest
 
@@ -44,7 +41,7 @@ class GarminQuery(unittest.TestCase):
         for topic in ("auth", "list", "read", "export"):
             self.assertIn("--skill " + topic, index)
             self.assertIn("fit-query-garmin ", self.invoke("--skill", topic))
-        for cmd in [("list",), ("read",), ("export",), ("auth",), ("auth", "import"), ("auth", "status")]:
+        for cmd in [("list",), ("read",), ("export",)]:
             self.assertIn("Example", self.invoke(*cmd, "--help"))
         for args in [("--skill", "other"), ("list", "--from", "2026-11-21"),
                      ("list", "--from", "2026-12-02", "--until", "2026-12-01"),
@@ -54,11 +51,14 @@ class GarminQuery(unittest.TestCase):
             self.invoke(*args, code=2)
         self.assertFalse((self.root / "out").exists())
 
-    def test_explicit_env_file_error_does_not_fall_back_to_keychain(self):
+    def test_only_dotenv_files_supply_credentials(self):
         self.env["GARMIN_PERSONAL_ACCESS_TOKEN"] = "synthetic-env-value"
         path = self.root / "incomplete.env"
         path.write_text("OTHER=synthetic-file-value\n")
-        args = ["--env-file", path, "--keychain", self.root / "absent.keychain", "list", "--json"]
+        self.invoke("list", "--json", code=4)
+        self.invoke("--keychain", "any", "list", code=2)
+        self.invoke("auth", "status", code=2)
+        args = ["--env-file", path, "list", "--json"]
         output = self.invoke(*args, code=4)
         err = json.loads(output)["error"]
         self.assertIn("--env-file", err["message"])
@@ -94,26 +94,3 @@ class GarminQuery(unittest.TestCase):
         self.assertEqual(original.read_bytes(), src)
         self.assertEqual(json.loads(self.invoke(*args, "read", "--offline", "--id", "43", code=3))["error"]["code"],
                          "cache_miss")
-
-    @unittest.skipUnless(sys.platform == "darwin" and os.environ.get("FIT_TEST_TEMP_KEYCHAIN") == "1",
-                         "opt-in disposable macOS Keychain test")
-    def test_temporary_keychain_import_rotate_lock_and_recover(self):
-        chain = self.root / "test.keychain-db"
-        password = secrets.token_hex(16)
-        security = "/usr/bin/security"
-        def operate(*args):
-            return subprocess.check_output([security, *map(str, args)], stderr=subprocess.PIPE, timeout=30)
-        operate("create-keychain", "-p", password, chain)
-        self.addCleanup(operate, "delete-keychain", chain)
-        operate("unlock-keychain", "-p", password, chain)
-        args = ["--keychain", chain, "--json", "auth"]
-        self.assertEqual(json.loads(self.invoke(*args, "status", code=4))["error"]["code"], "garmin_auth")
-        for key in ("disposable-test-one", "disposable-test-two"):
-            self.env["GARMIN_PERSONAL_ACCESS_TOKEN"] = key
-            self.assertEqual(json.loads(self.invoke(*args, "import"))["status"], "ok")
-            self.assertEqual(json.loads(self.invoke(*args, "status"))["status"], "ok")
-            # auth import verifies the stored bytes using the same executable and ACL.
-        operate("lock-keychain", chain)
-        self.assertEqual(json.loads(self.invoke(*args, "status", code=4))["error"]["code"], "keychain_locked")
-        operate("unlock-keychain", "-p", password, chain)
-        self.assertEqual(json.loads(self.invoke(*args, "status"))["status"], "ok")
