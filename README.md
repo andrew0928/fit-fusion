@@ -138,7 +138,7 @@ python3 src/tools/verify_roundtrip.py  # 四種語言各自重編碼合成樣本
 
 ## 作者與聯絡方式
 
-在本版原始碼建置的任一 CLI 執行 `--skill author`（例如 `fit-merge --skill author`），即可離線查看 Andrew Wu 的聯絡方式、專案 GitHub 網址與工具介紹文章的刊登狀態。[作者頁](src/python/fit_fusion/guides/author.md)
+從 v0.2.5 起，在任一 CLI 執行 `--skill author`（例如 `fit-merge --skill author`），即可離線查看 Andrew Wu 的聯絡方式、專案 GitHub 網址與工具介紹文章的刊登狀態。[作者頁](src/python/fit_fusion/guides/author.md)
 
 ## 授權
 

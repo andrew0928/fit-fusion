@@ -14,6 +14,10 @@
 
 `fit-merge --skill preflight` 引導 agent 先檢查兩份 FIT，向騎士說明熱量差距、心率缺樣及停滯。五支工具提供離線作者資訊，查詢、合併與評估範例可換用讀者自己的輸入。此版採 GitHub 預發佈，Homebrew 以 `andrew0928/tools/fit-fusion@0.2.5` 指名安裝，預設 Formula 維持 0.2.3。[安裝說明](../../README.md#試用-025-預發佈版) · [發佈機制](../decisions/2026-11-26-public-source-and-release.md#指名安裝預發佈版)
 
+- GitHub 預發佈標籤 `v0.2.5` 指向 `4e692cb`。匿名下載的 arm64 壓縮檔通過 SHA-256 校驗，摘要為 `9e3bc69e22c19492ebd82b3cf20230e2921435ab8dad88ebecb9c3a899a73449`。已從壓縮檔執行五支 CLI 與 bridge。[GitHub 預發佈](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.5)
+- Release 事件成功同步 tap，唯一變更是新增 `fit-fusion@0.2.5.rb`。已核對 GitHub Latest 與預設 Formula 都是 0.2.3。[同步紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45811339319) · [tap 提交](https://github.com/andrew0928/homebrew-tools/commit/9da537727a8b0e063e25dfbca0278a9e16de38ad)
+- 在隔離的 Apple Silicon Homebrew 透過公開 tap 安裝指定版並通過 `brew test`。用安裝後的工具開啟 `--skill preflight`、查詢與匯出合成 FIT、覆寫心率，獨立讀回 109、110、113、113、114、115 bpm。套件內的 MIT 授權與主 repo 一致。
+
 ## 0.2.4 預發佈
 
 五支現行工具、檢查器 bridge、共通 YAML 範本及授權文件構成 Apple Silicon 套件。舊合併器的 Rust crate 與專屬測試已移除，12 份合成 FIT 的內容雜湊與 v0.2.3 相同。原始碼測試通過 20 項 Rust、33 項 CLI 整合及 11 項檢查器測試，涵蓋四語言 round-trip 與六趟實騎合併。另從獨立目錄解開套件，驗證五支 CLI 和 bridge，匯出兩份 FIT 後覆寫並讀回六筆心率。GitHub 穩定版與 Homebrew 公開 Formula 維持 v0.2.3。[預發佈決策](../decisions/2026-11-26-v024-prerelease.md)
