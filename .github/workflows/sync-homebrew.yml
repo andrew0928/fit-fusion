@@ -1,0 +1,62 @@
+name: Sync Homebrew formulas
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fit-fusion-homebrew-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.repository == 'andrew0928/fit-fusion' && (github.event_name == 'workflow_dispatch' || !github.event.release.prerelease)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the formula generator
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          path: source
+          persist-credentials: false
+
+      - name: Check out the Homebrew tap
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: andrew0928/homebrew-tools
+          path: tap
+          ref: main
+          ssh-key: ${{ secrets.HOMEBREW_TOOLS_DEPLOY_KEY }}
+
+      - name: Sync formulas from published releases
+        working-directory: tap
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          # Recalculate against the current tap if another writer pushes first.
+          for attempt in 1 2 3; do
+            git fetch --no-tags origin main
+            git switch -C sync-formulas FETCH_HEAD
+            python3 ../source/scripts/sync-fit-fusion.py .
+            git add -A -- Formula/fit-fusion.rb ':(glob)Formula/fit-fusion@*.rb'
+            if git diff --cached --quiet; then
+              echo 'Homebrew formulas match the published releases.'
+              exit 0
+            fi
+            git diff --cached --check
+            git commit -m 'Sync FIT Fusion formulas from published releases'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+          echo 'Failed to push the generated formulas after three attempts.' >&2
+          exit 1
