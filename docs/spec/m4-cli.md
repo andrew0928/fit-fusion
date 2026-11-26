@@ -29,7 +29,11 @@ fit-merge --primary ride.fit --overlay power-meter.fit \
 4. **整檔缺欄與局部缺樣。** 已確認附檔完全沒有要求的欄位時，整次回報該欄名並保留既有檔案；欄位存在但值全部是 invalid 時，所選欄輸出缺值。兩檔時間完全不重疊、供覆寫的同秒樣本無法唯一判定、或摘要有多個候選時，回報原因。
 5. **安全另存與串接。** 第三個輸入、遺漏必要參數、重複來源角色或輸出指向任一輸入皆回報錯誤。成功時交付可由獨立檢查器讀回的 FIT；失敗保留兩份來源與既有輸出。要用第三台裝置時重跑一遍，以前一步輸出為主檔、第三份為附檔。多次點名同一個欄位，最後一次成功操作決定該欄的值與缺口。
 
+`fit-merge --skill index` 引導 agent 從 `--skill merge` 依情境選欄位。兩份來源的整趟熱量明顯不同時，agent 須提醒使用者只換心率會沿用主檔熱量。來源提供熱量組成時，另外說明總熱量與活動熱量。指引另提供心率停滯判讀、加入功率計與輸出讀回的做法。[執行檔內建指引](../../src/rust/pair-merge/guides/merge.md)
+
 ### 取樣分析交給 fit-inspector
+
+`fit-merge --skill preflight` 是給 agent 的選用指引。agent 先以 `fit-inspector` 唯讀盤點兩份 FIT，比對共同欄位的覆蓋率、時段與實值，向騎士說明差異及選源後果。合併仍由騎士指定的 `--stream` 決定。[操作指引](../../src/rust/pair-merge/guides/preflight.md) · [介面決策](../decisions/2026-11-26-merge-preflight-guide.md)
 
 `fit-inspector inspect FILE.fit` 已提供每種訊息的 `message_count`，以及實際欄位的 `sample_count` 和 `coverage_pct`。0.2.2 的 M4-5 另提供「哪些欄完全沒有、總共幾筆、有效幾筆、缺幾筆、缺多少百分比」。使用 `fit-inspector inspect band.fit --stream record.heart_rate --stream session.total_calories` 點名一或多個預期欄位。未指定時盤點實際欄位。輸出沿用 inspect 的 JSON；agent 用 `--skill inspect` 查閱。[現行盤點格式](inspector.md) · [Rust 計數實作](../../src/rust/inspector/src/inventory.rs)
 

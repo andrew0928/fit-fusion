@@ -1,8 +1,8 @@
 # Export original FIT
 
-From the repository root:
+Replace `rides` with your FIT directory and set `ride_date` to the desired departure date (YYYY-MM-DD).
 
-    fit-query-files --dir data/sources/bryton/fit export --date 2026-11-21 --out runtime/selected/2026-11-21 --json
+    fit-query-files --dir rides export --date "$ride_date" --out selected --json
 
 Use --id with a list result for one exact recording, or use the same date, period and device filters as list. With no filters all cycling activities are selected. The directory is created on the first copy. exports[] contains id, source_id, path, sha256, format (original) and status. Use the returned path. Source FIT files are opened read-only. An existing output subdirectory is excluded from this export's search.
 

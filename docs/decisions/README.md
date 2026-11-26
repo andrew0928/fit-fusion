@@ -21,6 +21,7 @@
 | 2026-11-26 | [0.2.4 預發佈移除舊 CLI 的原始碼與執行檔](2026-11-26-v024-prerelease.md) | accepted |
 | 2026-11-26 | [原創程式碼與使用文件採 MIT License](2026-11-26-mit-license.md) | accepted |
 | 2026-11-26 | [每支 CLI 從 skill 索引提供共用作者頁與專案網址](2026-11-26-cli-author-topic.md) | accepted |
+| 2026-11-26 | [合併前雙檔評估列為 agent 可選用的 skill 主題](2026-11-26-merge-preflight-guide.md) | accepted |
 | 2026-11-25 | [M4 依用途拆分 CLI，移轉 M3 並廢除 M2-4](2026-11-25-cli-split.md)（合併入口與時程由同日後續決策取代） | accepted |
 | 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
 | 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |

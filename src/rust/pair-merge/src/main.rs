@@ -16,6 +16,7 @@ use std::{
 enum Skill {
     Index,
     Author,
+    Preflight,
     Merge,
 }
 
@@ -78,6 +79,7 @@ fn main() -> ExitCode {
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
                 Skill::Author => cli_help::AUTHOR_GUIDE,
+                Skill::Preflight => include_str!("../guides/preflight.md"),
                 Skill::Merge => include_str!("../guides/merge.md"),
             }
         );

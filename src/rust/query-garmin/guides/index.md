@@ -1,5 +1,5 @@
 # fit-query-garmin
-Query one personal Garmin Connect account. For this repository use --env-file .env on online commands. Select a guide:
+Query one personal Garmin Connect account. For online commands, use --env-file to select your credentials file or see the config guide for the settings lookup order.
 - `fit-query-garmin --skill list` — discover cycling activities and their Garmin IDs.
 - `fit-query-garmin --skill read` — inspect one original FIT and its record streams.
 - `fit-query-garmin --skill export` — copy original FIT files by ID, date or period.

@@ -1,8 +1,8 @@
 # Read one ride
 
-Get an ID from list. From the repository root, this example selects the first fixture:
+Get an ID from list. This example takes the first result from your FIT directory.
 
-    rides=src/tools/tests/fixtures/activities
+    rides=./rides
     id=$(fit-query-files --dir "$rides" list --json | jq -er '.activities[0].id')
     fit-query-files --dir "$rides" read --id "$id" --json
 
