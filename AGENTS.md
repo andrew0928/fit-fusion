@@ -1,5 +1,7 @@
 # 專案協作
 
+共通開發原則請參考 [Andrew 專案開發規範](AGENTS.andrew-project-template.md)。
+
 以 [CONTEXT.md](docs/CONTEXT.md) 的里程碑與資料保存要求為準。處理活動資料時以唯讀方式開啟來源 FIT，產物另存。
 
 ## 決策紀錄
