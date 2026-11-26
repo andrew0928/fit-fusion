@@ -47,6 +47,7 @@ struct Cli {
 #[derive(Clone, Copy, ValueEnum)]
 enum Skill {
     Index,
+    Author,
     Config,
     List,
     Read,
@@ -191,6 +192,7 @@ fn main() -> ExitCode {
             "{}",
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
+                Skill::Author => cli_help::AUTHOR_GUIDE,
                 Skill::Config => query_config::GUIDE,
                 Skill::List => include_str!("../guides/list.md"),
                 Skill::Read => include_str!("../guides/read.md"),

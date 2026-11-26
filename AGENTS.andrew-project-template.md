@@ -26,6 +26,9 @@
 | `--version`、`-V` | 顯示版本及辨識這次建置所需的資訊。 |
 | `--skill`、`--skill index` | 兩種用法回傳相同的主題索引，列出每個主題的用途與呼叫方式。 |
 | `--skill <topic>` | 讓只有執行檔的 agent 也能完成任務。提供必要輸入、可執行命令、預期輸出、副作用、結束碼，以及失敗後如何處理。 |
+| `--skill author` | 每支發佈的 CLI 都從索引列出此主題，離線顯示作者姓名、公開聯絡方式、目前專案的 repository URL 及工具介紹文章。文章尚未發表時標示「待刊登」，發表後換成正式連結。 |
+
+Andrew 的專案共用三個作者連結。專案網址與介紹文章依各專案填寫。同一專案發佈多支 CLI 時，共用一份作者頁，驗收時逐支核對索引及輸出。[Facebook 粉絲專頁](https://www.facebook.com/andrew.blog.0928/) · [技術部落格](https://columns.chicken-house.net/) · [作者介紹](https://columns.chicken-house.net/2000/01/01/about-me/)
 
 說明入口應可離線執行，無須設定檔或憑證。成功顯示說明時以 0 結束；未知旗標或主題以 2 結束，並提示有效用法。
 

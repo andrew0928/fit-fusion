@@ -8,6 +8,7 @@
 | `--help`、`-h` | 離線顯示工具名稱、版本、用途、用法、參數及可照做的範例，回傳 0。有子命令時，`<subcommand> --help` 顯示該子命令的用法。 |
 | `--skill`、`--skill index` | 兩種拼法回傳相同的離線主題索引和結束碼 0。索引列出該工具實際支援的主題及呼叫方式。 |
 | `--skill <topic>` | 回傳該任務給 agent 的指引，包括可執行命令、必要輸入、輸出、副作用、失敗處理。未知主題回傳 2 並提示可用主題。取用指引不需資料檔、個人設定或授權。 |
+| `--skill author` | 五支獨立 CLI、多語言檢查器及其 bridge 離線輸出同一份作者頁，索引列出呼叫方式。頁面包含作者姓名、Facebook 粉絲專頁、部落格、作者介紹及本專案的 GitHub 網址。工具介紹文章標示「待刊登」，發表後補上連結。 |
 | `--version`、`-V` | 顯示版本及既有規格要求的建置或執行資訊，便於把報告與執行版本配對。 |
 
 ## 共同驗收
@@ -70,5 +71,7 @@ tools:
 | `fit-query-garmin` | 已採用 | `index`、`list`、`read`、`export`、`auth` | M4-3。 |
 | `fit-query-apple` | 已採用 | `index`、`list`、`read`、`export` | M4-4 於 0.2.2 通過 R10。 |
 | Python、C#、Node.js 檢查器 CLI | 已採用；三支入口透過 fit-inspector-bridge 的 clap 命令樹解析 | 已有索引與主題 | M4-5 完成。各後端獨立解碼，Rust 只依後端盤點結果計算缺樣。 |
+
+上表的現行入口均另提供 `--skill author`。[作者頁決策](../decisions/2026-11-26-cli-author-topic.md)
 
 各工具可重用命令列程式碼或套件。新執行檔獨立提供操作指引，執行時不呼叫舊的 `fit-fusion`。

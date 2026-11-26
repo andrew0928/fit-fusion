@@ -7,3 +7,5 @@ Use a local Apple Health export ZIP. Commands run offline.
 Default output is indented JSON. Choose --json for compact output or --text for people.
 
 - `fit-query-apple --skill config` — initialize YAML, override a setting and read effective values and their sources on stderr.
+
+Find the author’s contact details with `fit-query-apple --skill author`.

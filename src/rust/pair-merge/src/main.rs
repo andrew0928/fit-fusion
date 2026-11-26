@@ -15,6 +15,7 @@ use std::{
 #[derive(Clone, Copy, ValueEnum)]
 enum Skill {
     Index,
+    Author,
     Merge,
 }
 
@@ -44,7 +45,7 @@ struct Cli {
     /// Return the output path as JSON
     #[arg(long)]
     json: bool,
-    /// Read an offline agent guide (index or merge)
+    /// Read an offline agent guide (default: index)
     #[arg(long, value_name="TOPIC", num_args=0..=1, default_missing_value="index",
           conflicts_with_all=["primary","overlay","streams","out","json"])]
     skill: Option<Skill>,
@@ -76,6 +77,7 @@ fn main() -> ExitCode {
             "{}",
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
+                Skill::Author => cli_help::AUTHOR_GUIDE,
                 Skill::Merge => include_str!("../guides/merge.md"),
             }
         );

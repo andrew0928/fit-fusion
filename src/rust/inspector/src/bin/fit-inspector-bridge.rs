@@ -1,6 +1,6 @@
 //! Shared clap frontend for the source-distributed Python, C# and Node inspectors.
 //! Launchers supply backend identity and an argv prefix. No shell is involved.
-use clap::{Arg, ArgAction, Command};
+use clap::{Arg, ArgAction, Command, Parser, ValueEnum};
 use fit_inspector::sampling;
 use serde_json::{Value, json};
 use std::{
@@ -8,11 +8,37 @@ use std::{
     process::{Command as Process, ExitCode, Stdio},
 };
 
+// Also expose the common metadata when the packaged helper is invoked directly.
+#[derive(Parser)]
+#[command(
+    name = "fit-inspector-bridge",
+    version,
+    about = "Shared frontend for the Python, C# and Node.js FIT inspectors"
+)]
+struct BridgeInfo {
+    /// Open an offline guide (default: index)
+    #[arg(long, value_enum, num_args = 0..=1, default_missing_value = "index")]
+    skill: BridgeTopic,
+}
+
+#[derive(Clone, ValueEnum)]
+enum BridgeTopic {
+    Index,
+    Author,
+}
+
 fn tree(language: &str, identity: &str) -> Command {
     let topics = if language == "node" {
-        vec!["index", "inspect", "raw", "roundtrip", "sdk-check"]
+        vec![
+            "index",
+            "inspect",
+            "raw",
+            "roundtrip",
+            "sdk-check",
+            "author",
+        ]
     } else {
-        vec!["index", "inspect", "raw", "roundtrip"]
+        vec!["index", "inspect", "raw", "roundtrip", "author"]
     };
     let help = format!(
         "{identity} — {{about}}\n\n{{usage-heading}} {{usage}}\n\n{{all-args}}{{after-help}}"
@@ -87,6 +113,18 @@ fn tree(language: &str, identity: &str) -> Command {
 
 fn run() -> io::Result<i32> {
     let args: Vec<_> = env::args().skip(1).collect();
+    if args.first().is_some_and(|arg| arg.starts_with('-')) {
+        match BridgeInfo::parse().skill {
+            BridgeTopic::Index => println!(
+                "Use `fit-inspector-bridge --skill author` for author and contact details."
+            ),
+            BridgeTopic::Author => print!(
+                "{}",
+                include_str!("../../../../python/fit_fusion/guides/author.md")
+            ),
+        }
+        return Ok(0);
+    }
     let divider = args
         .iter()
         .position(|s| s == "--")

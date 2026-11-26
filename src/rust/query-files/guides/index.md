@@ -9,3 +9,5 @@ Use a local FIT directory. Commands run offline. Start with list for activity ID
 Default output is indented JSON. Use `--json` for compact JSON or `--text` for a human-readable report. Check status and the process exit code.
 
 - `fit-query-files --skill config` — initialize YAML, override a setting and read effective values and their sources on stderr.
+
+Find the author’s contact details with `fit-query-files --skill author`.

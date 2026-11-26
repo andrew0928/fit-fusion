@@ -3,6 +3,7 @@ use clap::ValueEnum;
 #[derive(Clone, Copy, ValueEnum)]
 pub enum Skill {
     Index,
+    Author,
     Inspect,
     Raw,
     Roundtrip,
@@ -17,6 +18,7 @@ macro_rules! page {
 impl Skill {
     pub fn page(self) -> String {
         let text = match self {
+            Self::Author => crate::cli_help::AUTHOR_GUIDE,
             Self::Index => page!("index.md"),
             Self::Inspect => page!("inspect.md"),
             Self::Raw => page!("raw.md"),

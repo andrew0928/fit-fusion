@@ -124,6 +124,10 @@ class RoundTripTests(unittest.TestCase):
     def test_follow_inspector_skill_index_and_examples(self):
         src = TOOLS.parent
         fixture = src / "tools/tests/fixtures/activities/rider.fit"
+        author = (src / "python/fit_fusion/guides/author.md").read_text()
+        bridge = Path(self.commands["rust"][0]).with_name("fit-inspector-bridge")
+        self.assertIn("--skill author", subprocess.check_output([bridge, "--skill", "index"], text=True))
+        self.assertEqual(subprocess.check_output([bridge, "--skill", "author"], text=True), author)
         for lang, launcher in {
             "python": "PYTHONPATH=src/python python3 -m fit_fusion",
             "csharp": "dotnet FitFusion.dll",
@@ -137,9 +141,12 @@ class RoundTripTests(unittest.TestCase):
                 self.assertEqual(self.invoke(lang, "--skill").stdout, index.stdout)
                 self.assertNotEqual(index.stdout, self.invoke(lang, "--help").stdout)
                 links = re.findall(re.escape(launcher) + r" --skill ([a-z-]+)`", index.stdout)
-                self.assertCountEqual(links, topics)
+                self.assertCountEqual(links, [*topics, "author"])
+                author_page = self.invoke(lang, "--skill", "author")
+                self.assertEqual(author_page.returncode, 0, author_page.stderr)
+                self.assertEqual(author_page.stdout, author)
                 dest = self.work / (lang + "-copy.fit")
-                for topic in links:
+                for topic in topics:
                     with self.subTest(topic=topic):
                         help_page = self.invoke(lang, topic, "-h")
                         self.assertEqual(help_page.returncode, 0, help_page.stderr)
@@ -178,7 +185,7 @@ class RoundTripTests(unittest.TestCase):
                 invalid = self.invoke(lang, "--skill", "unknown")
                 self.assertEqual(invalid.returncode, 2)
                 self.assertFalse(invalid.stdout)
-                for topic in topics:
+                for topic in [*topics, "author"]:
                     self.assertIn(topic, invalid.stderr)
 
     def test_help_and_version_match_each_inspector_package(self):

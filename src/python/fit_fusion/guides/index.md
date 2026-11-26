@@ -7,6 +7,7 @@ Choose a task and run the corresponding command.
 - Identify streams and check sample coverage: `{cli} --skill inspect`
 - Examine encoded fields or reconstruct original bytes: `{cli} --skill raw`
 - Verify parsing and re-encoding into a fresh FIT: `{cli} --skill roundtrip`
+- Find the author’s contact details: `{cli} --skill author`
 {sdk_topic}
 For each task capture stdout, stderr and the exit code separately.
 For multi-device merging, use the separate `fit-merge --skill merge`.

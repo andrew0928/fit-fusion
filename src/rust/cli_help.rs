@@ -1,6 +1,8 @@
 //! Shared presentation for the Rust command trees.
 use clap::{Command, CommandFactory};
 
+pub const AUTHOR_GUIDE: &str = include_str!("../python/fit_fusion/guides/author.md");
+
 pub fn header(cmd: Command) -> Command {
     cmd.help_template(concat!(
         env!("CARGO_PKG_NAME"),

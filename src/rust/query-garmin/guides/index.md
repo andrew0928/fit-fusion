@@ -8,3 +8,5 @@ Query one personal Garmin Connect account. For this repository use --env-file .e
 Default output is indented JSON. Use --json for compact JSON or --text for a human-readable report. Check the exit code. Help and guides work offline.
 
 - `fit-query-garmin --skill config` — initialize YAML, override a setting and read effective values and their sources on stderr.
+
+Find the author’s contact details with `fit-query-garmin --skill author`.

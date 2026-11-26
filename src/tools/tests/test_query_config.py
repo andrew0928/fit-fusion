@@ -40,6 +40,17 @@ class PersonalSettings(unittest.TestCase):
         self.assertEqual(result.returncode, code, result.stderr)
         return result
 
+    def test_author_topic_without_working_config(self):
+        self.config.parent.mkdir()
+        self.config.write_text("invalid: [")
+        author = (SRC / "python/fit_fusion/guides/author.md").read_text()
+        for tool in self.binaries:
+            with self.subTest(tool=tool):
+                self.assertIn(f"{tool} --skill author", self.run_cli(tool, "--skill", "index").stdout)
+                result = self.run_cli(tool, "--skill", "author")
+                self.assertEqual(result.stdout, author)
+                self.assertEqual(result.stderr, "")
+
     def test_init_is_atomic_idempotent_and_preserves_user_file(self):
         tools = ["fit-query-files", "fit-query-apple", "fit-query-garmin"] * 2
         def init(tool):
