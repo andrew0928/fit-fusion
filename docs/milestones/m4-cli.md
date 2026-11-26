@@ -11,7 +11,7 @@
 | 0.2.0（M4 起點） | 已發佈 | `fit-merge`、`fit-query-files`、既有 `fit-fusion` 與 `fit-inspector` 的 macOS arm64 套件及 SHA-256。[GitHub Release v0.2.0](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.0) |
 | 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功。依確認順序先做 M4-5，再做 M4-4。 |
 | 0.2.2 | 已發佈，Homebrew 供測試 | M4-5 四語言檢查器提供逐串流缺樣統計，M4-4 提供 Apple Health ZIP 查詢與 FIT 匯出。R10、R11、R12 通過。使用者已完成 Homebrew 乾淨環境驗收，R14 review 通過。[GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) |
-| 0.2.3 起（M5） | 候選驗收 | 共通 YAML、CLI 參數來源、退場指引、Homebrew 升級及其餘發佈驗收均在 0.2.x 完成。[M5](m5-release.md) |
+| 0.2.3（M5） | 已發佈，M5-4、M5-5 完成 | 共通 YAML 與參數來源顯示通過使用者 review；從公開 tap 進行 0.2.2 → 0.2.3 升級驗收通過。[M5](m5-release.md) |
 | 0.3.0（M5） | 待 0.2.x 驗收完成 | 唯一產品變更為移除舊 `fit-fusion` CLI。 |
 
 ## M4 執行順序與完成條件

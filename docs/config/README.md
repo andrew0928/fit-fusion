@@ -4,7 +4,7 @@
 
 ### 從 0.2.x 升級到五支獨立工具
 
-0.2.3 發佈後可執行 `brew update && brew upgrade andrew0928/tools/fit-fusion`。使用開發版或升級後的工具執行 `fit-query-files config init`，即可建立全註解的英文範本。按需啟用 `version: 1`、區段及設定值。多次 init、重裝與升級均保留個人檔。直接從 GitHub 下載的 binary 使用同一條 init 命令。
+升級至公開版可執行 `brew update && brew upgrade andrew0928/tools/fit-fusion`。使用開發版或升級後的工具執行 `fit-query-files config init`，即可建立全註解的英文範本。按需啟用 `version: 1`、區段及設定值。多次 init、重裝與升級均保留個人檔。直接從 GitHub 下載的 binary 使用同一條 init 命令。
 
 0.2.x 的舊 `fit-fusion` 仍可讀它的 JSON 設定，0.3.0 移除此執行檔。將常用 FIT 目錄、Apple Health ZIP 或 Garmin dotenv 路徑填入新 YAML 的工具區段。以前用 `fit-fusion merge --date` 完成的流程，現在先用來源對應的 `fit-query-*` 查詢、匯出當天的 FIT，再由 `fit-merge` 明確挑選附檔整條覆寫的欄位。以兩個已選出的活動為例：
 

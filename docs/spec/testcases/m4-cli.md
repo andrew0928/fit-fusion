@@ -73,4 +73,4 @@ M4-1 已通過 R01–R07 的本機驗收，另以六趟實騎的附檔心率與�
 | 查詢 Apple 與 Garmin 活動 | Apple 準備含已知騎乘的 Health 匯出 ZIP，以 `fit-query-apple --archive FILE.zip list --date YYYY-MM-DD` 查詢騎乘日。Garmin 準備有效的本機 dotenv，以 `fit-query-garmin --env-file .env list --date YYYY-MM-DD` 查詢。 | 各工具可獨立列出對應來源的活動及 ID。 | 主要操作的參考範例，來源功能實測分列於 R10、R09。 |
 | 合併後用檢查器讀回 | 以 `fit-merge` 指定同趟兩份合成 FIT，覆寫 `record.heart_rate` 並另存。執行 `fit-inspector inspect merged.fit --stream record.heart_rate`。 | 合併檔可獨立讀回，這組樣本有 **6 筆有效心率**。 | 0.2.2 已用 Homebrew 安裝版走完並記錄筆數。 |
 
-R14 驗證首次安裝。從 0.2.2 升級至候選版由 [M5-4](../../milestones/m5-release.md) 驗收。
+R14 驗證首次安裝。公開 0.2.2 → 0.2.3 升級已通過 [M5-4 驗收](../../milestones/m5-release.md)。
