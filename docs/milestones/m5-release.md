@@ -14,6 +14,14 @@
 
 五支現行工具、檢查器 bridge、共通 YAML 範本及授權文件構成 Apple Silicon 套件。舊合併器的 Rust crate 與專屬測試已移除，12 份合成 FIT 的內容雜湊與 v0.2.3 相同。原始碼測試通過 20 項 Rust、33 項 CLI 整合及 11 項檢查器測試，涵蓋四語言 round-trip 與六趟實騎合併。另從獨立目錄解開套件，驗證五支 CLI 和 bridge，匯出兩份 FIT 後覆寫並讀回六筆心率。GitHub 穩定版與 Homebrew 公開 Formula 維持 v0.2.3。[預發佈決策](../decisions/2026-11-26-v024-prerelease.md)
 
+| 發佈後驗收 | 結果 |
+|---|---|
+| 公開附件與原始碼 | 匿名下載 `v0.2.4` 的 binary、校驗檔及 GitHub 原始碼封存。binary SHA-256 為 `7dc00581841fd5516c65f8e98dc967be8c512842691923ba47add727be636cb6`，與本機驗收檔逐位元組相同。原始碼中的五份 Rust manifest 版本均為 0.2.4，已確認舊 crate 與舊 CLI 專屬測試均已移除。[GitHub pre-release](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.4) |
+| 升級與讀回 | 在已安裝 0.2.3 的隔離 Homebrew，使用指向公開 pre-release 附件的本機測試 Formula，成功執行 `brew upgrade`、`brew test`。用已安裝的 CLI 再執行查詢、匯出及合併。獨立解碼的心率為 109、110、113、113、114、115 bpm。既有 YAML 內容、權限、inode 及修改時間均相同。 |
+| 穩定通路 | GitHub 的 latest 與一般 Homebrew 安裝均維持 0.2.3。預發佈事件如期略過公開 tap 同步，tap 的 main 仍為 `d8b1a15`。[Actions 紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45766971626) |
+
+清理 tap 時已刪除舊的 `fit-fusion-v0.2.2` Git 標籤。指定版本 Formula 仍可直接從主 repo 匿名下載；其 0.2.2 附件的 SHA-256 與 Formula 相符。[0.2.2 Formula](https://github.com/andrew0928/homebrew-tools/blob/d8b1a154b7cfa07544cd0ac8c1519c40c5278c48/Formula/fit-fusion%400.2.2.rb)
+
 ## 0.2.3 公開發佈與升級驗收
 
 2026-11-26 發佈 `v0.2.3`，標籤指向 M5-5 提交 `a8f0f6f`。GitHub 的 latest Release 已指向此版。匿名下載的 macOS arm64 壓縮檔與校驗檔均與本機驗收版本逐位元組一致。壓縮檔 SHA-256 為 `0ebab57982a5dcf652c6396436937f61ef7972d682804c496338bc860d2d2814`。[GitHub Release](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.3)
