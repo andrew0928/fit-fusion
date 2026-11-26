@@ -1,5 +1,7 @@
 #[path = "../../cli_help.rs"]
 mod cli_help;
+#[path = "../../effective_args.rs"]
+mod effective_args;
 mod merge;
 
 use clap::{FromArgMatches, Parser, ValueEnum};
@@ -20,7 +22,7 @@ enum Skill {
 #[command(
     about = "Overwrite selected fields from one FIT onto another",
     arg_required_else_help = true,
-    after_help = "Example\n  fit-merge --primary bike.fit --overlay band.fit --stream record.heart_rate --out ride.fit"
+    after_help = "Settings\n  Inputs come from CLI parameters or built-in defaults. Effective values are listed on stderr.\n\nExample\n  fit-merge --primary bike.fit --overlay band.fit --stream record.heart_rate --out ride.fit"
 )]
 struct Cli {
     /// Primary FIT providing the activity timeline
@@ -66,8 +68,9 @@ fn export(primary: &Path, overlay: &Path, streams: &[String], out: &Path) -> io:
 }
 
 fn main() -> ExitCode {
-    let mut matches = cli_help::command::<Cli>("FIT wire reader/writer", "").get_matches();
-    let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    let tree = cli_help::command::<Cli>("FIT wire reader/writer", "");
+    let matches = tree.clone().get_matches();
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         print!(
             "{}",
@@ -78,6 +81,7 @@ fn main() -> ExitCode {
         );
         return ExitCode::SUCCESS;
     }
+    effective_args::report(&tree, &matches, &Default::default());
     let out = cli.out.expect("clap requires --out");
     match export(
         &cli.primary.expect("clap requires --primary"),

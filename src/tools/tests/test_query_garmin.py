@@ -34,7 +34,7 @@ class GarminQuery(unittest.TestCase):
         return r.stdout if code != 2 else r.stderr
 
     def test_agent_help_topics_and_errors_before_network(self):
-        self.assertIn("fit-query-garmin 0.2.1", self.invoke("--help"))
+        self.assertIn("fit-query-garmin 0.2.3", self.invoke("--help"))
         self.assertIn("Compiler", self.invoke("--version"))
         index = self.invoke("--skill")
         self.assertEqual(index, self.invoke("--skill", "index"))

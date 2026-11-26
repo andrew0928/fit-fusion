@@ -1,5 +1,7 @@
 #[path = "../../cli_help.rs"]
 mod cli_help;
+#[path = "../../effective_args.rs"]
+mod effective_args;
 mod guidance;
 mod roundtrip;
 
@@ -17,7 +19,7 @@ use std::{
     about = "Inspect one activity file offline",
     arg_required_else_help = true,
     args_conflicts_with_subcommands = true,
-    after_help = "Example\n  fit-inspector inspect ride.fit"
+    after_help = "Settings\n  Inputs come from CLI parameters or built-in defaults. Effective values are listed on stderr.\n\nExample\n  fit-inspector inspect ride.fit"
 )]
 struct Cli {
     /// Open an offline agent guide (default: index)
@@ -101,12 +103,14 @@ fn run(action: &Action) -> io::Result<()> {
 }
 
 fn main() -> ExitCode {
-    let mut matches = cli_help::command::<Cli>("RustyFIT and wire reader", "").get_matches();
-    let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    let tree = cli_help::command::<Cli>("RustyFIT and wire reader", "");
+    let matches = tree.clone().get_matches();
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         print!("{}", topic.page());
         return ExitCode::SUCCESS;
     }
+    effective_args::report(&tree, &matches, &Default::default());
     match run(&cli.action.expect("clap requires a command or --skill")) {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {

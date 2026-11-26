@@ -41,7 +41,7 @@ class QueryFiles(unittest.TestCase):
         return json.loads(self.invoke("--dir", source, *args, "--json", code=code))
 
     def test_offline_help_skills_and_syntax(self):
-        self.assertIn("fit-query-files 0.2.1", self.invoke("--help"))
+        self.assertIn("fit-query-files 0.2.3", self.invoke("--help"))
         self.assertIn("Compiler", self.invoke("--version"))
         index = self.invoke("--skill")
         self.assertEqual(index, self.invoke("--skill", "index"))

@@ -9,7 +9,7 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 
 ## 下載 macOS Apple Silicon 版
 
-目前的 Homebrew 套件 **0.2.2 供測試使用**。提供 `fit-merge`、`fit-inspector` 與三支 `fit-query-*`，可匿名安裝。首次正式發佈預定為 **0.3.0**。各版附件集中於主 repo，tap 提供最新版及指定版本的 Formula。[全部 Release](https://github.com/andrew0928/fit-fusion/releases) · [Homebrew tap](https://github.com/andrew0928/homebrew-tools) · [M5 發佈計畫](docs/milestones/m5-release.md)
+Homebrew 的 **0.2.x 套件供測試使用**。提供 `fit-merge`、`fit-inspector` 與三支 `fit-query-*`，可匿名安裝。0.2.x 持續完成功能與升級驗收。**0.3.0** 唯一的產品變更為移除舊的 `fit-fusion`。各版附件集中於主 repo，tap 提供最新版及指定版本的 Formula。[全部 Release](https://github.com/andrew0928/fit-fusion/releases) · [Homebrew tap](https://github.com/andrew0928/homebrew-tools) · [M5 發佈計畫](docs/milestones/m5-release.md)
 
 ```sh
 brew install andrew0928/tools/fit-fusion
@@ -18,14 +18,16 @@ fit-inspector --skill index
 
 需要重現歷史版本時，可指定完整版本，例如 `brew install andrew0928/tools/fit-fusion@0.2.1`。歷史版提供該版已發佈的工具。
 
+從 0.2.3 起可用 `fit-query-files config init` 建立個人 YAML。三支查詢工具共用此檔，五支獨立 CLI 的執行前摘要會列出有效參數與來源。[初始化、升級與舊 CLI 退場指引](docs/config/README.md)
+
 ### 包含舊 `fit-fusion` 的開發者套件
 
-從 [GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) 下載 `fit-fusion-v0.2.2-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
+從 [GitHub Release v0.2.3](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.3) 下載 `fit-fusion-v0.2.3-macos-arm64.tar.gz` 和 `SHA256SUMS`，在下載目錄執行：
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-tar -xzf fit-fusion-v0.2.2-macos-arm64.tar.gz
-cd fit-fusion-v0.2.2-macos-arm64
+tar -xzf fit-fusion-v0.2.3-macos-arm64.tar.gz
+cd fit-fusion-v0.2.3-macos-arm64
 ./fit-query-apple --skill index
 ./fit-query-garmin --skill index
 ./fit-query-files --version

@@ -39,7 +39,7 @@ $revision$keg
   def install
     bin.install(*TOOLS)
 $notices  end
-
+$caveats
   test do
     assert_equal TOOLS.sort, bin.children.map { |tool| tool.basename.to_s }.sort
     TOOLS.each do |tool|
@@ -48,6 +48,11 @@ $notices  end
 $query_test  end
 end
 ''')
+CONFIG_CAVEATS = """
+  def caveats
+    "To create a fully commented personal config, run: #{opt_bin}/fit-query-files config init"
+  end
+"""
 QUERY_TEST = '''
     mkdir "rides" do
       result = JSON.parse(shell_output("#{bin}/fit-query-files --dir . list --json"))
@@ -105,6 +110,9 @@ def package(version, assets):
 
     tools = LEGACY_TOOLS.get(version, TOOLS)
     notices = () if version in LEGACY_TOOLS else NOTICES
+    # 0.2.3 introduced the shared YAML template.
+    if tuple(map(int, version.split("."))) >= (0, 2, 3):
+        notices = (*notices, "config.example.yaml")
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
         files = {PurePosixPath(m.name): m for m in tar if m.isfile()}
     # Homebrew removes a single top-level wrapper directory when it unpacks.
@@ -157,6 +165,7 @@ def main():
             "tools": " ".join(tools),
             "revision": f"  revision {revision}\n" if revision else "",
             "notices": f"    pkgshare.install {notice_files}\n" if notices else "",
+            "caveats": CONFIG_CAVEATS if "config.example.yaml" in notices else "",
             "query_test": QUERY_TEST if "fit-query-files" in tools else "",
         }
         generated[versioned] = FORMULA.substitute(

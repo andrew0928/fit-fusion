@@ -2,8 +2,12 @@
 mod cli_help;
 #[path = "../../query_dates.rs"]
 mod dates;
+#[path = "../../effective_args.rs"]
+mod effective_args;
 mod fit;
 mod health;
+#[path = "../../query_config.rs"]
+mod query_config;
 #[path = "../../query_output.rs"]
 mod query_output;
 mod route;
@@ -25,13 +29,13 @@ fn bad(message: impl Into<String>) -> Box<dyn Error> {
 #[command(
     about = "Query a local Apple Health export and convert cycling workouts to FIT",
     arg_required_else_help = true,
-    after_help = "Examples\n  fit-query-apple --archive export.zip list --date 2026-11-21 --text\n  fit-query-apple --skill export"
+    after_help = "Settings\n  config init creates ~/.fit-fusion/config.yaml. Explicit flags override YAML, then built-in defaults.\n  See --skill config for provenance on stderr.\n\nExamples\n  fit-query-apple --archive export.zip list --date 2026-11-21 --text\n  fit-query-apple --skill export"
 )]
 struct Cli {
-    /// Apple Health export ZIP (including localized XML names)
+    /// Apple Health export ZIP. Required via --archive or tools.fit-query-apple.archive.
     #[arg(long, global = true, value_name = "ZIP")]
     archive: Option<PathBuf>,
-    /// Time zone for the departure date
+    /// Date zone. Overrides common.timezone (default Asia/Taipei).
     #[arg(long,global=true,default_value="Asia/Taipei",value_parser=dates::parse_zone)]
     timezone: TimeZone,
     #[command(flatten)]
@@ -45,6 +49,7 @@ struct Cli {
 #[derive(Clone, Copy, ValueEnum)]
 enum Skill {
     Index,
+    Config,
     List,
     Read,
     Export,
@@ -202,9 +207,11 @@ fn run(file: &Path, action: &Action, zone: &TimeZone) -> Result<Value> {
     Ok(json!({"status":status,"exports":exports,"errors":errors}))
 }
 fn main() -> ExitCode {
-    let mut matches =
-        cli_help::command::<Cli>("Apple Health XML/GPX and FIT writer", "").get_matches();
-    let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    let (tree, matches, origins) = query_config::parse(cli_help::command::<Cli>(
+        "Apple Health XML/GPX and FIT writer",
+        "",
+    ));
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     cli.output.validate().unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         if cli.action.is_some() {
@@ -214,6 +221,7 @@ fn main() -> ExitCode {
             "{}",
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
+                Skill::Config => query_config::GUIDE,
                 Skill::List => include_str!("../guides/list.md"),
                 Skill::Read => include_str!("../guides/read.md"),
                 Skill::Export => include_str!("../guides/export.md"),
@@ -223,10 +231,11 @@ fn main() -> ExitCode {
     }
     let file = cli
         .archive
-        .unwrap_or_else(|| usage("provide --archive ZIP"));
+        .unwrap_or_else(|| usage("provide --archive ZIP or set tools.fit-query-apple.archive in ~/.fit-fusion/config.yaml"));
     let action = cli
         .action
         .unwrap_or_else(|| usage("expected list, read or export"));
+    effective_args::report(&tree, &matches, &origins);
     let result = run(&file, &action, &cli.timezone).unwrap_or_else(
         |e| json!({"status":"error","errors":[{"path":file,"message":e.to_string()}]}),
     );

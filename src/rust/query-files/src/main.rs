@@ -1,7 +1,11 @@
 mod catalog;
 #[path = "../../cli_help.rs"]
 mod cli_help;
+#[path = "../../effective_args.rs"]
+mod effective_args;
 mod export;
+#[path = "../../query_config.rs"]
+mod query_config;
 #[path = "../../query_output.rs"]
 mod query_output;
 
@@ -22,13 +26,13 @@ use std::{
 #[command(
     about = "Find, read and export original cycling FIT files",
     arg_required_else_help = true,
-    after_help = "Examples\n  fit-query-files --dir rides list --date 2026-11-21 --json\n  fit-query-files --dir rides export --date 2026-11-21 --out selected\n  fit-query-files --skill"
+    after_help = "Settings\n  config init creates ~/.fit-fusion/config.yaml. Explicit flags override YAML, then built-in defaults.\n  See --skill config for provenance on stderr.\n\nExamples\n  fit-query-files --dir rides list --date 2026-11-21 --json\n  fit-query-files --dir rides export --date 2026-11-21 --out selected\n  fit-query-files --skill"
 )]
 struct Cli {
-    /// Directory of FIT files (searched recursively)
+    /// FIT directory, searched recursively. Required via --dir or tools.fit-query-files.dir.
     #[arg(long, global = true, value_name = "DIR")]
     dir: Option<PathBuf>,
-    /// IANA zone for the ride's departure date
+    /// Date zone. Overrides common.timezone (default Asia/Taipei).
     #[arg(long, global=true, default_value="Asia/Taipei", value_parser=parse_zone, value_name="ZONE")]
     timezone: TimeZone,
     #[command(flatten)]
@@ -43,6 +47,7 @@ struct Cli {
 #[derive(Clone, Copy, ValueEnum)]
 enum Skill {
     Index,
+    Config,
     List,
     Read,
     Export,
@@ -174,8 +179,9 @@ fn run(dir: &Path, action: &Action, zone: TimeZone) -> Value {
     result
 }
 fn main() -> ExitCode {
-    let mut matches = cli_help::command::<Cli>("FIT wire reader", "").get_matches();
-    let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    let (tree, matches, origins) =
+        query_config::parse(cli_help::command::<Cli>("FIT wire reader", ""));
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     cli.output.validate().unwrap_or_else(|e| e.exit());
     if let Some(topic) = cli.skill {
         if cli.action.is_some() {
@@ -185,6 +191,7 @@ fn main() -> ExitCode {
             "{}",
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
+                Skill::Config => query_config::GUIDE,
                 Skill::List => include_str!("../guides/list.md"),
                 Skill::Read => include_str!("../guides/read.md"),
                 Skill::Export => include_str!("../guides/export.md"),
@@ -195,7 +202,10 @@ fn main() -> ExitCode {
     let action = cli
         .action
         .unwrap_or_else(|| usage("expected list, read or export"));
-    let dir = cli.dir.unwrap_or_else(|| usage("provide --dir DIR"));
+    let dir = cli.dir.unwrap_or_else(|| {
+        usage("provide --dir DIR or set tools.fit-query-files.dir in ~/.fit-fusion/config.yaml")
+    });
+    effective_args::report(&tree, &matches, &origins);
     let result = run(&dir, &action, cli.timezone.clone());
     cli.output.print(&result, &cli.timezone);
     if result["status"] == "ok" {

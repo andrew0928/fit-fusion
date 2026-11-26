@@ -25,7 +25,7 @@ impl Skill {
         text.replace("{cli}", "fit-inspector")
             .replace(
                 "{launch_note}",
-                "Run the Rust fit-inspector binary on PATH.",
+                "Run the Rust fit-inspector binary on PATH. Before reading the FIT, stderr lists the effective arguments and their CLI sources. stdout contains only inspection data.",
             )
             .replace(
                 "{decoder_note}",

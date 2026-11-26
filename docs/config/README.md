@@ -1,6 +1,28 @@
 # FIT Fusion 個人設定
 
-0.3.0 的三支 `fit-query-*` 共用選填的 `~/.fit-fusion/config.yaml`。`fit-merge` 與 `fit-inspector` 直接用命令列參數執行。[英文註解範例](config.example.yaml) · [完整 YAML schema](query-config-v1.schema.yaml) · [欄位預設、覆寫順序與驗收條件](../spec/cli-common.md)
+從 0.2.3 起，三支 `fit-query-*` 共用選填的 `~/.fit-fusion/config.yaml`。`fit-merge` 與 `fit-inspector` 直接用命令列參數執行。[英文註解範例](config.example.yaml) · [完整 YAML schema](query-config-v1.schema.yaml) · [欄位預設、覆寫順序與驗收條件](../spec/cli-common.md)
+
+### 從 0.2.x 升級到五支獨立工具
+
+0.2.3 發佈後可執行 `brew update && brew upgrade andrew0928/tools/fit-fusion`。使用開發版或升級後的工具執行 `fit-query-files config init`，即可建立全註解的英文範本。按需啟用 `version: 1`、區段及設定值。多次 init、重裝與升級均保留個人檔。直接從 GitHub 下載的 binary 使用同一條 init 命令。
+
+0.2.x 的舊 `fit-fusion` 仍可讀它的 JSON 設定，0.3.0 移除此執行檔。將常用 FIT 目錄、Apple Health ZIP 或 Garmin dotenv 路徑填入新 YAML 的工具區段。以前用 `fit-fusion merge --date` 完成的流程，現在先用來源對應的 `fit-query-*` 查詢、匯出當天的 FIT，再由 `fit-merge` 明確挑選附檔整條覆寫的欄位。以兩個已選出的活動為例：
+
+```sh
+fit-query-files list --date 2026-11-21
+fit-query-garmin list --date 2026-11-21
+fit-query-files export --id "$BIKE_ACTIVITY_ID" --out ride/bike
+fit-query-garmin export --id "$GARMIN_ACTIVITY_ID" --out ride/band
+```
+
+從兩次匯出的 `exports[].path` 取得主檔與附檔路徑，分別代入 `$BIKE_FIT`、`$GARMIN_FIT`。以下只取代整趟熱量，心率沿用主檔。要改用整條 Garmin 心率可再加 `--stream record.heart_rate`。
+
+```sh
+fit-merge --primary "$BIKE_FIT" --overlay "$GARMIN_FIT" --stream session.total_calories --out ride/merged.fit
+fit-inspector inspect ride/merged.fit
+```
+
+檢查後，在 Strava 網頁的活動上傳頁選擇 `ride/merged.fit`。若需確認 CLI 選用哪個目錄或時區，可查看執行時的 stderr 或 `fit-query-files --skill config`。
 
 ## 0.2.x 舊 fit-fusion 的 JSON 設定（歷史規格）
 

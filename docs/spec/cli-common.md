@@ -18,9 +18,11 @@
 
 `fit-query-files`、`fit-query-garmin`、`fit-query-apple` 的資料命令預設印出縮排 JSON。`--json` 和 `--text` 分別指定單行 JSON 與人讀版，兩者互斥。顯示格式不改變活動的選取、匯出內容或結束碼。[名稱與輸出契約](m4-cli.md#查詢結果的共通欄位與輸出格式)
 
-## M5-5 個人設定（0.3.0 規格，待實作）
+## M5-5 個人設定（自 0.2.3 起）
 
-個人設定集中在一份選用的 `~/.fit-fusion/config.yaml`。根節點是 YAML mapping。`version` 為格式版本（整數 `1`），`common` 保存跨工具共用值，`tools` 下以完整執行檔名稱作為區段名稱。`common`、`tools`、各工具區段及其欄位均可省略。
+個人設定集中在一份選用的 `~/.fit-fusion/config.yaml`。有啟用欄位時，根節點是 YAML mapping。`version` 為格式版本（整數 `1`），`common` 保存跨工具共用值，`tools` 下以完整執行檔名稱作為區段名稱。`common`、`tools`、各工具區段及其欄位均可省略。
+
+三支查詢工具都可執行 `config init`，建立一份全註解的英文範本。重跑使用同一份個人檔。純空白或註解視為尚未設定，啟用任一欄位時也須啟用 `version: 1`。五支獨立工具在資料操作前會於 stderr 以 `- 鍵  值  來源` 列出有效參數，終端的鍵為紅色、值為白色、來源為灰色。來源分為 `cli`、`config`，CLI 內建值另標 `(default)`。支援 `--json` 的工具在明確指定該旗標時將摘要改為單行 JSON。查詢工具提供 `--skill config`。[初始化與顯示契約](../decisions/2026-11-26-config-init-and-effective-arguments.md)
 
 三支查詢工具只從 `config.yaml` 讀取個人設定。若目錄中只有 `config.json`，依缺少設定檔的規則使用 CLI 參數及內建預設值。建立設定檔時可複製[英文註解的 YAML 範例](../config/config.example.yaml)，並以 [YAML 格式的 schema](../config/query-config-v1.schema.yaml) 驗證欄位。
 

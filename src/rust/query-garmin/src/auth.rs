@@ -18,7 +18,8 @@ fn checked(value: &str) -> Result<String> {
 }
 
 fn from_file(file: &Path) -> Result<String> {
-    let content = fs::read_to_string(file).map_err(|_| Error::auth("cannot read --env-file"))?;
+    let content = fs::read_to_string(file)
+        .map_err(|e| Error::auth(&format!("cannot read --env-file {}: {e}", file.display())))?;
     for line in content.lines() {
         let line = line.trim().strip_prefix("export ").unwrap_or(line.trim());
         if let Some((name, value)) = line.split_once('=')
@@ -33,9 +34,10 @@ fn from_file(file: &Path) -> Result<String> {
             return checked(unquoted);
         }
     }
-    Err(Error::auth(
-        "GARMIN_PERSONAL_ACCESS_TOKEN missing from --env-file",
-    ))
+    Err(Error::auth(&format!(
+        "{VARIABLE} missing from --env-file {}",
+        file.display()
+    )))
 }
 
 impl Credentials {

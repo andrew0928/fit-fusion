@@ -1,3 +1,7 @@
+#[path = "../../effective_args.rs"]
+mod effective_args;
+#[path = "../../query_config.rs"]
+mod query_config;
 #[path = "../../query_filters.rs"]
 mod query_filters;
 #[path = "../../query_output.rs"]
@@ -17,7 +21,6 @@ use jiff::{Timestamp, tz::TimeZone};
 use serde::Serialize;
 use serde_json::{Value, json};
 use std::{
-    env,
     path::{Path, PathBuf},
     process::ExitCode,
 };
@@ -76,16 +79,16 @@ impl From<std::io::Error> for Error {
 #[command(
     about = "Query Garmin Connect cycling activities and export original FIT files",
     arg_required_else_help = true,
-    after_help = "Examples\n  fit-query-garmin --env-file .env list --date 2026-11-21 --json\n  fit-query-garmin --env-file .env export --id 123456789 --out selected --json\n  fit-query-garmin --skill"
+    after_help = "Settings\n  config init creates ~/.fit-fusion/config.yaml. Explicit flags override YAML, then built-in defaults.\n  See --skill config for provenance on stderr.\n\nExamples\n  fit-query-garmin --env-file .env list --date 2026-11-21 --json\n  fit-query-garmin --env-file .env export --id 123456789 --out selected --json\n  fit-query-garmin --skill"
 )]
 struct Cli {
-    /// Read the personal key from GARMIN_PERSONAL_ACCESS_TOKEN in this dotenv file
+    /// Dotenv path. Overrides tools.fit-query-garmin.env_file (default .env in working directory).
     #[arg(long, global = true, value_name = "FILE", default_value = ".env")]
     env_file: PathBuf,
-    /// Original FIT cache (default: ~/Library/Caches/fit-query-garmin)
+    /// Original FIT cache. Overrides tools.fit-query-garmin.cache_dir (default ~/Library/Caches/fit-query-garmin).
     #[arg(long, global = true, value_name = "DIR")]
     cache_dir: Option<PathBuf>,
-    /// Zone for interpreting departure dates
+    /// Date zone. Overrides common.timezone (default Asia/Taipei).
     #[arg(long,global=true,default_value="Asia/Taipei",value_parser=parse_zone)]
     timezone: TimeZone,
     #[command(flatten)]
@@ -99,6 +102,7 @@ struct Cli {
 #[derive(Clone, Copy, ValueEnum)]
 enum Skill {
     Index,
+    Config,
     List,
     Read,
     Export,
@@ -124,7 +128,7 @@ enum Action {
         offline: bool,
     },
     /// Export a single original or a batch by date
-    #[command(
+    #[command(group(clap::ArgGroup::new("selection").args(["id","date","from","device"]).required(true).multiple(true)),
         after_help = "Example\n  fit-query-garmin --env-file .env export --date 2026-11-21 --out selected --json"
     )]
     Export {
@@ -296,9 +300,11 @@ fn run<T: Transport>(
     Ok((reply, 0))
 }
 fn main() -> ExitCode {
-    let mut matches =
-        cli_help::command::<Cli>("Garmin Connect Personal API + FIT wire reader", "").get_matches();
-    let cli = Cli::from_arg_matches_mut(&mut matches).unwrap_or_else(|e| e.exit());
+    let (tree, matches, origins) = query_config::parse(cli_help::command::<Cli>(
+        "Garmin Connect Personal API + FIT wire reader",
+        "",
+    ));
+    let cli = Cli::from_arg_matches(&matches).unwrap_or_else(|e| e.exit());
     cli.output.validate().unwrap_or_else(|e| e.exit());
     let usage = |message: &str| -> ! {
         cli_help::command::<Cli>("Garmin Connect Personal API", "")
@@ -313,6 +319,7 @@ fn main() -> ExitCode {
             "{}",
             match topic {
                 Skill::Index => include_str!("../guides/index.md"),
+                Skill::Config => query_config::GUIDE,
                 Skill::List => include_str!("../guides/list.md"),
                 Skill::Read => include_str!("../guides/read.md"),
                 Skill::Export => include_str!("../guides/export.md"),
@@ -324,19 +331,17 @@ fn main() -> ExitCode {
     let action = cli
         .action
         .unwrap_or_else(|| usage("expected list, read or export"));
-    let cache = cli.cache_dir.or_else(|| {
-        env::var_os("HOME").map(|h| PathBuf::from(h).join("Library/Caches/fit-query-garmin"))
-    });
+    let cache = cli
+        .cache_dir
+        .unwrap_or_else(|| usage("provide --cache-dir when HOME is unset"));
+    effective_args::report(&tree, &matches, &origins);
     let mut client = Client::new(
         Https::new(),
         Credentials {
             env_file: cli.env_file,
         },
     );
-    let (result, exit) = match cache
-        .ok_or_else(|| Error::usage("provide --cache-dir when HOME is unset"))
-        .and_then(|cache| run(&mut client, action, &cache, cli.timezone.clone()))
-    {
+    let (result, exit) = match run(&mut client, action, &cache, cli.timezone.clone()) {
         Ok(result) => result,
         Err(e) if e.exit == 2 => usage(&e.message),
         Err(e) => (json!({"status":"error","error":e}), e.exit),

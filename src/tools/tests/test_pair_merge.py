@@ -45,7 +45,7 @@ class PairMerge(unittest.TestCase):
                            "--json", expected=expected)
 
     def test_help_skill_and_failure_before_io(self):
-        self.assertIn("fit-merge 0.2.0", self.invoke("--help").stdout)
+        self.assertIn("fit-merge 0.2.3", self.invoke("--help").stdout)
         self.assertEqual(self.invoke("--skill").stdout, self.invoke("--skill", "index").stdout)
         self.assertIn("fit-merge --skill merge", self.invoke("--skill").stdout)
         self.assertIn("--primary", self.invoke("--skill", "merge").stdout)

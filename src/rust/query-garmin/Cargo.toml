@@ -1,6 +1,6 @@
 [package]
 name = "fit-query-garmin"
-version = "0.2.1"
+version = "0.2.3"
 edition = "2024"
 rust-version = "1.93"
 build = "../build_info.rs"
@@ -17,3 +17,5 @@ base64 = "0.22"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 sha2 = "0.10"
 tempfile = "3"
+serde_yaml_ng = "0.10"
+unicode-width = "0.2"

@@ -1,32 +1,28 @@
-# M5 開發計畫：0.3.0 首次正式發佈
+# M5 發佈計畫
 
-**目標**　從已公開的 `andrew0928/fit-fusion` 發佈 0.3.0。每版在主 repo 建立一次 GitHub Release，提供 `fit-merge`、`fit-inspector` 與三支 `fit-query-*` 的 macOS Apple Silicon 套件及 `SHA256SUMS`。發佈後自動更新 `andrew0928/homebrew-tools` 的最新版與各版本 Formula，下載位置指向主 repo。安裝名稱沿用 `andrew0928/tools/fit-fusion`。[發佈位置決策](../decisions/2026-11-26-public-source-and-release.md)
+**0.2.x 完成功能與驗收，0.3.0 只移除舊 `fit-fusion`。** 0.2.3 是第一個交付共通 YAML 並驗證跨版升級的候選套件。後續修正持續使用 0.2.x 的 patch 版號。[版本範圍決策](../decisions/2026-11-26-v023-upgrade-and-retirement.md) · [里程碑總覽](../CONTEXT.md#roadmap)
 
-**目前進度（2026-11-26）**　最新發佈版本為 0.2.2，M4-7 的乾淨環境首次安裝已通過 R14。下一個開發任務是 **M5-5，實作三支查詢工具共用的 YAML 載入器**。0.3.0 候選套件備妥後，再執行 M5-4 跨版本升級驗收。[里程碑總覽](../CONTEXT.md#roadmap) · [R14 案例與紀錄](../spec/testcases/m4-cli.md#r14review)
+| 任務 | 狀態（2026-11-26） | 驗收結果與剩餘工作 |
+|---|---|---|
+| M5-1 公開主 repo | 完成 | 使用者核准內容公開，已驗證匿名下載。[複核依據](../decisions/2026-11-26-public-source-and-release.md#活動檔公開範圍) |
+| M5-2 自動建置 binary | 已取消 | 維護者手動建置、發佈主 repo Release，GitHub Actions 自動更新 tap 的 Formula。 |
+| M5-3 Developer ID 簽章與公證 | 本版略過 | 依既有決定維持 Apple Silicon 本機執行檢查。 |
+| M5-4 Homebrew 跨版本升級 | 0.2.2 → 0.2.3 本機候選驗收通過 | 已實際執行 `brew update`、`brew upgrade`、`brew test`。0.2.3 公開發佈後再核對 Release 事件、公開 tap 與匿名下載。 |
+| M5-5 共通設定與操作指引 | 完成，使用者已通過 0.2.3 review | 三支 query 共用 YAML。已實測 `config init` 重跑、已編輯設定保留與 CLI 覆寫。2026-11-26 使用者確認設定操作及終端配色。[設定與升級指引](../config/README.md) · [介面決策](../decisions/2026-11-26-config-init-and-effective-arguments.md) |
 
-| 任務 | 狀態 | 工作 | 完成條件 |
-|---|---|---|---|
-| M5-1 | 完成 | 主 repo 內容公開核准 | 2026-11-26 使用者確認目前 repo 的所有資訊均可公開，指定本項結案。已檢查的 Git 歷史含 12 份合成 FIT，無真實活動 FIT、Health XML 或 GPX。[複核範圍與依據](../decisions/2026-11-26-public-source-and-release.md#活動檔公開範圍) |
-| M5-2 | 已取消 | 自動建置及發佈 binary | 維護者手動建置並發佈主 repo Release。發佈後的 Formula 同步已另行交付。 |
-| M5-3 | 本版略過 | Apple Developer ID 簽章與公證 | 使用者目前沒有 Apple Developer 帳號，已決定 0.3.0 略過簽章、公證及對應的瀏覽器下載啟動驗收。 |
-| M5-4 | 已確認，待辦 | Homebrew 跨版本升級 | 從已安裝的 0.2.2 在測試用 tap 分支升級。Formula 的 `url` 指向主 repo 的候選附件，`version` 與 `sha256` 對應該附件。執行 `brew update`、`brew upgrade andrew0928/tools/fit-fusion` 與 `brew test`，核對五支工具，並用安裝版合併與讀回合成 FIT。 |
-| M5-5 | 規格完成，下一項開發 | 共通設定與舊 CLI 退場 | 三支查詢工具支援選填的 `~/.fit-fusion/config.yaml`。`fit-merge` 與 `fit-inspector` 繼續直接用參數執行。交付安裝、升級及舊 CLI 退場指引。[設定契約與 CLI 驗收情境](../spec/cli-common.md) |
+## 0.2.3 升級實測
 
-## 已驗證的發佈流程
+- **起點**　Apple Silicon 的隔離 Homebrew 前綴，從公開 tap `9533579` 安裝正式 0.2.2。下載檔 SHA-256 為 `f9987dac5906e522d98eb843dd610012035758ce5aff356c8ba1ae70ef85d94a`。該版本的 `brew test` 通過。
+- **更新**　在同一前綴與同一個 `andrew0928/tools/fit-fusion` 名稱下，用測試 tap 提供候選 Formula。它由正式產生器產生，測試下載網址指向本機附件。Homebrew 偵測 0.2.3 可升級，五支已連結的 CLI 均回報 0.2.3，候選版的 `brew test` 通過。
+- **個人設定**　升級前先建立一份含自訂註解、UTC 及相對 FIT 目錄的 YAML。升級後用三支 query 分別執行 `config init`，都回報 `already_exists`。檔案的 SHA-256、0600 權限、inode 與 mtime 均一致。明確傳入與 YAML 同值的 `--timezone UTC` 時，來源由 `config` 變為 `cli`。
+- **資料流程**　從 YAML 指定的位置查詢並匯出兩份合成 FIT，副本與來源 SHA-256 相同。再用安裝版 `fit-merge` 覆寫心率，以 `fit-inspector` 檢查，並獨立解碼讀回 109、110、113、113、114、115 bpm。
+- **迴歸測試**　六個 Rust 套件合計 48 項測試通過。使用含 DuckDB 的 Python 測試環境執行 CLI 測試套件，52 項全數通過。完整輸出保存於同版候選附件目錄的 `rust-tests.log` 與 `cli-tests-all.log`。
+- **候選附件**　`fit-fusion-v0.2.3-macos-arm64.tar.gz` 的 SHA-256 為 `0ebab57982a5dcf652c6396436937f61ef7972d682804c496338bc860d2d2814`。通用壓縮檔保留 `fit-fusion 0.1.0` 與 `fit-inspector-bridge`。Formula 安裝五支獨立 CLI、全註解範本與第三方授權文件。本機附件、校驗檔、安裝日誌及 `upgrade-result.json` 位於 `runtime/releases/v0.2.3/`。
 
-主 repo 提供 v0.1.0、v0.2.0、v0.2.1、v0.2.2 的匿名下載，tap 的舊 Release 已移除。在 Apple Silicon 上，預設 Formula 及四份指定版本的 Formula 均通過安裝與 `brew test`。用現有版本手動觸發同步兩次，第一次更新 tap，第二次核對後未產生新提交。首次由 `release.published` 觸發的驗證留到下一個正式版本。[主 repo Releases](https://github.com/andrew0928/fit-fusion/releases) · [首次同步](https://github.com/andrew0928/fit-fusion/actions/runs/45747888794) · [重跑紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45747963685)
+## 接下來的版本
 
-## 接下來的執行順序
+1. **0.2.3 發佈**　在主 repo 的 `v0.2.3` Release 上傳候選附件與同批 `SHA256SUMS`。核對 `release.published` 的工作流程執行結果、最新版與指定版本 Formula、匿名下載 SHA-256。[工作流程](../../.github/workflows/sync-homebrew.yml) · [Formula 產生器](../../scripts/sync-fit-fusion.py)
+2. **0.2.x 完成其餘驗收**　選定專案授權並完成第三方再分發檢查。發現問題即在後續 patch 修正並複驗。維護者在主 repo 發佈一次，tap 只存 Formula。[發佈位置決策](../decisions/2026-11-26-public-source-and-release.md)
+3. **0.3.0 移除舊 CLI**　從現行工具與通用發行附件移除 `fit-fusion`，以已驗收的 0.2.x 為基準核對五支工具與個人 YAML。既有的 Homebrew 安裝名稱 `andrew0928/tools/fit-fusion` 繼續使用。
 
-1. **M5-5，共用設定載入。** YAML 格式、英文註解範例與完整 schema 已備妥，8 個 schema 案例通過。接下來在 Rust 實作讀取與驗證，逐欄套用「明確 CLI 參數 → YAML → 內建預設」。0.3.0 的新工具只支援 YAML，0.2.x 的 JSON 契約留作歷史。[設定範例](../config/config.example.yaml) · [完整 schema](../config/query-config-v1.schema.yaml)
-2. **M5-5，工具整合與退場驗收。** 將載入器接到 files、apple、garmin，驗證不同工作目錄、缺檔、錯誤 YAML、Garmin dotenv 與離線快取。用合成資料走完查詢、匯出、合併與檢查，更新安裝指引及舊 CLI 對照，說明手動上傳 Strava 的最後一步。[CLI 驗收情境](../spec/cli-common.md)
-3. **M5-4，候選版升級。** 在測試用 tap 從已安裝的 0.2.2 升級到 0.3.0 候選套件，執行上表的 `brew test` 與 FIT 合併、讀回驗收，留下版本與校驗紀錄。
-4. **發佈 v0.3.0。** 定案專案授權並核對第三方再分發條件後，依下方流程發佈，確認 Release 事件成功更新 tap，並從 Formula 的 URL 匿名核對套件 SHA-256。
-
-## 建置與發佈
-
-**0.3.0 發佈流程**　原 M5-2 的自動建置已取消。發佈前確認專案授權與第三方再分發條件。依版本 tag 與 Cargo.lock 建置、測試五支 CLI，在主 repo 的 Release 草稿上傳 macOS arm64 套件及 `SHA256SUMS`，再發佈 Release。GitHub Actions 隨後更新 tap 中 Formula 的 `version`、`url` 與 `sha256`。發佈者可在主 repo 的 Actions 查看結果或重跑同步。
-
-以 `v0.3.0` 為例，兩個附件須命名為 `fit-fusion-v0.3.0-macos-arm64.tar.gz` 與 `SHA256SUMS`。壓縮檔在同一層放置五支可執行 CLI、`THIRD-PARTY-NOTICES.txt`、`RUST-LIBRARY-COPYRIGHT.html`。執行 `shasum -a 256 fit-fusion-v0.3.0-macos-arm64.tar.gz > SHA256SUMS` 可產生校驗檔。同步涵蓋正式的 `vX.Y.Z`，最新版取最大的語意版本。附件缺漏時補齊附件，再從 Actions 手動執行同步。[工作流程](../../.github/workflows/sync-homebrew.yml) · [Formula 產生器](../../scripts/sync-fit-fusion.py)
-
-**完成里程碑的條件**　使用者能匿名取得主 repo 的 `v0.3.0` 原始碼與 Release binary。tap 對該版只有 Formula 更新。從 Formula 的 URL 匿名下載套件，確認 SHA-256 與主 repo 的 `SHA256SUMS` 相符。保留來源 commit 及升級驗收紀錄。
+此前的 0.2.2 乾淨安裝已通過 R14；歷史四版及預設 Formula 也已通過 `brew test`。2026-11-26 使用現有 Release 手動觸發同步，首次寫入 tap，第二次未新增提交。[R14 驗收](../spec/testcases/m4-cli.md#r14review) · [首次同步](https://github.com/andrew0928/fit-fusion/actions/runs/45747888794) · [重跑紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45747963685)
