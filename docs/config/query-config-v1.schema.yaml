@@ -1,0 +1,59 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: FIT query CLI personal settings v1 / FIT 查詢工具個人設定 v1
+description: Optional YAML file at ~/.fit-fusion/config.yaml. Explicit CLI flags override individual fields. / 選用的個人
+  YAML 設定檔位於 ~/.fit-fusion/config.yaml。明確指定的命令列參數逐欄位優先。
+type: object
+required:
+- version
+properties:
+  version:
+    description: Required schema version, integer 1. / 使用設定檔時必填，格式版本為整數 1。
+    type: integer
+    const: 1
+  common:
+    description: Optional settings shared by the query tools. Omit to use built-in defaults. / 三支查詢工具共用的選填設定。省略時使用內建預設值。
+    type: object
+    properties:
+      timezone:
+        description: Optional IANA time zone for activity departure dates. Override with --timezone. / 選填，用來判定活動出發日期的
+          IANA 時區，可用 --timezone 覆寫。
+        type: string
+        default: Asia/Taipei
+  tools:
+    description: Optional settings by executable name. Omit to use CLI flags and built-in defaults. / 依執行檔命名的選填區段。省略時使用命令列參數及內建預設值。
+    type: object
+    properties:
+      fit-query-files:
+        description: Optional local FIT settings. Omit to supply --dir for data commands. / 選填，本機 FIT 查詢設定。省略時資料命令須提供
+          --dir。
+        type: object
+        properties:
+          dir:
+            description: Optional FIT input directory. No default. Supply --dir if omitted. / 選填，FIT 輸入目錄。無預設值，省略時須提供
+              --dir。
+            type: string
+      fit-query-apple:
+        description: Optional Apple Health settings. Omit to supply --archive for data commands. / 選填，Apple Health
+          查詢設定。省略時資料命令須提供 --archive。
+        type: object
+        properties:
+          archive:
+            description: Optional path to an Apple Health export ZIP. No default. Supply --archive if omitted. /
+              選填，Apple Health 匯出 ZIP 的路徑。無預設值，省略時須提供 --archive。
+            type: string
+      fit-query-garmin:
+        description: Optional settings for Garmin queries. Omit to use the default dotenv and cache locations. /
+          選填，Garmin 查詢設定。省略時使用預設的 dotenv 與快取位置。
+        type: object
+        properties:
+          env_file:
+            description: Optional dotenv path for GARMIN_PERSONAL_ACCESS_TOKEN. On omission, online queries use
+              .env in the working directory. Relative YAML paths resolve beside config.yaml. Override with --env-file.
+              / 選填，存放 GARMIN_PERSONAL_ACCESS_TOKEN 的 dotenv 路徑。省略時線上查詢讀取工作目錄的 .env。YAML 相對路徑以 config.yaml 所在目錄解析，可用
+              --env-file 覆寫。
+            type: string
+          cache_dir:
+            description: Optional directory for cached original Garmin FIT files. Override with --cache-dir. / 選填，儲存
+              Garmin 原始 FIT 的快取目錄，可用 --cache-dir 覆寫。
+            type: string
+            default: ~/Library/Caches/fit-query-garmin

@@ -1,0 +1,27 @@
+# Optional personal settings for fit-query-* 0.3.0. Save as ~/.fit-fusion/config.yaml.
+# Only version is required. CLI flags override the corresponding settings.
+# Relative paths start at this file's directory. Absolute paths and ~/ also work.
+
+# Use schema version 1.
+version: 1
+
+common:
+  # Time zone for the activity's start date. Defaults to Asia/Taipei.
+  timezone: Asia/Taipei
+
+tools:
+  fit-query-files:
+    # Directory of FIT files. If omitted, pass --dir.
+    dir: ~/Cycling/Bryton
+
+  fit-query-apple:
+    # Apple Health export ZIP. If omitted, pass --archive.
+    archive: ~/Downloads/apple-health-export.zip
+
+  fit-query-garmin:
+    # File containing GARMIN_PERSONAL_ACCESS_TOKEN for online queries.
+    # If omitted, read .env from the working directory.
+    env_file: garmin.env
+
+    # Directory for cached Garmin FIT files. The value shown is the default.
+    cache_dir: ~/Library/Caches/fit-query-garmin

@@ -1,4 +1,8 @@
-# FIT Fusion 個人設定檔 v1
+# FIT Fusion 個人設定
+
+0.3.0 的三支 `fit-query-*` 共用選填的 `~/.fit-fusion/config.yaml`。`fit-merge` 與 `fit-inspector` 直接用命令列參數執行。[英文註解範例](config.example.yaml) · [完整 YAML schema](query-config-v1.schema.yaml) · [欄位預設、覆寫順序與驗收條件](../spec/cli-common.md)
+
+## 0.2.x 舊 fit-fusion 的 JSON 設定（歷史規格）
 
 2026-11-23 已確認此格式作為 M2 的實作依據。[決策紀錄](../decisions/2026-11-23-date-driven-config.md)
 

@@ -14,6 +14,16 @@ Version 0.1.0 delivers the two CLI families below. [M4](milestones/m4-cli.md) de
 
 This is stream merging, NOT concatenating routes or activities.
 
+## Roadmap
+
+| Milestone | Status as of 2026-11-26 | Delivery |
+|---|---|---|
+| M1 | Complete | Python, C#, Rust and Node.js inspectors validated FIT decoding and round trips. [Inspector verification](inspectors.md) |
+| M2 | Released in 0.1.0 | The legacy Rust merger supports date-based matching, FIT export and optional Parquet. M2-4 was retired. Riders upload the FIT to Strava manually. [M2 plan](milestones/m2-cli.md) |
+| M3 | Retired | Its requirements moved to named tasks in M4 and M5. [Task mapping](milestones/m4-cli.md#原-m3-工作移轉) |
+| M4 | Closed in 0.2.2 | M4-1 through M4-5 delivered the five independent CLIs. M4-7 passed the R14 clean-install review. M4-6 and M4-8 were canceled. [M4 plan](milestones/m4-cli.md) |
+| M5 | In progress for 0.3.0 | Source and binaries are public. **Next: M5-5**, implement the YAML settings loader for the three query CLIs. Then validate the upgrade from 0.2.2 (M5-4) and publish 0.3.0. [M5 tasks and acceptance](milestones/m5-release.md) |
+
 ## Devices
 - Bryton Rider 15 Neo: historical cycling FIT, manufacturer 267 and product 2004.
 - Bryton Rider 460: GPS, barometric altitude, temperature,

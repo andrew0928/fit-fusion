@@ -22,6 +22,8 @@
 
 個人設定集中在一份選用的 `~/.fit-fusion/config.yaml`。根節點是 YAML mapping。`version` 為格式版本（整數 `1`），`common` 保存跨工具共用值，`tools` 下以完整執行檔名稱作為區段名稱。`common`、`tools`、各工具區段及其欄位均可省略。
 
+三支查詢工具只從 `config.yaml` 讀取個人設定。若目錄中只有 `config.json`，依缺少設定檔的規則使用 CLI 參數及內建預設值。建立設定檔時可複製[英文註解的 YAML 範例](../config/config.example.yaml)，並以 [YAML 格式的 schema](../config/query-config-v1.schema.yaml) 驗證欄位。
+
 ```yaml
 version: 1
 common:
@@ -51,6 +53,7 @@ tools:
 ### M5-5 設定驗收
 
 - 在空的個人目錄中，既有的顯式參數仍可走完查詢、匯出、合併與檢查。即使 YAML 語法錯誤，免設定的兩支工具及五支工具的說明入口仍可使用。
+- 個人目錄只有 `config.json` 時，查詢結果應與空目錄相同。同時有兩檔時，查詢設定取自 `config.yaml`；若 YAML 損壞，回報 YAML 的路徑及錯誤。
 - 使用同一份 YAML 從兩個工作目錄查詢，三支 query 的日期解讀一致。對單次呼叫指定 `--timezone` 或來源路徑時，只覆寫該次呼叫的對應欄位。
 - 每支 query 只使用共用區段與自己的區段。其他來源未掛載或 ZIP 路徑失效時，仍能查詢本來源。讀取設定的命令遇到 YAML 語法錯誤或不支援的格式版本時，應指出設定檔路徑。
 - Garmin 分別驗證顯式 `--env-file`、YAML 內的相對路徑，以及兩者均省略時的工作目錄 `.env`。顯式憑證檔缺少必要鍵時，回報鍵名並隱去值。按 ID 離線讀取已驗證快取時免讀憑證。
