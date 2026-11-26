@@ -8,7 +8,7 @@ use std::{
     fs,
     io::{Cursor, Write},
 };
-const FIT: &[u8] = include_bytes!("../../merger/tests/fixtures/cirqa.fit");
+const FIT: &[u8] = include_bytes!("../../../tools/tests/fixtures/activities/cirqa.fit");
 struct Step(&'static str, String, &'static str, Result<Vec<u8>>);
 struct Mock(RefCell<VecDeque<Step>>);
 impl Transport for Mock {

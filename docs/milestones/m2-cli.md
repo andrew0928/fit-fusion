@@ -1,5 +1,7 @@
 # M2 設計　從同趟騎乘產出 FIT 與來源分析
 
+> 歷史規格。重跑本文的舊 CLI 與案例，請使用 [v0.2.3 原始碼](https://github.com/andrew0928/fit-fusion/tree/v0.2.3)。
+
 M2 交付一支在 macOS 本機執行的 Rust CLI。騎士指定日期，由 CLI 到已設定的主來源找出當日騎乘、配對 CIRQA，再按逐串流順位合併。CLI 交付已驗證的 FIT，由騎士手動上傳 Strava。M2-4 自動發佈已於 2026-11-25 廢除，M2-5 已交付 Parquet。現行開發規劃與原 M3 各項去向見 [M4 計畫](m4-cli.md)。Agent 能從執行檔取得操作指引，依輸出和結束碼判斷下一步。里程碑範圍、熱量來源與設定檔 v1 已確認。以下列出目標介面及實作計畫。[設定檔 v1](../config/README.md) · [里程碑決策](../decisions/2026-11-23-cli-milestones.md) · [本版發佈方式](../decisions/2026-11-24-manual-strava-export.md) · [合併規格](../specification.md)
 
 ## 騎完一趟如何使用

@@ -64,7 +64,7 @@ tools:
 
 | 對外入口 | clap | help／skill | 歸屬 |
 |---|---|---|---|
-| Rust `fit-inspector`、舊 `fit-fusion` | 已採用 | 已有索引與主題 | 0.1.0 已交付，舊合併器自 0.3.0 起退場。 |
+| Rust `fit-inspector`、舊 `fit-fusion` | 已採用 | 已有索引與主題 | 0.1.0 已交付，舊合併器自 v0.2.4 預發佈起退場。 |
 | `fit-merge` | 已採用 | `index`、`merge` | M4-1。 |
 | `fit-query-files` | 已採用 | `index`、`list`、`read`、`export` | M4-2。 |
 | `fit-query-garmin` | 已採用 | `index`、`list`、`read`、`export`、`auth` | M4-3。 |

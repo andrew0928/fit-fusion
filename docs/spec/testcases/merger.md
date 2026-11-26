@@ -1,5 +1,7 @@
 # 合併器驗收情境與案例
 
+> 歷史規格。重跑本文的舊 CLI 與案例，請使用 [v0.2.3 原始碼](https://github.com/andrew0928/fit-fusion/tree/v0.2.3)。
+
 所有案例驗收同一套 macOS Rust CLI。下表列出整個 M2 的產品驗收。有實騎資料的列可用既有回放作為預期值。檔內數值以獨立檢查器的 `raw` 驗證，涵蓋率和取樣統計以 `inspect` 驗證。每趟都要保留來源雜湊及合併報告。[合併器規格](../merger.md) · [檢查器規格](../inspector.md)
 
 | 案例 | 輸入與操作 | 通過條件 |
@@ -51,13 +53,13 @@ PYTHONPATH=src/python python3 -m fit_fusion inspect --decoder wire \
 
 ## 目前可重跑的驗收
 
-Rust 命令列驗收涵蓋全域選項換序、群組 help 與檔名後的 help。另將 0–3 個 FIT 輸入與日期、自動配對、Garmin ID、輸出目錄四個條件展開為 64 種組合，使用不存在的設定檔區分兩種結果。有效的命令進入設定載入，回傳 `invalid_config`。無效的命令在解析階段回傳 `usage`。兩者都有可解析的 JSON，且不建立產物。[自動化驗收](../../../src/tools/tests/test_merger.py)
+Rust 命令列驗收涵蓋全域選項換序、群組 help 與檔名後的 help。另將 0–3 個 FIT 輸入與日期、自動配對、Garmin ID、輸出目錄四個條件展開為 64 種組合，使用不存在的設定檔區分兩種結果。有效的命令進入設定載入，回傳 `invalid_config`。無效的命令在解析階段回傳 `usage`。兩者都有可解析的 JSON，且不建立產物。[自動化驗收](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/tools/tests/test_merger.py)
 
-M01 的指引驗收從執行檔的 `--skill index` 發現各主題，擷取頁面中的設定與命令，使用同一對測試 FIT 執行四種合併方式。驗收比對輸出 FIT、報告雜湊與各模式的產物路徑，並檢查空日、當日部分成功及重跑沿用產物。[指引驗收案例](../../../src/tools/tests/test_merger.py)
+M01 的指引驗收從執行檔的 `--skill index` 發現各主題，擷取頁面中的設定與命令，使用同一對測試 FIT 執行四種合併方式。驗收比對輸出 FIT、報告雜湊與各模式的產物路徑，並檢查空日、當日部分成功及重跑沿用產物。[指引驗收案例](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/tools/tests/test_merger.py)
 
 單檔 `--auto-match` 另以手環主檔配對 Bryton 車錶目錄，並配置一個名為 `garmin`、未列入串流順位的來源。驗收要求 `matched_sources` 只列車錶，產生的 FIT 與手動提供雙檔逐位元組相同。舊語法、重複旗標、額外參數或與其他模式混用時，應回傳結束碼 2 及 `usage`。
 
-從根目錄執行 `python3 -m unittest discover -s src/tools/tests -p test_merger.py -v`。合成測試包含 M14 的逐秒讀回、M04 的備援失敗、developer 欄位同號及目的目錄防覆寫。這台 Mac 有六趟私人樣本時也會執行實檔測試，逐秒檢查 M01–M03 的選源、M05 的標準與 developer 熱量，並比較未修改的串流與私有訊息。缺少私人索引時 unittest 會明列跳過該測試。[自動化驗收](../../../src/tools/tests/test_merger.py)
+從根目錄執行 `python3 -m unittest discover -s src/tools/tests -p test_merger.py -v`。合成測試包含 M14 的逐秒讀回、M04 的備援失敗、developer 欄位同號及目的目錄防覆寫。這台 Mac 有六趟私人樣本時也會執行實檔測試，逐秒檢查 M01–M03 的選源、M05 的標準與 developer 熱量，並比較未修改的串流與私有訊息。缺少私人索引時 unittest 會明列跳過該測試。[自動化驗收](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/tools/tests/test_merger.py)
 
 原有 Python 雙檔回歸持續驗證歷史輸出。新增測試用 [C# 產生器](../../../src/csharp/FitFixtures/Program.cs) 與 Garmin.FIT.Sdk 21.222.0 固定設備、六秒心率、踏頻及熱量。測試執行 config check、本機目錄列舉、指定雙檔合併，再以獨立 Python inspector CLI 的 raw 讀回 M14 的心率與熱量。日期入口另有 M06–M08、M09 修訂部分與 M10 驗收。M14 直接以日期模式合併，再透過 Python inspector CLI 讀回。Strava 自動發佈的驗收隨 M2-4 廢除。若要重建測試檔，可從根目錄執行 `dotnet run --project src/csharp/FitFixtures -- <新的空目錄>`，再比對兩邊的檔案雜湊。
 
@@ -78,7 +80,7 @@ M01 的指引驗收從執行檔的 `--skill index` 發現各主題，擷取頁�
 | 同一輸入重跑，再變更輸出格式或有效選源 | 未改設定時回傳 `reused: true`。日期模式切換格式或移除溫度會建立不同修訂，上次產物可繼續讀取。篡改或移除既有 Parquet 回傳 `output_conflict`。 |
 | 含未知原生欄及同號 developer 欄的合成檔 | 保留欄號、developer index 與原始位元組。手動指定但未參與選值的第二份 FIT 亦可重建。 |
 
-從根目錄用裝有 DuckDB 的 Python 執行 `python -m unittest discover -s src/tools/tests -p test_merger.py -v`。獨立讀回測試使用 Python 套件 `duckdb`（此版驗收使用 1.4.5）；Rust CLI 自行產生 Parquet。缺少私人樣本或 DuckDB 時，測試會明列略過的案例。[分析檔結構與查詢](../merger.md#parquet-分析檔-v2) · [自動化驗收](../../../src/tools/tests/test_merger.py)
+從根目錄用裝有 DuckDB 的 Python 執行 `python -m unittest discover -s src/tools/tests -p test_merger.py -v`。獨立讀回測試使用 Python 套件 `duckdb`（此版驗收使用 1.4.5）；Rust CLI 自行產生 Parquet。缺少私人樣本或 DuckDB 時，測試會明列略過的案例。[分析檔結構與查詢](../merger.md#parquet-分析檔-v2) · [自動化驗收](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/tools/tests/test_merger.py)
 
 ### config v1 擴充驗收
 
@@ -102,7 +104,7 @@ C# 與 Garmin FIT SDK 產生兩台未註冊的合成車錶。用 [v1 設定](../
 
 1. **收件與盤點。** 原始 FIT 或 ZIP 放在 Git 忽略的 `data/sources/legacy/`，各型號分目錄存放，ZIP 保留原件，取出的 FIT 另存。記下原檔 SHA-256、實際廠牌與型號、騎乘日期／時區、已知同趟關係。設備代碼從 FIT 讀取。舊檔只有單機記錄即可做 M15 或 M16。
 2. **檢查器。** 對代表實檔執行 `python3 src/tools/verify_roundtrip.py FILE.fit`，沿用 M1 四語言工具比較逐框資料、欄位統計與重編碼結果；Garmin JS SDK 的能力差異單獨記錄。
-3. **合併器。** 使用原檔的獨立副本，執行 Rust CLI 的 `config check`、`activities list`、`merge --date`，再以 Python inspector CLI 讀回。M17 的順位只作用於該案例。原始活動時間、正式心率及熱量規則均沿用現況。每次執行另存一份 `runtime/reports/device-e2e/run-*/verification.json`，回報狀態、輸入雜湊及成功產物，失敗含原因。[執行器](../../../src/tools/verify_device_e2e.py)
+3. **合併器。** 使用原檔的獨立副本，執行 Rust CLI 的 `config check`、`activities list`、`merge --date`，再以 Python inspector CLI 讀回。M17 的順位只作用於該案例。原始活動時間、正式心率及熱量規則均沿用現況。每次執行另存一份 `runtime/reports/device-e2e/run-*/verification.json`，回報狀態、輸入雜湊及成功產物，失敗含原因。[執行器](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/tools/verify_device_e2e.py)
 
 從專案根目錄執行。日期由原檔 session 起點與時區取得，時區預設為 `Asia/Taipei`，可用 `--timezone` 調整。
 

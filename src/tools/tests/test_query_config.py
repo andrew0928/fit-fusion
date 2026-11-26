@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 SRC = Path(__file__).resolve().parents[2]
-FIXTURES = SRC / "rust/merger/tests/fixtures"
+FIXTURES = SRC / "tools/tests/fixtures/activities"
 
 
 class PersonalSettings(unittest.TestCase):

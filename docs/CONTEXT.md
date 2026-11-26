@@ -1,7 +1,7 @@
 # FIT Sensor Data Fusion
 
 ## Goal
-Version 0.1.0 delivers the two CLI families below. [M4](milestones/m4-cli.md) delivers independent tools starting at 0.2.0. The 0.2.x Homebrew packages are for testing. [M5](milestones/m5-release.md) owns the first production release at 0.3.0 whose sole product change is removing the legacy `fit-fusion` CLI. All other acceptance work belongs to 0.2.x.
+Version 0.1.0 delivers the two CLI families below. [M4](milestones/m4-cli.md) delivers independent tools starting at 0.2.0. The 0.2.x Homebrew packages are for testing. [M5](milestones/m5-release.md) owns the first production release at 0.3.0 with the legacy CLI retirement previewed in v0.2.4. All other acceptance work belongs to 0.2.x.
 
 - The [inspector](spec/inspector.md) inventories a single FIT and compares
   independent decoding paths across Python, C#, Rust, and Node.js, with room
@@ -22,7 +22,7 @@ This is stream merging, NOT concatenating routes or activities.
 | M2 | Released in 0.1.0 | The legacy Rust merger supports date-based matching, FIT export and optional Parquet. M2-4 was retired. Riders upload the FIT to Strava manually. [M2 plan](milestones/m2-cli.md) |
 | M3 | Retired | Its requirements moved to named tasks in M4 and M5. [Task mapping](milestones/m4-cli.md#原-m3-工作移轉) |
 | M4 | Closed in 0.2.2 | M4-1 through M4-5 delivered the five independent CLIs. M4-7 passed the R14 clean-install review. M4-6 and M4-8 were canceled. [M4 plan](milestones/m4-cli.md) |
-| M5 | In progress for 0.3.0 | Source and binaries are public. The three query CLIs now share YAML settings and all five CLIs report effective arguments. The owner accepted M5-5, including configuration and terminal colors. v0.2.3 is public. M5-4 passed a public Homebrew upgrade from 0.2.2 with the existing personal configuration preserved. Further 0.2.x patches cover remaining acceptance. 0.3.0 removes the legacy executable. [M5 tasks and acceptance](milestones/m5-release.md) |
+| M5 | In progress for 0.3.0 | Source and binaries are public. The three query CLIs now share YAML settings and all five CLIs report effective arguments. The owner accepted M5-5, including configuration and terminal colors. v0.2.3 is public. M5-4 passed a public Homebrew upgrade from 0.2.2 with the existing personal configuration preserved. Further 0.2.x patches cover remaining acceptance. v0.2.4 previews the removal of the legacy source and executable ahead of 0.3.0. [M5 tasks and acceptance](milestones/m5-release.md) |
 
 ## Devices
 - Bryton Rider 15 Neo: historical cycling FIT, manufacturer 267 and product 2004.
@@ -100,10 +100,10 @@ Its credential storage, distribution, integration and field-mapping tasks are as
 
 ## Milestone 4 — independent CLIs by purpose
 
-0.2.0 starts with `fit-merge`: one local primary FIT, one overlay FIT, explicit stream names and a new output path, all supplied on the command line. Selected streams retain gaps in the overlay. Repeat the command for further inputs. `fit-inspector` owns sampling and missing-data analysis. The three independent query CLIs handle local FIT directories, Apple Health exports and Garmin Connect. New tools run independently of `fit-fusion`, whose retirement begins at 0.3.0. See the [development plan](milestones/m4-cli.md), [CLI contract](spec/m4-cli.md) and [acceptance cases](spec/testcases/m4-cli.md).
+0.2.0 starts with `fit-merge`: one local primary FIT, one overlay FIT, explicit stream names and a new output path, all supplied on the command line. Selected streams retain gaps in the overlay. Repeat the command for further inputs. `fit-inspector` owns sampling and missing-data analysis. The three independent query CLIs handle local FIT directories, Apple Health exports and Garmin Connect. New tools run independently of `fit-fusion`, whose source and executable were removed for the v0.2.4 pre-release. See the [development plan](milestones/m4-cli.md), [CLI contract](spec/m4-cli.md) and [acceptance cases](spec/testcases/m4-cli.md).
 
 ## Milestone 5 — 0.3.0 production release
 
 `andrew0928/fit-fusion` is public. Each binary and checksum is published once in its GitHub Release. A release workflow updates the stable and versioned formulas in `andrew0928/homebrew-tools` with the asset URL and checksum. See the [distribution decision](decisions/2026-11-26-public-source-and-release.md).
 
-M4-7 closed with the [R14 clean-install review](spec/testcases/m4-cli.md#r14review) of 0.2.2. M5-1 is complete. M5-2 was canceled. The maintainer still builds the binaries and publishes the release. The owner completed M5-5 review of the shared settings and their [usage guide](config/README.md). The [M5 tasks](milestones/m5-release.md) record the public 0.2.3 release, its verified upgrade and outstanding 0.2.x license reviews before removing the legacy CLI in 0.3.0. Developer ID signing and notarization are skipped for this release.
+M4-7 closed with the [R14 clean-install review](spec/testcases/m4-cli.md#r14review) of 0.2.2. M5-1 is complete. M5-2 was canceled. The maintainer still builds the binaries and publishes the release. The owner completed M5-5 review of the shared settings and their [usage guide](config/README.md). The [M5 tasks](milestones/m5-release.md) record the public 0.2.3 release, its verified upgrade and outstanding 0.2.x license reviews before the first production release in 0.3.0. Developer ID signing and notarization are skipped for this release.

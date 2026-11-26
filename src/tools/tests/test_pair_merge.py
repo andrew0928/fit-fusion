@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 import unittest
 
-from test_merger import ROOT, fixture, rows
+from fit_samples import ROOT, fixture, rows
 
 
 class PairMerge(unittest.TestCase):
@@ -20,9 +20,9 @@ class PairMerge(unittest.TestCase):
                                        str(manifest), "--message-format=json"], cwd=ROOT, text=True)
         cls.cli = next(msg["executable"] for msg in map(json.loads, log.splitlines())
                        if msg.get("executable") and msg["target"]["name"] == "fit-merge")
-        cls.inputs = ROOT / "src/rust/merger/tests"
-        cls.bike = cls.inputs / "stream-fixtures/bike.fit"
-        cls.band = cls.inputs / "fixtures/cirqa.fit"
+        cls.inputs = ROOT / "src/tools/tests/fixtures"
+        cls.bike = cls.inputs / "streams/bike.fit"
+        cls.band = cls.inputs / "activities/cirqa.fit"
 
     def setUp(self):
         tmp = tempfile.TemporaryDirectory()
@@ -45,7 +45,7 @@ class PairMerge(unittest.TestCase):
                            "--json", expected=expected)
 
     def test_help_skill_and_failure_before_io(self):
-        self.assertIn("fit-merge 0.2.3", self.invoke("--help").stdout)
+        self.assertIn("fit-merge 0.2.4", self.invoke("--help").stdout)
         self.assertEqual(self.invoke("--skill").stdout, self.invoke("--skill", "index").stdout)
         self.assertIn("fit-merge --skill merge", self.invoke("--skill").stdout)
         self.assertIn("--primary", self.invoke("--skill", "merge").stdout)
@@ -58,7 +58,7 @@ class PairMerge(unittest.TestCase):
         self.assertFalse((self.dir / "x.fit").exists())
 
     def test_chained_overwrite_and_csharp_fit_readback(self):
-        base = self.inputs / "fixtures/rider.fit"
+        base = self.inputs / "activities/rider.fit"
         first, second = self.dir / "ride.fit", self.dir / "ride-with-power.fit"
         for name, source in [("bike.fit", base), ("band.fit", self.band), ("power.fit", self.bike)]:
             (self.dir / name).write_bytes(source.read_bytes())
@@ -83,7 +83,7 @@ class PairMerge(unittest.TestCase):
 
     def test_arrays_and_developer_collisions(self):
         out = self.dir / "array.fit"
-        backup = self.inputs / "stream-fixtures/backup.fit"
+        backup = self.inputs / "streams/backup.fit"
         self.merge(self.bike, backup, out, "record.left_power_phase")
         self.assertEqual([r[None, 69] for n, r in rows(out) if n == 20], [[32, 64]] * 6)
         # Alter the two session values independently and keep private/unselected payloads.

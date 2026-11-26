@@ -6,12 +6,12 @@
     "bike_meter": {
       "kind": "fit_directory",
       "device": {"manufacturer": 267, "product": 2205},
-      "directory": "../../src/rust/merger/tests/fixtures"
+      "directory": "../../src/tools/tests/fixtures/activities"
     },
     "health_band": {
       "kind": "fit_directory",
       "device": {"manufacturer": 1, "product": 5019},
-      "directory": "../../src/rust/merger/tests/fixtures"
+      "directory": "../../src/tools/tests/fixtures/activities"
     }
   },
   "merge": {

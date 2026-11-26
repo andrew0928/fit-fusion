@@ -123,7 +123,7 @@ class RoundTripTests(unittest.TestCase):
 
     def test_follow_inspector_skill_index_and_examples(self):
         src = TOOLS.parent
-        fixture = src / "rust/merger/tests/fixtures/rider.fit"
+        fixture = src / "tools/tests/fixtures/activities/rider.fit"
         for lang, launcher in {
             "python": "PYTHONPATH=src/python python3 -m fit_fusion",
             "csharp": "dotnet FitFusion.dll",

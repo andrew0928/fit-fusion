@@ -10,7 +10,7 @@ Build the clap frontend from the repository root before running the Python or No
 
 ```sh
 cargo build --release --locked --manifest-path src/rust/inspector/Cargo.toml
-runtime/build/rust/release/fit-inspector inspect src/rust/merger/tests/fixtures/rider.fit --stream record.heart_rate --stream record.power
+runtime/build/rust/release/fit-inspector inspect src/tools/tests/fixtures/activities/rider.fit --stream record.heart_rate --stream record.power
 ```
 
 The launchers use the sibling build or a `fit-inspector-bridge` on PATH. The C# build copies the frontend alongside FitFusion.dll. Each language still decodes the original bytes itself. Each member's `sampling` contains coverage and missing counts from that decoder's inventory.

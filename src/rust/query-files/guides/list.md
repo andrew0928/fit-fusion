@@ -2,7 +2,7 @@
 
 Set rides to the directory holding the FIT files. For example, from the repository root:
 
-    fit-query-files --dir src/rust/merger/tests/fixtures list --json
+    fit-query-files --dir src/tools/tests/fixtures/activities list --json
     fit-query-files --dir data/sources/bryton/fit list --date 2026-11-21 --json
     fit-query-files --dir data/sources/bryton/fit list --from 2026-11-01 --until 2026-12-01 --device 267/2205 --json
 

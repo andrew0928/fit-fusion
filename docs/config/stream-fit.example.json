@@ -5,12 +5,12 @@
   "sources": {
     "bike": {
       "kind": "fit_directory",
-      "directory": "../../src/rust/merger/tests/stream-fixtures",
+      "directory": "../../src/tools/tests/fixtures/streams",
       "device": {"manufacturer": 267, "product": 30001}
     },
     "backup": {
       "kind": "fit_directory",
-      "directory": "../../src/rust/merger/tests/stream-fixtures",
+      "directory": "../../src/tools/tests/fixtures/streams",
       "device": {"manufacturer": 1, "product": 30002}
     }
   },

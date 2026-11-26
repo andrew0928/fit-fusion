@@ -1,6 +1,6 @@
 # M4 開發計畫：獨立的 FIT 命令列工具
 
-**M4 從 0.2.0 開始，第一個開發任務是 `fit-merge`。** 0.2.x 以完成四個新 CLI 為主；0.3.0 起讓舊的 `fit-fusion` 退場。新工具可有重疊功能，一律獨立安裝及執行。版本方向、雙檔覆寫與 Apple 轉製 FIT 已確認；所有 CLI 須使用 clap 並通過共通的 help／skill 驗收。[共同規格](../spec/cli-common.md)[範圍決策](../decisions/2026-11-25-independent-pair-merge.md) · [CLI 規格](../spec/m4-cli.md) · [驗收表](../spec/testcases/m4-cli.md)
+**M4 從 0.2.0 開始，第一個開發任務是 `fit-merge`。** 0.2.x 以完成四個新 CLI 為主；舊 `fit-fusion` 自 v0.2.4 預發佈退場。新工具可有重疊功能，一律獨立安裝及執行。版本方向、雙檔覆寫與 Apple 轉製 FIT 已確認；所有 CLI 須使用 clap 並通過共通的 help／skill 驗收。[共同規格](../spec/cli-common.md)[範圍決策](../decisions/2026-11-25-independent-pair-merge.md) · [CLI 規格](../spec/m4-cli.md) · [驗收表](../spec/testcases/m4-cli.md)
 
 ## 版本與里程碑
 
@@ -12,7 +12,8 @@
 | 0.2.1 | M4-3 review 通過，發佈版 | 新增 `fit-query-garmin`，並更新兩支查詢工具的人讀版輸出。正式帳號使用 `.env` 查詢與下載成功。依確認順序先做 M4-5，再做 M4-4。 |
 | 0.2.2 | 已發佈，Homebrew 供測試 | M4-5 四語言檢查器提供逐串流缺樣統計，M4-4 提供 Apple Health ZIP 查詢與 FIT 匯出。R10、R11、R12 通過。使用者已完成 Homebrew 乾淨環境驗收，R14 review 通過。[GitHub Release v0.2.2](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2) |
 | 0.2.3（M5） | 已發佈，M5-4、M5-5 完成 | 共通 YAML 與參數來源顯示通過使用者 review；從公開 tap 進行 0.2.2 → 0.2.3 升級驗收通過。[M5](m5-release.md) |
-| 0.3.0（M5） | 待 0.2.x 驗收完成 | 唯一產品變更為移除舊 `fit-fusion` CLI。 |
+| 0.2.4（M5） | 預發佈 | 移除舊 CLI 原始碼與執行檔，保留五支獨立工具。 |
+| 0.3.0（M5） | 待 0.2.x 驗收完成 | 首次正式發佈。 |
 
 ## M4 執行順序與完成條件
 

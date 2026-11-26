@@ -1,6 +1,6 @@
 # M5 發佈計畫
 
-**0.2.x 完成功能與驗收，0.3.0 只移除舊 `fit-fusion`。** v0.2.3 已公開交付共通 YAML，並通過從 v0.2.2 升級的公開驗收。後續修正持續使用 0.2.x 的 patch 版號。[版本範圍決策](../decisions/2026-11-26-v023-upgrade-and-retirement.md) · [里程碑總覽](../CONTEXT.md#roadmap)
+**0.2.x 完成功能與驗收，v0.2.4 預發佈提前移除舊 `fit-fusion`，0.3.0 為首次正式發佈目標。** v0.2.3 已公開交付共通 YAML，並通過從 v0.2.2 升級的公開驗收。後續修正持續使用 0.2.x 的 patch 版號。[預發佈決策](../decisions/2026-11-26-v024-prerelease.md) · [里程碑總覽](../CONTEXT.md#roadmap)
 
 | 任務 | 狀態（2026-11-26） | 驗收結果與剩餘工作 |
 |---|---|---|
@@ -9,6 +9,10 @@
 | M5-3 Developer ID 簽章與公證 | 本版略過 | 依既有決定維持 Apple Silicon 本機執行檢查。 |
 | M5-4 Homebrew 跨版本升級 | 完成，公開 0.2.2 → 0.2.3 驗收通過 | Release 自動更新兩個 Formula。已用公開 tap 在原有安裝執行升級、套件測試與 FIT 讀回，使用者 YAML 完整保留。 |
 | M5-5 共通設定與操作指引 | 完成，使用者已通過 0.2.3 review | 三支 query 共用 YAML。已實測 `config init` 重跑、已編輯設定保留與 CLI 覆寫。2026-11-26 使用者確認設定操作及終端配色。[設定與升級指引](../config/README.md) · [介面決策](../decisions/2026-11-26-config-init-and-effective-arguments.md) |
+
+## 0.2.4 預發佈
+
+五支現行工具、檢查器 bridge、共通 YAML 範本及授權文件構成 Apple Silicon 套件。舊合併器的 Rust crate 與專屬測試已移除，12 份合成 FIT 的內容雜湊與 v0.2.3 相同。原始碼測試通過 20 項 Rust、33 項 CLI 整合及 11 項檢查器測試，涵蓋四語言 round-trip 與六趟實騎合併。另從獨立目錄解開套件，驗證五支 CLI 和 bridge，匯出兩份 FIT 後覆寫並讀回六筆心率。GitHub 穩定版與 Homebrew 公開 Formula 維持 v0.2.3。[預發佈決策](../decisions/2026-11-26-v024-prerelease.md)
 
 ## 0.2.3 公開發佈與升級驗收
 
@@ -33,6 +37,6 @@
 ## 接下來的版本
 
 1. **0.2.x 完成其餘驗收**　選定專案授權並完成第三方再分發檢查。發現問題即在後續 patch 修正並複驗。維護者在主 repo 發佈一次，tap 只存 Formula。[發佈位置決策](../decisions/2026-11-26-public-source-and-release.md)
-2. **0.3.0 移除舊 CLI**　從現行工具與通用發行附件移除 `fit-fusion`，以已驗收的 0.2.x 為基準核對五支工具與個人 YAML。既有的 Homebrew 安裝名稱 `andrew0928/tools/fit-fusion` 繼續使用。
+2. **0.3.0 首次正式發佈**　沿用 0.2.4 預發佈驗證過的五支工具、個人 YAML 及套件內容。既有的 Homebrew 安裝名稱 `andrew0928/tools/fit-fusion` 繼續使用。
 
 此前的 0.2.2 乾淨安裝已通過 R14；歷史四版及預設 Formula 也已通過 `brew test`。2026-11-26 使用現有 Release 手動觸發同步，首次寫入 tap，第二次未新增提交。[R14 驗收](../spec/testcases/m4-cli.md#r14review) · [首次同步](https://github.com/andrew0928/fit-fusion/actions/runs/45747888794) · [重跑紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45747963685)

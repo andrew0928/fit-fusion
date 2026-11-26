@@ -110,11 +110,15 @@ def package(version, assets):
 
     tools = LEGACY_TOOLS.get(version, TOOLS)
     notices = () if version in LEGACY_TOOLS else NOTICES
+    release_version = tuple(map(int, version.split(".")))
     # 0.2.3 introduced the shared YAML template.
-    if tuple(map(int, version.split("."))) >= (0, 2, 3):
+    if release_version >= (0, 2, 3):
         notices = (*notices, "config.example.yaml")
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
-        files = {PurePosixPath(m.name): m for m in tar if m.isfile()}
+        members = tar.getmembers()
+        if release_version >= (0, 2, 4) and any(PurePosixPath(m.name).name == "fit-fusion" for m in members):
+            raise ValueError(f"{tag}: archive contains the retired fit-fusion executable")
+        files = {PurePosixPath(m.name): m for m in members if m.isfile()}
     # Homebrew removes a single top-level wrapper directory when it unpacks.
     nested = all(len(path.parts) > 1 for path in files)
     roots = {path.parts[0] for path in files}

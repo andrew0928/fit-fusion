@@ -2,7 +2,7 @@
 
 Get an ID from list. From the repository root, this example selects the first fixture:
 
-    rides=src/rust/merger/tests/fixtures
+    rides=src/tools/tests/fixtures/activities
     id=$(fit-query-files --dir "$rides" list --json | jq -er '.activities[0].id')
     fit-query-files --dir "$rides" read --id "$id" --json
 

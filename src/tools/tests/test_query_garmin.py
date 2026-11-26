@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURE = ROOT / "src/rust/merger/tests/fixtures/cirqa.fit"
+FIXTURE = ROOT / "src/tools/tests/fixtures/activities/cirqa.fit"
 
 
 class GarminQuery(unittest.TestCase):
@@ -34,7 +34,7 @@ class GarminQuery(unittest.TestCase):
         return r.stdout if code != 2 else r.stderr
 
     def test_agent_help_topics_and_errors_before_network(self):
-        self.assertIn("fit-query-garmin 0.2.3", self.invoke("--help"))
+        self.assertIn("fit-query-garmin 0.2.4", self.invoke("--help"))
         self.assertIn("Compiler", self.invoke("--version"))
         index = self.invoke("--skill")
         self.assertEqual(index, self.invoke("--skill", "index"))

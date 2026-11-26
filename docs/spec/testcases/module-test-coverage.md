@@ -1,5 +1,7 @@
 # M2 Rust 模組測試與決策列對照
 
+> 歷史規格。重跑本文的舊 CLI 與案例，請使用 [v0.2.3 原始碼](https://github.com/andrew0928/fit-fusion/tree/v0.2.3)。
+
 M2-3 交付時有 **25 個 Rust 測試函式**。A、B、C、D 共 **76 個規格列**，一個函式可用多組資料驗證相鄰門檻。C 表的 10 個共通列分別在本機與模擬 Connect 執行。CLI 端對端測試另計。[完整條件與預期結果](module-decision-tables.md)
 
 ```sh
@@ -15,7 +17,7 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | `target_registration_is_independent_of_readers`、`a_config_loads_named_instances_and_priorities_offline` | A4a–f、A6f、A6g | 空目的地、預設 Strava、兩個獨立 Strava、擴充種類、讀取與發佈方向分開，以及未知選項定位。 |
 | `invalid_config_is_diagnosed_offline` | A6b–d | 版本、座標順位、Apple 心率備援被拒絕；另驗時區、路徑重疊與重複鍵。 |
 
-測試經由設定檔載入，檢查來源讀取與平台請求計數為零。M2-3 的目的地 factory 僅驗證設定，Strava 發佈 transport 與互動測試已隨 M2-4 廢除。[Config 測試](../../../src/rust/merger/src/config/tests.rs)
+測試經由設定檔載入，檢查來源讀取與平台請求計數為零。M2-3 的目的地 factory 僅驗證設定，Strava 發佈 transport 與互動測試已隨 M2-4 廢除。[Config 測試](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/rust/merger/src/config/tests.rs)
 
 ## B　Query（5 列）
 
@@ -34,7 +36,7 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | `c3_errors_preserve_auth_rate_limit_and_failed_second_page`、`http_responses_distinguish_revocation_rate_limit_and_outage` | C3b–d | 換發遭拒、429／Retry-After、第二頁失敗時整次查詢失敗，以及 HTTP 狀態到 CLI 錯誤的對應。 |
 | `c4_c5_c6_cached_original_and_stream_reads` | C4a–d、C5、C6a–c | Connect 的 FIT、設備、來源 ID、UTC、缺值與零值。開啟後讀兩欄，額外下載及整檔解碼均為零。 |
 
-另有三個跨模組回歸，分別是 `merge_accepts_already_open_recordings`、`revoked_bearer_replaced_once_and_config_update_preserves_other_sections`、`m10_date_merge_renews_token_deduplicates_ids_and_matches_dual_file`。[本機測試](../../../src/rust/merger/src/data_source/tests.rs) · [Connect 測試](../../../src/rust/merger/src/data_source/garmin/tests.rs)
+另有三個跨模組回歸，分別是 `merge_accepts_already_open_recordings`、`revoked_bearer_replaced_once_and_config_update_preserves_other_sections`、`m10_date_merge_renews_token_deduplicates_ids_and_matches_dual_file`。[本機測試](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/rust/merger/src/data_source/tests.rs) · [Connect 測試](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/rust/merger/src/data_source/garmin/tests.rs)
 
 ## D　Policy（30 列）
 
@@ -49,4 +51,4 @@ cargo test --offline --locked --lib --manifest-path src/rust/merger/Cargo.toml
 | `f1_f2_f3_session_calories_missing_and_invalid_difference` | F1、F2、F3a–b | CIRQA 總量、兩個原值、缺總量中止及無法計算的衍生活動熱量。 |
 | `f4_f5_inherit_temperature_and_select_coordinates_in_pairs` | F4、F5 | 移除溫度覆寫時，保留主來源溫度與摘要，缺半組 GPS 時兩欄同時缺值。 |
 
-[Policy 測試](../../../src/rust/merger/src/policy/tests.rs) · [端對端案例](merger.md#目前可重跑的驗收)
+[Policy 測試](https://github.com/andrew0928/fit-fusion/blob/v0.2.3/src/rust/merger/src/policy/tests.rs) · [端對端案例](merger.md#目前可重跑的驗收)

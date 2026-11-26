@@ -1,5 +1,7 @@
 # 騎乘合併器 CLI 規格
 
+> 歷史規格。重跑本文的舊 CLI 與案例，請使用 [v0.2.3 原始碼](https://github.com/andrew0928/fit-fusion/tree/v0.2.3)。
+
 合併器只維護**一套 Rust 實作**，M2 在 macOS 使用 RustyFIT。它從同一次騎乘的多份記錄選取資料，在設定的主來源時間軸上產生一份可發佈的 FIT 與來源報告。Python、C#、Rust、Node.js 檢查器可獨立讀回這個輸出。現行 config v1 預設沿用主檔，`merge.streams` 選填，只列需要覆寫或追加的欄位。省略整段與填 `{}` 都會逐位元組輸出主 FIT。來源依用途命名，本機目錄可收錄多款設備。CLI 逐檔顯示錄製設備，混合多種用途的目錄可用製造商與型號篩選。[設定範例](../config/stream-fit.example.json)[技術決策](../decisions/2026-11-21-production-fit-sdk.md) · [檢查器規格](inspector.md)
 
 設定如何決定主來源、逐欄順位與整趟選值，以及連線器如何開啟一趟記錄，見[設定與活動來源介面（C# 與 Rust 對照）](config-and-data-source.md)。

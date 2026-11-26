@@ -10,7 +10,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[3]
-FIXTURES = ROOT / "src/rust/merger/tests/fixtures"
+FIXTURES = ROOT / "src/tools/tests/fixtures/activities"
 REAL = ROOT / "data/sources/bryton/fit"
 
 
@@ -41,7 +41,7 @@ class QueryFiles(unittest.TestCase):
         return json.loads(self.invoke("--dir", source, *args, "--json", code=code))
 
     def test_offline_help_skills_and_syntax(self):
-        self.assertIn("fit-query-files 0.2.3", self.invoke("--help"))
+        self.assertIn("fit-query-files 0.2.4", self.invoke("--help"))
         self.assertIn("Compiler", self.invoke("--version"))
         index = self.invoke("--skill")
         self.assertEqual(index, self.invoke("--skill", "index"))
