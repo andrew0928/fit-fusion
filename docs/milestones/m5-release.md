@@ -10,6 +10,10 @@
 | M5-4 Homebrew 跨版本升級 | 完成，公開 0.2.2 → 0.2.3 驗收通過 | Release 自動更新兩個 Formula。已用公開 tap 在原有安裝執行升級、套件測試與 FIT 讀回，使用者 YAML 完整保留。 |
 | M5-5 共通設定與操作指引 | 完成，使用者已通過 0.2.3 review | 三支 query 共用 YAML。已實測 `config init` 重跑、已編輯設定保留與 CLI 覆寫。2026-11-26 使用者確認設定操作及終端配色。[設定與升級指引](../config/README.md) · [介面決策](../decisions/2026-11-26-config-init-and-effective-arguments.md) |
 
+## 0.2.5 agent 指引與指定版 Homebrew 安裝
+
+`fit-merge --skill preflight` 引導 agent 先檢查兩份 FIT，向騎士說明熱量差距、心率缺樣及停滯。五支工具提供離線作者資訊，查詢、合併與評估範例可換用讀者自己的輸入。此版採 GitHub 預發佈，Homebrew 以 `andrew0928/tools/fit-fusion@0.2.5` 指名安裝，預設 Formula 維持 0.2.3。[安裝說明](../../README.md#試用-025-預發佈版) · [發佈機制](../decisions/2026-11-26-public-source-and-release.md#指名安裝預發佈版)
+
 ## 0.2.4 預發佈
 
 五支現行工具、檢查器 bridge、共通 YAML 範本及授權文件構成 Apple Silicon 套件。舊合併器的 Rust crate 與專屬測試已移除，12 份合成 FIT 的內容雜湊與 v0.2.3 相同。原始碼測試通過 20 項 Rust、33 項 CLI 整合及 11 項檢查器測試，涵蓋四語言 round-trip 與六趟實騎合併。另從獨立目錄解開套件，驗證五支 CLI 和 bridge，匯出兩份 FIT 後覆寫並讀回六筆心率。GitHub 穩定版與 Homebrew 公開 Formula 維持 v0.2.3。[預發佈決策](../decisions/2026-11-26-v024-prerelease.md)

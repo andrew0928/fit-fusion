@@ -20,16 +20,24 @@ fit-inspector --skill index
 
 從 0.2.3 起可用 `fit-query-files config init` 建立個人 YAML。三支查詢工具共用此檔，五支獨立 CLI 的執行前摘要會列出有效參數與來源。[初始化、升級與舊 CLI 退場指引](docs/config/README.md)
 
-### 試用 0.2.4 預發佈版
+### 試用 0.2.5 預發佈版
 
-從 [v0.2.4 pre-release](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.4) 下載 `fit-fusion-v0.2.4-macos-arm64.tar.gz` 和 `SHA256SUMS`，在同一目錄執行：
+指定版本即可與穩定版並存。Homebrew 將指定版安裝在獨立目錄，可直接執行裡面的工具。
+
+```sh
+brew update
+brew install andrew0928/tools/fit-fusion@0.2.5
+"$(brew --prefix andrew0928/tools/fit-fusion@0.2.5)/bin/fit-merge" --skill preflight
+```
+
+也可從 [v0.2.5 預發佈頁](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.5) 下載 macOS arm64 壓縮檔及 `SHA256SUMS`，在同一目錄校驗並解壓。
 
 ```sh
 shasum -a 256 -c SHA256SUMS
-tar -xzf fit-fusion-v0.2.4-macos-arm64.tar.gz
-cd fit-fusion-v0.2.4-macos-arm64
+tar -xzf fit-fusion-v0.2.5-macos-arm64.tar.gz
+cd fit-fusion-v0.2.5-macos-arm64
 ./fit-merge --version
-./fit-query-files --skill config
+./fit-merge --skill preflight
 ```
 
 壓縮檔內有五支 CLI、供多語言檢查器使用的 `fit-inspector-bridge`、設定範本與授權文件。需要重現舊合併器與 JSON 設定時，可使用 [v0.2.3 的原始碼與套件](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.3)。

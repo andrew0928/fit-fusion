@@ -14,6 +14,10 @@
 
 v0.2.2 曾分別提供開發者套件與五支工具的 Homebrew 套件。遷移時將 Homebrew 套件原樣附加於主 repo 同一個 Release，沿用既有安裝檔的 SHA-256。v0.1.0、v0.2.0 與 v0.2.1 直接使用各自的原始 Release 套件，Formula 只安裝該版已提供的獨立 CLI。[主 repo 發行版本](https://github.com/andrew0928/fit-fusion/releases) · [各版 Formula](https://github.com/andrew0928/homebrew-tools/tree/main/Formula)
 
+### 指名安裝預發佈版
+
+2026-11-26 使用者選定 v0.2.5 作為 GitHub 預發佈版，並要求能以 `fit-fusion@0.2.5` 指名安裝。預設 Formula 仍取最高的正式版，此次為 0.2.3。要將預發佈加入 tap，維護者在 GitHub Release 說明內加上一行 `<!-- homebrew: versioned-only -->`。同步流程為該版產生 keg-only Formula，日後重跑時也會保留。v0.2.4 沿用原先的 GitHub 下載通路。
+
 ### 活動檔公開範圍
 
 2026-11-26 使用者確認，活動資料的判準是一般 `git clone` 能否直接取得真實的活動 FIT、健康 XML、GPX 或封裝在檔案裡的原始軌跡。可取得的分支與標籤歷史也在範圍內。合成測試檔、冷水坑研究的五個抽樣座標與地圖連結、Garmin 活動 ID，以及文件中指向本機 `data/` 等目錄的路徑文字，均可公開。間接線索免另行複核。

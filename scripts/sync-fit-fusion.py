@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate installable Homebrew formulae from FIT Fusion's public stable releases."""
+"""Generate Homebrew formulae for stable releases and opted-in prereleases."""
 
 import argparse
 import hashlib
@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 REPO = "andrew0928/fit-fusion"
 HOMEPAGE = f"https://github.com/{REPO}"
 VERSION = r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)"
+VERSIONED_ONLY = "<!-- homebrew: versioned-only -->"
 TOOLS = ("fit-merge", "fit-inspector", "fit-query-files", "fit-query-apple", "fit-query-garmin")
 LEGACY_TOOLS = {
     "0.1.0": ("fit-inspector",),
@@ -75,8 +76,11 @@ def releases():
             batch = json.load(response)
         for release in batch:
             tag = release["tag_name"]
-            if not release["draft"] and not release["prerelease"] and re.fullmatch("v" + VERSION, tag):
-                result[tag[1:]] = release["assets"]
+            if release["draft"] or not re.fullmatch("v" + VERSION, tag):
+                continue
+            if release["prerelease"] and VERSIONED_ONLY not in (release.get("body") or ""):
+                continue
+            result[tag[1:]] = release
         if len(batch) < 100:
             return result
         page += 1
@@ -154,13 +158,14 @@ def main():
     if not folder.is_dir():
         parser.error("the tap checkout must have a Formula directory")
     available = releases()
-    if not available:
+    stable_versions = [v for v, release in available.items() if not release["prerelease"]]
+    if not stable_versions:
         raise ValueError("No published stable vMAJOR.MINOR.PATCH releases found")
-    latest = max(available, key=lambda v: tuple(map(int, v.split("."))))
+    latest = max(stable_versions, key=lambda v: tuple(map(int, v.split("."))))
     stable = folder / "fit-fusion.rb"
     generated = {}
-    for version, assets in available.items():
-        url, sha, tools, notices = package(version, assets)
+    for version, release in available.items():
+        url, sha, tools, notices = package(version, release["assets"])
         versioned = folder / f"fit-fusion@{version}.rb"
         revision = revision_for((versioned, stable), version, sha)
         notice_files = ", ".join(f'"{notice}"' for notice in notices)

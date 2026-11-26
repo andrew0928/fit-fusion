@@ -1,6 +1,6 @@
 [package]
 name = "fit-inspector"
-version = "0.2.4"
+version = "0.2.5"
 build = "../build_info.rs"
 default-run = "fit-inspector"
 edition = "2024"

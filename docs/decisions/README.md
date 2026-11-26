@@ -15,7 +15,7 @@
 | 日期 | 決策 | 狀態 |
 |---|---|---|
 | 2026-11-26 | [M5-5 個人設定僅支援 YAML，區分共用與工具區段](2026-11-26-single-yaml-config.md) | accepted |
-| 2026-11-26 | [主 repo 已公開，GitHub Release 自動更新 Homebrew 的最新版與歷史版 Formula](2026-11-26-public-source-and-release.md) | accepted |
+| 2026-11-26 | [主 repo 發佈，Homebrew 自動同步穩定版、歷史版與指名安裝的預發佈版](2026-11-26-public-source-and-release.md) | accepted |
 | 2026-11-26 | [M5-5 個人設定初始化與執行前參數來源](2026-11-26-config-init-and-effective-arguments.md) | accepted |
 | 2026-11-26 | [0.2.x 完成功能及升級驗收，0.3.0 唯一變更為移除舊 CLI](2026-11-26-v023-upgrade-and-retirement.md)（退場時程已由 0.2.4 預發佈取代） | superseded |
 | 2026-11-26 | [0.2.4 預發佈移除舊 CLI 的原始碼與執行檔](2026-11-26-v024-prerelease.md) | accepted |

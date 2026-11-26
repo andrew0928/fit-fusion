@@ -14,7 +14,10 @@ concurrency:
 
 jobs:
   sync:
-    if: github.repository == 'andrew0928/fit-fusion' && (github.event_name == 'workflow_dispatch' || !github.event.release.prerelease)
+    if: >-
+      github.repository == 'andrew0928/fit-fusion' &&
+      (github.event_name == 'workflow_dispatch' || !github.event.release.prerelease ||
+       contains(github.event.release.body, '<!-- homebrew: versioned-only -->'))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
