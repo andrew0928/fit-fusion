@@ -27,7 +27,7 @@ FORMULA = Template('''# Generated from FIT Fusion releases by scripts/sync-fit-f
 class $classname < Formula
   desc "Merge, inspect and query cycling FIT activities"
   homepage "$homepage"
-  url "$url"
+$license  url "$url"
   version "$version"
   sha256 "$sha"
 $revision$keg
@@ -114,6 +114,9 @@ def package(version, assets):
     # 0.2.3 introduced the shared YAML template.
     if release_version >= (0, 2, 3):
         notices = (*notices, "config.example.yaml")
+    # The MIT decision followed the v0.2.4 prerelease.
+    if release_version > (0, 2, 4):
+        notices = (*notices, "LICENSE")
     with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
         members = tar.getmembers()
         if release_version >= (0, 2, 4) and any(PurePosixPath(m.name).name == "fit-fusion" for m in members):
@@ -163,6 +166,7 @@ def main():
         notice_files = ", ".join(f'"{notice}"' for notice in notices)
         fields = {
             "homepage": HOMEPAGE,
+            "license": '  license "MIT"\n' if "LICENSE" in notices else "",
             "version": version,
             "url": url,
             "sha": sha,

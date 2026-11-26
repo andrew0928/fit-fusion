@@ -127,3 +127,7 @@ python3 src/tools/verify_roundtrip.py  # 四種語言各自重編碼合成樣本
 ```
 
 比對工具將結果寫入 `runtime/reports/milestone-1-1/`。舊版文件裡的 `reports/` 指當時執行環境的產物目錄。[檢查器安裝、原始資料與報告格式](docs/inspectors.md)
+
+## 授權
+
+FIT Fusion 的原創程式碼與隨附使用文件採用 MIT License。第三方 SDK、函式庫及其資料沿用各自的授權。[MIT 授權全文](LICENSE)

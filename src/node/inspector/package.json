@@ -2,6 +2,7 @@
   "name": "fit-fusion-inspector",
   "version": "0.2.2",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "engines": {"node": ">=22.12"},
   "dependencies": {"@garmin/fitsdk": "21.222.0"}

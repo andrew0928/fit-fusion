@@ -19,6 +19,7 @@
 | 2026-11-26 | [M5-5 個人設定初始化與執行前參數來源](2026-11-26-config-init-and-effective-arguments.md) | accepted |
 | 2026-11-26 | [0.2.x 完成功能及升級驗收，0.3.0 唯一變更為移除舊 CLI](2026-11-26-v023-upgrade-and-retirement.md)（退場時程已由 0.2.4 預發佈取代） | superseded |
 | 2026-11-26 | [0.2.4 預發佈移除舊 CLI 的原始碼與執行檔](2026-11-26-v024-prerelease.md) | accepted |
+| 2026-11-26 | [原創程式碼與使用文件採 MIT License](2026-11-26-mit-license.md) | accepted |
 | 2026-11-25 | [M4 依用途拆分 CLI，移轉 M3 並廢除 M2-4](2026-11-25-cli-split.md)（合併入口與時程由同日後續決策取代） | accepted |
 | 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
 | 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |

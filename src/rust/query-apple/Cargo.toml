@@ -3,6 +3,7 @@ name = "fit-query-apple"
 version = "0.2.4"
 edition = "2024"
 rust-version = "1.93"
+license = "MIT"
 publish = false
 build = "../build_info.rs"
 

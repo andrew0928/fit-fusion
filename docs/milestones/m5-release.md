@@ -42,9 +42,29 @@
 - **迴歸測試**　六個 Rust 套件合計 48 項測試通過。使用含 DuckDB 的 Python 測試環境執行 CLI 測試套件，52 項全數通過。完整輸出保存於同版候選附件目錄的 `rust-tests.log` 與 `cli-tests-all.log`。
 - **候選附件**　`fit-fusion-v0.2.3-macos-arm64.tar.gz` 的 SHA-256 為 `0ebab57982a5dcf652c6396436937f61ef7972d682804c496338bc860d2d2814`。通用壓縮檔保留 `fit-fusion 0.1.0` 與 `fit-inspector-bridge`。Formula 安裝五支獨立 CLI、全註解範本與第三方授權文件。本機附件、校驗檔、安裝日誌及 `upgrade-result.json` 位於 `runtime/releases/v0.2.3/`。
 
+## 手動發佈套件的 MIT 授權
+
+在 repo 根目錄操作。將 `stage` 設為該版已備妥的套件目錄，名稱沿用 `fit-fusion-v<版本>-macos-arm64`，內含五支 CLI、bridge、設定範本及兩份第三方聲明。封存前從 repo 複製專案授權，封存後比對內容，再產生公開校驗檔。
+
+```sh
+(
+  set -eu
+  : "${stage:?請設定本次發佈的套件目錄}"
+  name=$(basename "$stage")
+  dest=$(dirname "$stage")
+  install -m 0644 LICENSE "$stage/LICENSE"
+  COPYFILE_DISABLE=1 tar -czf "$dest/$name.tar.gz" -C "$dest" "$name"
+  tar -xOzf "$dest/$name.tar.gz" "$name/LICENSE" | cmp LICENSE -
+  cd "$dest"
+  shasum -a 256 "$name.tar.gz" > SHA256SUMS
+)
+```
+
+從 v0.2.4 之後的穩定版開始，Formula 產生器會檢查附件包含 `LICENSE`，並隨 Homebrew 安裝至 `$(brew --prefix fit-fusion)/share/fit-fusion/LICENSE`。既有 Release 的附件與校驗檔維持發佈時的內容。
+
 ## 接下來的版本
 
-1. **0.2.x 完成其餘驗收**　選定專案授權並完成第三方再分發檢查。發現問題即在後續 patch 修正並複驗。維護者在主 repo 發佈一次，tap 只存 Formula。[發佈位置決策](../decisions/2026-11-26-public-source-and-release.md)
+1. **0.2.x 完成其餘驗收**　專案授權已確認為 MIT。剩餘工作為核對第三方再分發條件與聲明。[授權決策](../decisions/2026-11-26-mit-license.md)發現問題即在後續 patch 修正並複驗。維護者在主 repo 發佈一次，tap 只存 Formula。[發佈位置決策](../decisions/2026-11-26-public-source-and-release.md)
 2. **0.3.0 首次正式發佈**　沿用 0.2.4 預發佈驗證過的五支工具、個人 YAML 及套件內容。既有的 Homebrew 安裝名稱 `andrew0928/tools/fit-fusion` 繼續使用。
 
 此前的 0.2.2 乾淨安裝已通過 R14；歷史四版及預設 Formula 也已通過 `brew test`。2026-11-26 使用現有 Release 手動觸發同步，首次寫入 tap，第二次未新增提交。[R14 驗收](../spec/testcases/m4-cli.md#r14review) · [首次同步](https://github.com/andrew0928/fit-fusion/actions/runs/45747888794) · [重跑紀錄](https://github.com/andrew0928/fit-fusion/actions/runs/45747963685)
