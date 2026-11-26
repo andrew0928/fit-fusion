@@ -14,13 +14,15 @@ Homebrew 套件沿用專案名 `fit-fusion`。安裝清單為 `fit-merge`、`fit
 
 ## 影響
 
-一次安裝與升級整組 CLI。套件版本取自 Release，各執行檔的 `--version` 顯示其元件版本。公開 tap 保存 Formula、README 及版本附件，開發庫維持私有。公開套件使用通用的 Garmin 活動 ID 與 Apple Watch 來源範例。維護下一版時，以新附件的 SHA-256 更新 Formula。[公開發佈位置](https://github.com/andrew0928/homebrew-tools/releases)
+一次安裝與升級整組 CLI。套件版本取自 Release，各執行檔的 `--version` 顯示其元件版本。首次安裝測試時，公開 tap 保存 Formula、README 及版本附件，當時的開發庫為私有。公開套件使用通用的 Garmin 活動 ID 與 Apple Watch 來源範例。[0.2.2 套件現址](https://github.com/andrew0928/fit-fusion/releases/tag/v0.2.2)
 
 ## 替代方案
 
 將整個壓縮檔安裝到 `bin` 會多安裝舊版 `fit-fusion` 與 `fit-inspector-bridge`。逐一列名可以固定每版安裝範圍。
 
 ## 後續工作
+
+2026-11-26 已將 0.2.2 的 Homebrew 套件原樣移至主 repo 的同版 Release，並決定在主 repo 發佈後自動更新 tap。[主 repo 發佈決策](2026-11-26-public-source-and-release.md)
 
 本機已在隔離的 Homebrew prefix 使用 v0.2.2 下載附件的快取通過 `brew install` 與 `brew test`。實際安裝的五支 CLI 均能執行，另以兩份合成 FIT 完成心率覆寫並由安裝版檢查器讀回 6 筆有效樣本。
 

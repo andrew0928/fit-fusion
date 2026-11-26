@@ -15,6 +15,7 @@
 | 日期 | 決策 | 狀態 |
 |---|---|---|
 | 2026-11-26 | [M5-5 使用單一 YAML，區分共用與工具設定](2026-11-26-single-yaml-config.md) | accepted |
+| 2026-11-26 | [主 repo 已公開，GitHub Release 自動更新 Homebrew 的最新版與歷史版 Formula](2026-11-26-public-source-and-release.md) | accepted |
 | 2026-11-25 | [M4 依用途拆分 CLI，移轉 M3 並廢除 M2-4](2026-11-25-cli-split.md)（合併入口與時程由同日後續決策取代） | accepted |
 | 2026-11-25 | [0.2.x 獨立工具、首項雙檔覆寫與 0.3.0 舊 CLI 退場](2026-11-25-independent-pair-merge.md) | accepted |
 | 2026-11-25 | [所有 CLI 的 clap、help 與 skill 共同契約](2026-11-25-common-cli.md) | accepted |

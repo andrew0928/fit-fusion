@@ -94,4 +94,6 @@ Its credential storage, distribution, integration and field-mapping tasks are as
 
 ## Milestone 5 — 0.3.0 production release
 
-M4-7 closed with the [R14 clean-install review](spec/testcases/m4-cli.md#r14review) of 0.2.2. The [M5 tasks](milestones/m5-release.md) track publication, build costs, the upgrade from 0.2.2, shared configuration and legacy CLI retirement. Developer ID signing and notarization are skipped for this release.
+`andrew0928/fit-fusion` is public. Each binary and checksum is published once in its GitHub Release. A release workflow updates the stable and versioned formulas in `andrew0928/homebrew-tools` with the asset URL and checksum. See the [distribution decision](decisions/2026-11-26-public-source-and-release.md).
+
+M4-7 closed with the [R14 clean-install review](spec/testcases/m4-cli.md#r14review) of 0.2.2. M5-1 is complete. M5-2 was canceled. The maintainer still builds the binaries and publishes the release. The remaining [M5 tasks](milestones/m5-release.md) cover the upgrade from 0.2.2, shared configuration and legacy CLI retirement. Developer ID signing and notarization are skipped for this release.

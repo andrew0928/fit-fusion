@@ -9,12 +9,14 @@ FIT Fusion 開發兩類 CLI。檢查器用多個獨立解碼器盤點同一份 F
 
 ## 下載 macOS Apple Silicon 版
 
-目前的 Homebrew 套件 **0.2.2 供測試使用**。提供 `fit-merge`、`fit-inspector` 與三支 `fit-query-*`，安裝及下載均可匿名進行。首次正式發佈預定為 **0.3.0**。[Homebrew tap](https://github.com/andrew0928/homebrew-tools) · [0.2.2 測試套件](https://github.com/andrew0928/homebrew-tools/releases/tag/fit-fusion-v0.2.2) · [M5 發佈計畫](docs/milestones/m5-release.md)
+目前的 Homebrew 套件 **0.2.2 供測試使用**。提供 `fit-merge`、`fit-inspector` 與三支 `fit-query-*`，可匿名安裝。首次正式發佈預定為 **0.3.0**。各版附件集中於主 repo，tap 提供最新版及指定版本的 Formula。[全部 Release](https://github.com/andrew0928/fit-fusion/releases) · [Homebrew tap](https://github.com/andrew0928/homebrew-tools) · [M5 發佈計畫](docs/milestones/m5-release.md)
 
 ```sh
 brew install andrew0928/tools/fit-fusion
 fit-inspector --skill index
 ```
+
+需要重現歷史版本時，可指定完整版本，例如 `brew install andrew0928/tools/fit-fusion@0.2.1`。歷史版提供該版已發佈的工具。
 
 ### 包含舊 `fit-fusion` 的開發者套件
 
